@@ -206,7 +206,7 @@ export function healthFor(daysSince: number, planted: number) {
     thriving: planted === 0 ? first : "Your garden is thriving",
     fine: planted === 0 ? first : "Your garden is doing fine",
     thirsty: "Your garden is getting thirsty. Anyone free?",
-    wilting: "Your garden misses you",
+    wilting: "The flowers are resting. They never wilt for good.",
   };
   return {
     state,

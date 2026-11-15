@@ -36,7 +36,7 @@ struct GardenMemoryRow: Codable, Hashable, Identifiable {
     func namesLine(me: String?) -> String {
         let others = going.filter { $0.userId != me }.map(\.name)
         guard youWent, me != nil else { return GardenNames.line(going.map(\.name)) }
-        return others.isEmpty ? "you" : "you and " + GardenNames.line(others)
+        return GardenNames.line(["you"] + others)
     }
 
     func subtitle(me: String?) -> String { "\(dateLine) · \(namesLine(me: me))" }
