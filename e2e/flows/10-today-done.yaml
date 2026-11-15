@@ -14,7 +14,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:done"
+      step_description: "frolic://e2e/today:done?fixture=1"
     - type: "validation"
       step_description: "The headline \"You went.\" is visible with \"Your first flower is in the garden, and the crew saw it bloom.\""
     - type: "validation"

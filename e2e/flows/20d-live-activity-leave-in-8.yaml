@@ -14,7 +14,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:on"
+      step_description: "frolic://e2e/today:on?fixture=1"
     - type: "manual"
       step_type: "go_home"
       step_description: ""

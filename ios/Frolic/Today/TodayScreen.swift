@@ -233,7 +233,7 @@ private struct TodayPlanPacket: View {
             }
             ChipRow(chips: TodayCopy.chips(plan: plan, walk: store.walkMinutes))
             if let hostedBy = hostedBy ?? store.drop?.hostedBy {
-                Text("Hosted by \(hostedBy)")
+                Text(hostedBy.hasPrefix("Hosted by") ? hostedBy : "Hosted by \(hostedBy)")
                     .todayFont(13, .semibold, relativeTo: .footnote)
                     .foregroundStyle(FrolicColor.chipText)
                     .accessibilityIdentifier("today.plan.hostedBy")
@@ -296,8 +296,9 @@ private struct TodayOpenView: View {
             .disabled(!online)
             .padding(.horizontal, 16)
             .padding(.top, 14)
-            TodayHush(text: "Nobody sees you're down unless they are too", identifier: "today.hush")
-            if !store.hintSeen {
+            if store.hintSeen {
+                TodayHush(text: "Nobody sees you're down unless they are too", identifier: "today.hush")
+            } else {
                 Text("Only friends who are also down will ever see this.")
                     .todayFont(13, .semibold, relativeTo: .footnote)
                     .foregroundStyle(FrolicColor.chipText)
@@ -778,7 +779,7 @@ private struct TodayNoPlanStart: View {
                         .padding(.top, 16)
                         .accessibilityIdentifier("today.imFree.error")
                 }
-                Button(store.gardenHealth?.cta ?? "I'm free") { store.sheet = .imFree }
+                Button("I'm free") { store.sheet = .imFree }
                     .buttonStyle(.frolicPrimary)
                     .disabled(!online)
                     .padding(.horizontal, 16)

@@ -15,7 +15,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:open"
+      step_description: "frolic://e2e/today:open?fixture=1"
     - type: "code_execution"
       script: "skip-boba-twice"
       timeout_seconds: 60

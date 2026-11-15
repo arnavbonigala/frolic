@@ -151,6 +151,7 @@ final class TodayStore {
         case .none:
             return myFree?.state == "busy" ? .off : .none
         case .solo, .open, .waiting:
+            if today.frolic != nil && today.frolic?.plan == nil { return .none }
             if today.myTap?.kind == "notToday" || (myFree?.state == "busy" && !isDown) { return .off }
             if solo { return .solo(waiting: isDown) }
             return isDown ? .waiting(onlyIf: tapOnlyIf.map(\.name)) : .open
@@ -336,7 +337,7 @@ final class TodayStore {
                 guard let self else { return }
                 if self.today?.frolic?.plan != nil && self.today?.phase != TodayPhase.none { self.startingPlan = false }
                 try? await Task.sleep(nanoseconds: 20_000_000_000)
-                if self.startingPlan && self.today?.frolic == nil {
+                if self.startingPlan && self.today?.frolic?.plan == nil {
                     self.startingPlan = false
                     self.startError = "That didn't start. Try again."
                 }
@@ -358,9 +359,9 @@ final class TodayStore {
 
     func onMyWay() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let frolicId = frolic?.frolicId ?? ""
+        guard let frolicId = frolic?.frolicId, !frolicId.isEmpty else { return }
         NotificationCenter.default.post(name: TodayInbox.onMyWayNotification, object: nil, userInfo: ["frolicId": frolicId])
-        guard !isFixture, !frolicId.isEmpty else { return }
+        guard !isFixture else { return }
         let minutes = (walkMinutes ?? 0).rounded()
         send("etas:setMine", ["frolicId": frolicId, "minutes": minutes, "onTheWay": true], expecting: nil)
     }
