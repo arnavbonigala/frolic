@@ -1,6 +1,13 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
 import {
   assertDeviceToken,
@@ -17,6 +24,41 @@ import { rateLimiter } from "./lib/rateLimits";
 import { removeTap, sitOutAndRefill } from "./lib/core";
 
 export const FLOWER_COLORS = ["pink", "cobalt", "moss", "marigold", "tomato", "lilac"] as const;
+
+async function findInvite(ctx: QueryCtx, inviteCode: string): Promise<Doc<"invites"> | null> {
+  const rows = await ctx.db
+    .query("invites")
+    .withIndex("by_code", (q) => q.eq("code", inviteCode.trim().toUpperCase()))
+    .take(2);
+  return rows[0] ?? null;
+}
+
+function inviteIsLive(invite: Doc<"invites"> | null): invite is Doc<"invites"> {
+  return invite !== null && !invite.revoked && (invite.expiresAt === undefined || invite.expiresAt >= Date.now());
+}
+
+const INVITE_EXPIRED = "This invite link expired";
+
+async function liveInvite(ctx: QueryCtx, inviteCode: string): Promise<Doc<"invites">> {
+  const invite = await findInvite(ctx, inviteCode);
+  if (!inviteIsLive(invite)) throw new ConvexError({ code: "BAD_INVITE", message: INVITE_EXPIRED });
+  if (!(await ctx.db.get("groups", invite.groupId))) {
+    throw new ConvexError({ code: "BAD_INVITE", message: INVITE_EXPIRED });
+  }
+  return invite;
+}
+
+async function freshInviteCode(ctx: MutationCtx): Promise<string> {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const code = newCode();
+    const taken = await ctx.db
+      .query("invites")
+      .withIndex("by_code", (q) => q.eq("code", code))
+      .take(1);
+    if (taken.length === 0) return code;
+  }
+  return newCode();
+}
 
 async function upsertDeviceUser(
   ctx: MutationCtx,
@@ -66,7 +108,7 @@ export async function createGroupFor(
     holdEnabled,
   });
   await addMember(ctx, groupId, userId, "creator");
-  const inviteCode = newCode();
+  const inviteCode = await freshInviteCode(ctx);
   await ctx.db.insert("invites", { code: inviteCode, groupId, createdBy: userId, kind: "group", revoked: false });
   return { groupId, inviteCode };
 }
@@ -115,17 +157,12 @@ export async function joinWithInvite(
 ) {
   assertDeviceToken(args.deviceToken);
   await rateLimiter.limit(ctx, "join", { key: await hashToken(args.deviceToken), throws: true });
-  const invite = await ctx.db
-    .query("invites")
-    .withIndex("by_code", (q) => q.eq("code", args.inviteCode.trim().toUpperCase()))
-    .unique();
-  if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < Date.now())) {
-    throw new ConvexError({ code: "BAD_INVITE", message: "This invite link expired" });
-  }
+  const invite = await liveInvite(ctx, args.inviteCode);
   const via = args.via ?? "invite";
   const userId = await upsertDeviceUser(ctx, args.deviceToken, args.firstName, via === "web" ? "web" : "app");
   await addMember(ctx, invite.groupId, userId, via);
-  return { userId, groupId: invite.groupId, frolicId: invite.frolicId ?? null };
+  const frolic = invite.frolicId ? await ctx.db.get("frolics", invite.frolicId) : null;
+  return { userId, groupId: invite.groupId, frolicId: frolic?.groupId === invite.groupId ? frolic._id : null };
 }
 
 export const createInvite = mutation({
@@ -152,7 +189,7 @@ export async function createInviteFor(
       throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
     }
   }
-  const code = newCode();
+  const code = await freshInviteCode(ctx);
   await ctx.db.insert("invites", {
     code,
     groupId: args.groupId,
@@ -176,11 +213,8 @@ export const invitePreview = query({
     }),
   ),
   handler: async (ctx, { inviteCode }) => {
-    const invite = await ctx.db
-      .query("invites")
-      .withIndex("by_code", (q) => q.eq("code", inviteCode.trim().toUpperCase()))
-      .unique();
-    if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < Date.now())) return null;
+    const invite = await findInvite(ctx, inviteCode);
+    if (!inviteIsLive(invite)) return null;
     const group = await ctx.db.get("groups", invite.groupId);
     const inviter = await ctx.db.get("users", invite.createdBy);
     if (!group || !inviter) return null;
@@ -280,13 +314,7 @@ export const joinAs = internalMutation({
   },
   returns: v.id("groups"),
   handler: async (ctx, args) => {
-    const invite = await ctx.db
-      .query("invites")
-      .withIndex("by_code", (q) => q.eq("code", args.inviteCode.trim().toUpperCase()))
-      .unique();
-    if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < Date.now())) {
-      throw new ConvexError({ code: "BAD_INVITE", message: "This invite link expired" });
-    }
+    const invite = await liveInvite(ctx, args.inviteCode);
     await addMember(ctx, invite.groupId, args.userId, args.via);
     return invite.groupId;
   },
