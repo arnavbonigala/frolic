@@ -225,8 +225,9 @@ type Ctx = {
 function bestSlot(place: Place, trips: Record<string, Trip>, ctx: Ctx) {
   const { input } = ctx;
   const dur = place.durationMin * MINUTE;
-  const earliest = Math.max(...[input.nowMs, Math.min(...input.attendees.map((a) => a.window.start))]);
-  const latest = Math.max(...input.attendees.map((a) => a.window.end));
+  const dayEnd = ctx.dayStartMs + 86_400_000;
+  const earliest = Math.max(input.nowMs, ctx.dayStartMs, Math.min(...input.attendees.map((a) => a.window.start)));
+  const latest = Math.min(dayEnd, Math.max(...input.attendees.map((a) => a.window.end)));
   let best: { startMs: number; count: number; fit: number } | null = null;
   for (let s = Math.ceil(earliest / SLOT) * SLOT; s + dur <= latest; s += SLOT) {
     const e = s + dur;
