@@ -143,7 +143,7 @@ struct TodayPacket<Content: View>: View {
                 .accessibilityHidden(true)
                 VStack(alignment: .center, spacing: 10) {
                     if showsWhy, let why {
-                        noteRow(icon: "heart.fill", tint: StoryColor.lantern, text: why)
+                        noteRow(icon: "heart.fill", tint: StoryColor.lantern, text: why.prefix(1).uppercased() + why.dropFirst())
                             .accessibilityIdentifier("today.plan.why")
                     }
                     if flickable {

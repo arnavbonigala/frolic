@@ -270,6 +270,7 @@ private struct TodayPhaseView: View {
 }
 
 private struct TodayPlanPacket: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var store: TodayStore
     var label: String?
     var number: String?
@@ -315,6 +316,7 @@ private struct TodayPlanPacket: View {
                 Text(line)
                     .todayFont(17, relativeTo: .body)
                     .foregroundStyle(StoryColor.muted)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.plan.line")
             }
