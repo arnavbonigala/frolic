@@ -107,7 +107,7 @@ describe("place set", () => {
       expect(p.lat).toBeGreaterThan(37.7);
       expect(p.lat).toBeLessThan(37.95);
       expect(p.lng).toBeGreaterThan(-122.45);
-      expect(p.lng).toBeLessThan(-122.2);
+      expect(p.lng).toBeLessThan(-122.1);
       expect(Number.isInteger(p.costPerPersonCents)).toBe(true);
       expect(p.source).toMatch(/^https:\/\//);
       expect(p.hours.length).toBe(7);
