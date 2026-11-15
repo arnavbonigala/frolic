@@ -314,17 +314,23 @@ struct MemoryDetailScreen: View {
         }
         Task {
             await PortraitCache.shared.warm(refs)
-            renderShare()
+            var photo: UIImage?
+            if let raw = row.photoUrl, let url = URL(string: raw), let (data, _) = try? await URLSession.shared.data(from: url) {
+                photo = UIImage(data: data)
+            }
+            renderShare(photo: photo)
         }
     }
 
-    private func renderShare() {
+    private func renderShare(photo: UIImage?) {
         let card = GardenStoryCard(
             groupName: row.dateLine,
             countLine: row.namesLine(me: store.myUserId),
             line: memory?.title ?? row.title,
             detail: memory?.caption.map(GardenSentence.from),
-            people: memory?.going ?? row.going
+            people: memory?.going ?? row.going,
+            hero: row.heroKey,
+            photo: photo
         )
         guard let image = GardenStoryRenderer.image(card: card) else {
             toast = "Couldn't save that card. Try again."

@@ -41,7 +41,7 @@ struct TodayScreen: View {
                         TodayTopBar(store: store, ready: true)
                             .padding(.top, geometry.safeAreaInsets.top)
                     }
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 12)
                 } else {
                     VStack(spacing: 0) {
                         TodayTopBar(store: store, ready: shown == .ready)
@@ -52,7 +52,6 @@ struct TodayScreen: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
-            .scrollDisabled(bleeds && (store.scene == .open || store.scene == .none) && !dynamicTypeSize.isAccessibilitySize)
             .contentMargins(.bottom, 0, for: .scrollContent)
             .ignoresSafeArea(edges: bleeds ? .top : [])
             if !connectivity.isOnline && store.today != nil && router.phaseOverride == nil {
@@ -316,7 +315,6 @@ private struct TodayPlanPacket: View {
                 Text(line)
                     .todayFont(17, relativeTo: .body)
                     .foregroundStyle(StoryColor.muted)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.plan.line")
             }
