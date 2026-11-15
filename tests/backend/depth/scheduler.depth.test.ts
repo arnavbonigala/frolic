@@ -156,7 +156,9 @@ describe("fade", () => {
 describe("crons", () => {
   test("the registry holds the memory and plan jobs", () => {
     const registered = crons.crons as Record<string, { name: string; schedule: Record<string, unknown>; args: unknown[] }>;
-    expect(Object.keys(registered).sort()).toEqual(["daily drop", "memory close day", "weekend drop"]);
+    expect(Object.keys(registered).sort()).toEqual(["daily drop", "garden nudge", "memory close day", "weekend drop"]);
+    expect(registered["garden nudge"].name).toBe("garden:nudgeCrews");
+    expect(registered["garden nudge"].schedule).toEqual({ cron: "0 * * * *", type: "cron" });
     expect(registered["memory close day"].name).toBe("daily:closeMemoryDay");
     expect(registered["memory close day"].schedule).toEqual({ cron: "15 8 * * *", type: "cron" });
     expect(registered["memory close day"].args).toEqual([{}]);

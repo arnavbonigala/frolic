@@ -1,6 +1,6 @@
 import {ConvexClient} from "convex/browser";
 import {anyApi} from "convex/server";
-import {FADED_TITLE, FADED_BODY} from "../../convex/lib/copy";
+import {FADED_TITLE, FADED_BODY, PROMISE} from "../../convex/lib/copy";
 
 const boot = JSON.parse(document.getElementById("boot").textContent);
 const app = document.getElementById("app");
@@ -33,7 +33,7 @@ function names(list) { return list.length < 2 ? list.join("") : list.slice(0, -1
 
 function packet(card) {
   if (!card) return '<div class="packet"><div class="band"><span>&nbsp;</span></div><div class="win skel"></div><div class="pk"><div class="skel" style="height:29px;width:70%"></div><div class="skel" style="height:30px;width:90%;margin-top:12px"></div></div></div>';
-  return '<div class="packet"><div class="band"><span>' + esc(card.label) + "</span><i>" + esc(card.no) + '</i></div><div class="win">' + (card.imageUrl ? '<img src="' + esc(card.imageUrl) + '" alt="" width="410" height="118" decoding="async" onerror="this.remove()">' : "") + '</div><div class="pk"><h1>' + esc(card.title) + '</h1><div class="chips">' + (card.chips || []).map(c => '<span class="chip">' + esc(c) + "</span>").join("") + "</div>" + (card.why ? '<p class="why"><b>Why this:</b> ' + esc(card.why) + "</p>" : "") + "</div></div>";
+  return '<div class="packet"><div class="band"><span>' + esc(card.label) + "</span><i>" + esc(card.no) + '</i></div><div class="win">' + (card.imageUrl ? '<img src="' + esc(card.imageUrl) + '" alt="" width="410" height="118" decoding="async" onerror="this.remove()">' : "") + '</div><div class="pk"><h1>' + esc(card.title) + '</h1><div class="chips">' + (card.chips || []).map(c => '<span class="chip">' + esc(c) + "</span>").join("") + "</div>" + (card.drop ? '<p class="host"><b>' + esc(card.drop.hostedBy) + "</b> &middot; " + esc(card.drop.price) + " &middot; " + card.drop.seatsLeft + (card.drop.seatsLeft === 1 ? " seat left" : " seats left") + "</p>" : "") + (card.why ? '<p class="why"><b>Why this:</b> ' + esc(card.why) + "</p>" : "") + "</div></div>";
 }
 
 const store = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
@@ -60,6 +60,11 @@ function head(v) {
   return '<div class="top">' + MARK + '<a class="txtbtn" style="margin:0;padding:0;font:600 15px system-ui;text-decoration:none" href="' + esc(boot.appUrl) + '">Back to the app</a></div>' + (v && v.host ? '<p class="from">' + esc(v.host) + " shared a plan" + (v.group ? " with " + esc(v.group) : "") + "</p>" : "");
 }
 
+function promise(v) {
+  if (!v || v.phase === "drifted" || v.phase === "invalid" || v.phase === "expired") return "";
+  return '<p class="from" style="padding-top:16px">' + esc(PROMISE) + "</p>";
+}
+
 function body(v) {
   if (!v) return '<div class="below"><div class="skel" style="height:56px"></div><div class="skel" style="height:54px;border-radius:999px;margin-top:12px"></div></div>';
   if (ui.subError) return '<div class="below"><div class="card center" role="alert"><b style="font-size:17px">Something went wrong</b><p class="sub">We could not load this plan. Your yes, if you sent one, is safe.</p></div><button class="btn" id="retry">Try again</button></div>';
@@ -72,7 +77,7 @@ function body(v) {
   if (v.phase === "planted" && !v.me) return body(Object.assign({}, v, {phase: "open"}));
   if (v.phase === "planted") return '<div class="below"><div class="card"><div class="row" role="status"><span style="color:var(--t2);flex:none">' + LOCK + '</span><div><b>You&#39;re down, ' + esc(guestName(v)) + '</b><small>Only you know. Keep this page open: it blooms the moment someone else says yes.</small></div></div></div></div>';
   if (v.phase === "drifted") return '<div class="below"><div class="card center" role="status"><div class="blooms" style="opacity:.55">' + bud(v.me || "Frolic", 20, 14) + '</div><h1 style="margin-top:6px">' + esc(FADED_TITLE) + '</h1><p class="sub">' + esc(FADED_BODY) + '</p></div><a class="btn sec" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
-  return '<form class="below" id="f" novalidate><label class="sr" for="wn">Your first name</label><input id="wn" class="field" autocomplete="given-name" autocapitalize="words" maxlength="24" placeholder="Your first name" value="' + esc(ui.name) + '"' + (ui.busy ? " disabled" : "") + '><button class="btn" type="submit"' + (ui.busy || ui.offline ? " disabled" : "") + ">" + (ui.busy ? "Planting\u2026" : ui.error ? "Try again" : "I&#39;m down") + "</button>" + (ui.error ? '<p class="err" role="alert">' + esc(ui.error) + "</p>" : "") + '<p class="hush">' + LOCK + " Nobody sees you&#39;re down unless someone else is too. No app needed.</p></form>";
+  return '<form class="below" id="f" novalidate><label class="sr" for="wn">Your first name</label><input id="wn" class="field" autocomplete="given-name" autocapitalize="words" maxlength="24" placeholder="Your first name" value="' + esc(ui.name) + '"' + (ui.busy ? " disabled" : "") + '><button class="btn" type="submit"' + (ui.busy || ui.offline ? " disabled" : "") + ">" + (ui.busy ? "Planting\u2026" : ui.error ? "Try again" : "I&#39;m down") + "</button>" + (ui.error ? '<p class="err" role="alert">' + esc(ui.error) + "</p>" : "") + '<p class="hush">' + LOCK + " Nobody sees you&#39;re down unless someone else is too.</p></form>";
 }
 function guestName(v) { return v.me || ui.name || "You"; }
 
@@ -86,7 +91,7 @@ function render() {
   if (v && v.phase === "expired") { app.innerHTML = dead("This plan has wandered off", "The day moved on. Ask your friend for today\u2019s link, or get Frolic to see the next plan."); return; }
   const focused = document.activeElement && document.activeElement.id === "wn";
   const val = focused ? document.activeElement.value : null;
-  app.innerHTML = banner() + head(v || {host: boot.host, group: boot.group}) + packet(v ? v.card : boot.card) + body(v);
+  app.innerHTML = banner() + head(v || {host: boot.host, group: boot.group}) + promise(v) + packet(v ? v.card : boot.card) + body(v);
   const f = document.getElementById("f");
   if (f) {
     const input = document.getElementById("wn");

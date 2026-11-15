@@ -82,6 +82,14 @@ const QUERY_REGISTRY: Record<string, ArgsFor> = {
     deviceToken: f.tokens[observer],
     groupId: f.groupId,
   }),
+  "garden:onThisDay": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+  }),
+  "garden:nudge": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+  }),
   "garden:memory": (f, observer) => ({
     deviceToken: f.tokens[observer],
     frolicId: f.frolicId,

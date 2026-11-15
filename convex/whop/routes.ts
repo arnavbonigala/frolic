@@ -2,6 +2,7 @@ import type { HttpRouter } from "convex/server";
 import { internal } from "../_generated/api";
 import { httpAction } from "../_generated/server";
 import { whopConfig } from "./config";
+import { PAY_ART } from "./art";
 import { closedPage, payPage } from "./page";
 import { verifyWebhook } from "./signature";
 
@@ -33,9 +34,23 @@ export const page = httpAction(async (ctx, req) => {
   const token = new URL(req.url).pathname.split("/").pop() ?? "";
   if (!/^[0-9a-f]{32}$/.test(token)) return html(closedPage("This link has expired."), 404);
   const view = await ctx.runQuery(internal.whop.money.payView, { token });
-  if (!view.ok) return html(closedPage(view.message), 410);
+  if (!view.ok) {
+    const alreadySet = view.art === undefined ? 410 : 200;
+    return html(closedPage(view.message, view.art), alreadySet);
+  }
   const cfg = whopConfig();
-  return html(payPage({ token, title: view.title, kind: view.kind, amountCents: view.amountCents, accountId: cfg.accountId, sandbox: cfg.baseUrl.includes("sandbox") }));
+  return html(
+    payPage({
+      token,
+      title: view.title,
+      when: view.when,
+      kind: view.kind,
+      amountCents: view.amountCents,
+      fundCents: view.fundCents,
+      accountId: cfg.accountId,
+      sandbox: cfg.baseUrl.includes("sandbox"),
+    }),
+  );
 });
 
 export const confirm = httpAction(async (ctx, req) => {
@@ -52,6 +67,15 @@ export const confirm = httpAction(async (ctx, req) => {
   return json(out, out.ok ? 200 : 409);
 });
 
+export const art = httpAction(async (_ctx, req) => {
+  const key = new URL(req.url).pathname.slice("/pay-art/".length).replace(/\.webp$/, "");
+  const bytes = PAY_ART[key];
+  if (!bytes) return new Response("Not found", { status: 404 });
+  return new Response(Uint8Array.from(atob(bytes), (c) => c.charCodeAt(0)).buffer as ArrayBuffer, {
+    headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=31536000, immutable" },
+  });
+});
+
 export const applePay = httpAction(async () => {
   const res = await fetch("https://whop.com/.well-known/apple-platform-integrator/apple-developer-merchantid-domain-association");
   return new Response(await res.arrayBuffer(), { status: res.status, headers: { "Content-Type": "application/octet-stream" } });
@@ -60,6 +84,7 @@ export const applePay = httpAction(async () => {
 export function registerWhopRoutes(http: HttpRouter): void {
   http.route({ path: "/whop/webhook", method: "POST", handler: webhook });
   http.route({ path: "/pay/confirm", method: "POST", handler: confirm });
+  http.route({ pathPrefix: "/pay-art/", method: "GET", handler: art });
   http.route({ pathPrefix: "/pay/", method: "GET", handler: page });
   http.route({ path: "/.well-known/apple-developer-merchantid-domain-association", method: "GET", handler: applePay });
 }

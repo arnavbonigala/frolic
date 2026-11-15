@@ -33,6 +33,9 @@ async function everything(t: T, crew: Crew, name: string) {
     invite: await t.query(api.users.invitePreview, { inviteCode: crew.inviteCode }),
     limits: await t.query(api.limits.mine, { deviceToken: token(name) }),
     etas: await t.query(api.etas.forFrolic, { deviceToken: token(name), frolicId: crew.frolicId }),
+    garden: await t.query(api.garden.overview, { deviceToken: token(name), groupId: crew.groupId, day: DAY }),
+    onThisDay: await t.query(api.garden.onThisDay, { deviceToken: token(name), groupId: crew.groupId, day: DAY }),
+    nudge: await t.query(api.garden.nudge, { deviceToken: token(name), groupId: crew.groupId }),
   };
 }
 
