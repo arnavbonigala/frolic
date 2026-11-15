@@ -31,18 +31,18 @@ struct YouPrivacyScreen: View {
                         .padding(.top, 6)
                     SectionHeader(title: "Friends see")
                     FrolicGroup {
-                        YouDetailRow(title: "Your name and photo")
-                        YouDetailRow(title: "When you're free", showsDivider: true)
-                        YouDetailRow(title: "How far away, roughly", showsDivider: true)
+                        YouDetailRow(title: "Your flower", detail: "Your name and your photo.")
+                        YouDetailRow(title: "Who's free", detail: "Your free window, like Free till 8.", showsDivider: true)
+                        YouDetailRow(title: "Rough distance", detail: "Minutes away, never a place.", showsDivider: true)
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("you.privacy.friends")
                     SectionHeader(title: "Only you see", systemImage: "lock.fill")
                     FrolicGroup {
-                        YouDetailRow(title: "If you said yes")
-                        YouDetailRow(title: "Who you picked in Only with…", showsDivider: true)
-                        YouDetailRow(title: "A pass", showsDivider: true)
-                        YouDetailRow(title: "Your limits", showsDivider: true)
+                        YouDetailRow(title: "Whether you said yes", detail: "Not even after a plan fades.")
+                        YouDetailRow(title: "Only with… picks", detail: "Nobody finds out you picked them.", showsDivider: true)
+                        YouDetailRow(title: "A pass", detail: "Not today is silent. Nobody gets told.", showsDivider: true)
+                        YouDetailRow(title: "Your limits", detail: "Budget, energy, travel and home by.", showsDivider: true)
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("you.privacy.private")
@@ -161,16 +161,22 @@ private struct YouPermissionRow: View {
 
 struct YouDetailRow: View {
     var title: String
+    var detail: String
     var showsDivider = false
 
     var body: some View {
-        Text(title)
-            .frolicFont(.body)
-            .foregroundStyle(FrolicColor.ink)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .frolicFont(.bodyEmphasis)
+                .foregroundStyle(FrolicColor.ink)
+            Text(detail)
+                .frolicFont(.subheadline)
+                .foregroundStyle(FrolicColor.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
         .overlay(alignment: .top) {
             if showsDivider {
                 FrolicColor.line.frame(height: 0.5).padding(.leading, 16)

@@ -87,7 +87,7 @@ struct YouCard: Codable, Equatable {
     )
 
     var friendLine: String {
-        friends.isEmpty ? "You bloomed at \(place) today." : "You, \(YouNames.list(friends)) bloomed at \(place) today."
+        friends.isEmpty ? "You went to \(place) today." : "You, \(YouNames.list(friends)) went to \(place) today."
     }
 }
 
@@ -122,12 +122,11 @@ final class YouModel {
     var profile: YouProfile?
     var loadPhase: ScreenPhase = .loading
     var card: YouCard = YouPreferences.cachedCard()
-    var budget: YouBudget = .ten
-    var energy: YouEnergyChoice = .chill
-    var travel: Double = 20
-    var homeBy: YouHomeBy = .elevenPM
+    var budget: YouBudget?
+    var energy: YouEnergyChoice?
+    var travel: Double?
+    var homeBy: YouHomeBy?
     var readCalendar = YouPreferences.readCalendar
-    var dropTime: YouDropTime = .threePM
     var tasteTags: [String] = []
     var savePhase: YouSavePhase = .idle
     var accountPhase: YouAccountPhase = .idle
@@ -138,7 +137,6 @@ final class YouModel {
 
     init() {
         tasteTags = YouPreferences.tasteTags
-        dropTime = YouDropTime.from(YouPreferences.dropTime)
         if let cached = YouPreferences.cachedLimits() {
             apply(cached)
         }
@@ -203,11 +201,6 @@ final class YouModel {
         YouPreferences.readCalendar = value
     }
 
-    func choose(dropTime: YouDropTime) {
-        self.dropTime = dropTime
-        YouPreferences.dropTime = dropTime.rawValue
-    }
-
     func save(backend: FrolicBackend) {
         saveTask?.cancel()
         saveTask = Task { [weak self] in
@@ -240,6 +233,7 @@ final class YouModel {
             loadPhase = .empty
             accountPhase = .idle
             YouPreferences.clearAll()
+            FrolicIdentity.shared.signIn(deviceToken: Self.mintToken(), groupId: nil)
         } catch is CancellationError {
             accountPhase = .idle
         } catch {
@@ -253,10 +247,10 @@ final class YouModel {
 
     var currentLimits: YouLimits {
         YouLimits(
-            budgetCap: budget.cap,
-            energy: energy.stored,
+            budgetCap: budget?.cap,
+            energy: energy?.stored,
             maxMinutes: travel,
-            homeBy: homeBy.minutes
+            homeBy: homeBy?.minutes
         )
     }
 
@@ -342,10 +336,14 @@ final class YouModel {
         return nil
     }
 
+    private static func mintToken() -> String {
+        (0..<24).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
+    }
+
     private func apply(_ limits: YouLimits) {
         budget = YouBudget.from(limits.budgetCap)
         energy = YouEnergyChoice.from(limits.energy)
-        travel = Self.travelValue(limits.maxMinutes)
+        travel = limits.maxMinutes.map(Self.travelValue)
         homeBy = YouHomeBy.from(limits.homeBy)
     }
 
@@ -399,8 +397,7 @@ final class YouModel {
         #endif
     }
 
-    private static func travelValue(_ minutes: Double?) -> Double {
-        guard let minutes else { return 20 }
+    private static func travelValue(_ minutes: Double) -> Double {
         let clamped = min(max(minutes, 5), 45)
         return (clamped / 5).rounded() * 5
     }

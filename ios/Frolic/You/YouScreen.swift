@@ -26,7 +26,7 @@ struct YouScreen: View {
                 content
             }
             .padding(.horizontal, 18)
-            .padding(.top, 96)
+            .padding(.top, 24)
             .padding(.bottom, 120)
         }
         .background(SkyBackground())
@@ -76,7 +76,7 @@ private struct YouContent: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var travelLabel: String {
-        "\(Int(model.travel)) min by foot or BART"
+        model.travel.map { "\(Int($0)) min by foot or BART" } ?? "Choose"
     }
 
     private var limitsNote: String {
@@ -96,7 +96,7 @@ private struct YouContent: View {
                 YouBanner(
                     systemImage: "wifi.slash",
                     title: "You're offline",
-                    message: "Changes save when you're back."
+                    message: "Your limits are saved on your phone."
                 )
                 .padding(.top, 18)
                 .accessibilityIdentifier("state.offline")
@@ -230,11 +230,12 @@ private struct YouContent: View {
                     FrolicSegmented(
                         label: "Spend up to",
                         options: YouBudget.allCases.map {
-                            (value: $0, title: $0.label, identifier: Optional($0.identifier))
+                            (value: Optional($0), title: $0.label, identifier: Optional($0.identifier))
                         },
                         selection: Binding(
                             get: { model.budget },
                             set: { value in
+                                guard let value else { return }
                                 model.choose(budget: value)
                                 model.save(backend: backend)
                             }
@@ -251,11 +252,12 @@ private struct YouContent: View {
                     FrolicSegmented(
                         label: "Energy",
                         options: YouEnergyChoice.allCases.map {
-                            (value: $0, title: $0.label, identifier: Optional($0.identifier))
+                            (value: Optional($0), title: $0.label, identifier: Optional($0.identifier))
                         },
                         selection: Binding(
                             get: { model.energy },
                             set: { value in
+                                guard let value else { return }
                                 model.choose(energy: value)
                                 model.save(backend: backend)
                             }
@@ -275,7 +277,7 @@ private struct YouContent: View {
                     }
                     Slider(
                         value: Binding(
-                            get: { model.travel },
+                            get: { model.travel ?? 20 },
                             set: { value in
                                 model.choose(travel: value)
                                 model.save(backend: backend)
@@ -300,10 +302,10 @@ private struct YouContent: View {
                             }
                         }
                     } label: {
-                        YouMenuValue(text: model.homeBy.label)
+                        YouMenuValue(text: model.homeBy?.label ?? "Choose")
                     }
                     .accessibilityLabel("Home by")
-                    .accessibilityValue(model.homeBy.label)
+                    .accessibilityValue(model.homeBy?.label ?? "Not set")
                     .accessibilityIdentifier("you.homeBy")
                 }
             }
@@ -326,32 +328,12 @@ private struct YouContent: View {
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("you.calendarSwitch")
             }
-            YouSettingRow {
-                YouValueRow(label: "Daily plan arrives") {
-                    Menu {
-                        ForEach(YouDropTime.allCases, id: \.self) { option in
-                            Button(option.label) {
-                                model.choose(dropTime: option)
-                            }
-                        }
-                    } label: {
-                        YouMenuValue(text: model.dropTime.label)
-                    }
-                    .accessibilityLabel("Daily plan arrives")
-                    .accessibilityValue(model.dropTime.label)
-                    .accessibilityIdentifier("you.dropTime")
-                }
-            }
         }
     }
 
     private var tasteSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             if model.tasteTags.isEmpty {
-                Text("Nothing picked yet")
-                    .frolicFont(.subheadline)
-                    .foregroundStyle(FrolicColor.secondaryText)
-                    .padding(.horizontal, 4)
             } else {
                 FlowLayout(spacing: 6) {
                     ForEach(model.tasteTags, id: \.self) { tag in

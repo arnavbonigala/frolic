@@ -5,7 +5,6 @@ enum YouPreferences {
         static let limits = "you.limits"
         static let card = "you.card"
         static let readCalendar = "you.readCalendar"
-        static let dropTime = "you.dropTime"
         static let tasteTags = "you.tasteTags"
     }
 
@@ -15,14 +14,6 @@ enum YouPreferences {
             return AppGroup.defaults.bool(forKey: Key.readCalendar)
         }
         set { AppGroup.defaults.set(newValue, forKey: Key.readCalendar) }
-    }
-
-    static var dropTime: Int {
-        get {
-            guard AppGroup.defaults.object(forKey: Key.dropTime) != nil else { return 15 }
-            return AppGroup.defaults.integer(forKey: Key.dropTime)
-        }
-        set { AppGroup.defaults.set(newValue, forKey: Key.dropTime) }
     }
 
     static var tasteTags: [String] {
@@ -104,17 +95,17 @@ enum YouBudget: Int, CaseIterable, Equatable {
         }
     }
 
-    var cap: Double? {
+    var cap: Double {
         switch self {
         case .free: 0
         case .ten: 10
         case .twentyFive: 25
-        case .any: nil
+        case .any: 10000
         }
     }
 
-    static func from(_ cap: Double?) -> YouBudget {
-        guard let cap else { return .any }
+    static func from(_ cap: Double?) -> YouBudget? {
+        guard let cap else { return nil }
         if cap <= 0 { return .free }
         if cap <= 17.5 { return .ten }
         if cap <= 40 { return .twentyFive }
@@ -147,8 +138,12 @@ enum YouEnergyChoice: Int, CaseIterable, Equatable {
         }
     }
 
-    static func from(_ energy: YouEnergy?) -> YouEnergyChoice {
-        energy == .anything ? .anything : .chill
+    static func from(_ energy: YouEnergy?) -> YouEnergyChoice? {
+        switch energy {
+        case .chill: .chill
+        case .anything: .anything
+        case nil: nil
+        }
     }
 }
 
@@ -157,7 +152,7 @@ enum YouHomeBy: Int, CaseIterable, Equatable {
     case tenPM = 1320
     case elevenPM = 1380
     case midnight = 1440
-    case whenever = 0
+    case whenever = 2160
 
     var label: String {
         switch self {
@@ -169,47 +164,16 @@ enum YouHomeBy: Int, CaseIterable, Equatable {
         }
     }
 
-    var minutes: Double? {
+    var minutes: Double {
         switch self {
-        case .whenever: nil
+        case .whenever: 2160
         default: Double(rawValue)
         }
     }
 
-    static func from(_ minutes: Double?) -> YouHomeBy {
-        guard let minutes else { return .whenever }
+    static func from(_ minutes: Double?) -> YouHomeBy? {
+        guard let minutes else { return nil }
         let ordered: [YouHomeBy] = [.ninePM, .tenPM, .elevenPM, .midnight, .whenever]
-        return ordered.min { lhs, rhs in
-            distance(lhs, minutes) < distance(rhs, minutes)
-        } ?? .elevenPM
-    }
-
-    private static func distance(_ option: YouHomeBy, from minutes: Double) -> Double {
-        guard let value = option.minutes else { return abs(1440 - minutes) }
-        return abs(value - minutes)
-    }
-
-    private static func distance(_ option: YouHomeBy, _ minutes: Double) -> Double {
-        distance(option, from: minutes)
-    }
-}
-
-enum YouDropTime: Int, CaseIterable, Equatable {
-    case noon = 12
-    case twoPM = 14
-    case threePM = 15
-    case fourPM = 16
-
-    var label: String {
-        switch self {
-        case .noon: "Noon"
-        case .twoPM: "2 PM"
-        case .threePM: "3 PM"
-        case .fourPM: "4 PM"
-        }
-    }
-
-    static func from(_ hour: Int) -> YouDropTime {
-        YouDropTime(rawValue: hour) ?? .threePM
+        return ordered.min { abs($0.minutes - minutes) < abs($1.minutes - minutes) }
     }
 }
