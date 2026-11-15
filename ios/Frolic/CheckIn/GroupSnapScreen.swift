@@ -22,6 +22,11 @@ struct GroupSnapScreen: View {
         #endif
     }
 
+    private var cameraOff: Bool {
+        guard model.libraryShot == nil else { return false }
+        return model.camera.mode == .denied || (model.camera.mode == .unavailable && !usesStill)
+    }
+
     private var canSnap: Bool {
         model.camera.mode == .ready || model.libraryShot != nil || usesStill
     }
@@ -55,6 +60,7 @@ struct GroupSnapScreen: View {
             }
         }
         .onChange(of: store.snapAt) { _, _ in armIfNeeded() }
+        .onChange(of: model.camera.mode) { _, _ in armIfNeeded() }
         .onChange(of: picked) { _, item in
             guard let item else { return }
             Task {
@@ -98,7 +104,7 @@ struct GroupSnapScreen: View {
                     failureCard(message)
                 } else if model.stage == .uploading {
                     uploadingCard
-                } else if !canSnap {
+                } else if cameraOff {
                     cameraOffCard
                 } else {
                     if store.canShowArrival {
@@ -153,7 +159,7 @@ struct GroupSnapScreen: View {
             }
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("You're all here")
+                Text(store.gatheredTitle)
                     .font(.system(.body, design: .rounded, weight: .bold))
                     .foregroundStyle(.white)
                 Text("Everyone's shot unlocks when you add yours.")
@@ -183,7 +189,8 @@ struct GroupSnapScreen: View {
                 .background(Capsule().fill(.white))
         }
         .buttonStyle(.plain)
-        .disabled(model.isBusy)
+        .disabled(model.isBusy || !canSnap)
+        .opacity(canSnap ? 1 : 0.6)
         .accessibilityIdentifier("checkin.snap")
         .padding(.horizontal, 18)
         .padding(.top, 24)

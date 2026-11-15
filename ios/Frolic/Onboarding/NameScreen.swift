@@ -6,21 +6,11 @@ struct NameScreen: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        OnboardingPage {
+        OnboardingPage(onBack: { model.backFromName() }) {
             OnboardingTitle(
                 title: "What do your friends call you?",
                 identifier: "name.title"
             )
-            photoButton
-                .padding(.top, 26)
-            nameField
-                .padding(.top, 22)
-            Text("Your crew sees your name and photo.")
-                .frolicFont(.footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 14)
-                .padding(.horizontal, 4)
-                .accessibilityIdentifier("name.foot")
             if let failure = model.failure {
                 OnboardingStateCard(
                     title: failure.title,
@@ -29,8 +19,25 @@ struct NameScreen: View {
                     onAction: { Task { await model.submitName() } },
                     identifier: "state.error"
                 )
-                .padding(.top, 18)
+                .padding(.top, 16)
             }
+            photoButton
+                .padding(.top, 24)
+            nameField
+                .padding(.top, 20)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Your crew sees your name and photo.")
+                    .accessibilityIdentifier("name.foot")
+                Spacer(minLength: 8)
+                Text("\(model.firstName.count)/\(OnboardingModel.nameLimit)")
+                    .monospacedDigit()
+                    .accessibilityLabel("\(model.firstName.count) of \(OnboardingModel.nameLimit) characters")
+                    .accessibilityIdentifier("name.counter")
+            }
+            .frolicFont(.footnote)
+            .foregroundStyle(FrolicColor.secondaryText)
+            .padding(.top, 12)
+            .padding(.horizontal, 4)
         } bar: {
             Button("Continue") {
                 Task { await model.submitName() }
@@ -81,7 +88,7 @@ struct NameScreen: View {
     }
 
     private var nameField: some View {
-        TextField("First name", text: $model.firstName)
+        TextField("First name", text: Binding(get: { model.firstName }, set: { model.editName($0) }))
             .textContentType(.givenName)
             .textInputAutocapitalization(.words)
             .autocorrectionDisabled()

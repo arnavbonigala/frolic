@@ -90,12 +90,21 @@ struct ActivityAction: View {
 
 struct GoingFaces: View {
     var going: [ActivityPerson]
-    var radius: CGFloat = 10
+    var radius: CGFloat = 12
 
     var body: some View {
-        HStack(spacing: -radius * 0.5) {
+        HStack(spacing: -radius * 0.4) {
             ForEach(going.prefix(5), id: \.self) { person in
                 FlowerView(person: FlowerPerson(id: person.id, name: person.name, color: person.color), radius: radius, stem: 0)
+                    .overlay {
+                        if let image = LockScreenStore.portrait(LockScreenPerson(id: person.id, name: person.name, color: person.color)) {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: radius, height: radius)
+                                .clipShape(Circle())
+                        }
+                    }
             }
         }
         .accessibilityElement(children: .ignore)

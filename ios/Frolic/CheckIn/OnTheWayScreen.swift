@@ -98,12 +98,13 @@ struct OnTheWayScreen: View {
                     .padding(.horizontal, 4)
                     .accessibilityIdentifier("otw.error")
             }
-            if watcher.permission != .granted {
+            if store.checkedIn {
+                arrivedCard
+            } else if watcher.permission != .granted {
                 Button("I'm here") {
                     store.checkIn(method: "manual")
                 }
                 .buttonStyle(.frolicPrimary)
-            .sensoryFeedback(.success, trigger: store.checkedIn)
             .padding(.top, 20)
             .accessibilityIdentifier("otw.here")
             } else {
@@ -114,12 +115,42 @@ struct OnTheWayScreen: View {
                     .padding(.top, 20)
                     .accessibilityIdentifier("otw.autoCheckIn")
             }
-            Button("I can't make it", action: onBail)
-                .buttonStyle(.frolicText)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 4)
-                .accessibilityIdentifier("otw.bail")
+            if !store.checkedIn {
+                Button("I can't make it", action: onBail)
+                    .buttonStyle(.frolicText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+                    .accessibilityIdentifier("otw.bail")
+            }
         }
+        .sensoryFeedback(.success, trigger: store.checkedIn)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: store.checkedIn)
+    }
+
+    private var arrivedCard: some View {
+        VStack(spacing: 14) {
+            VStack(spacing: 4) {
+                Text("You made it")
+                    .font(.system(.title2, design: .rounded, weight: .heavy))
+                    .foregroundStyle(FrolicColor.ink)
+                    .accessibilityAddTraits(.isHeader)
+                Text(store.arrivedLine)
+                    .frolicFont(.subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            Button("Take the group snap") {
+                store.step = .snap
+            }
+            .buttonStyle(.frolicPrimary)
+            .accessibilityIdentifier("otw.snapNext")
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 22)
+        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        .accessibilityIdentifier("otw.arrived")
     }
 
     private var chips: some View {

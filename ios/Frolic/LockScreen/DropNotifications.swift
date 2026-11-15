@@ -24,15 +24,6 @@ enum DropNotifications {
         UNUserNotificationCenter.current().setNotificationCategories([drop])
     }
 
-    static func requestAuthorization() async -> Bool {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        if settings.authorizationStatus == .notDetermined {
-            return (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
-        }
-        return settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
-    }
-
     static func content(free: [String], sunset: Date?, frolicId: String?, day: String) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = LockScreenCopy.dropTitle
@@ -57,7 +48,7 @@ enum DropNotifications {
     }
 
     static func scheduleNext(snapshot: LockScreenSnapshot?, now: Date = .now) async {
-        guard await requestAuthorization() else { return }
+        guard await NotificationPermission.isAllowed() else { return }
         let fireAt = nextDropDate(after: now, snapshot: snapshot)
         let sameDay = Calendar.current.isDate(fireAt, inSameDayAs: now)
         let free = sameDay ? (snapshot?.free.map(\.name) ?? []) : []
@@ -69,7 +60,7 @@ enum DropNotifications {
     }
 
     static func postSoon(free: [String], sunset: Date?, frolicId: String?, after seconds: TimeInterval) async {
-        guard await requestAuthorization() else { return }
+        guard await NotificationPermission.isAllowed() else { return }
         let content = content(free: free, sunset: sunset, frolicId: frolicId, day: LockScreenStore.localDay())
         let request = UNNotificationRequest(
             identifier: "frolic.drop.now",

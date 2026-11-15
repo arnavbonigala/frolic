@@ -116,8 +116,8 @@ struct SnapCollage: View {
 
     private var caption: String {
         let place = store.placeName
-        let day = CheckInClock.day(store.reveal?.startsAt ?? Date().timeIntervalSince1970 * 1000)
-        let time = CheckInClock.time(store.reveal?.startsAt ?? Date().timeIntervalSince1970 * 1000)
+        let day = CheckInClock.day(store.startsAt ?? Date().timeIntervalSince1970 * 1000)
+        let time = CheckInClock.time(store.startsAt ?? Date().timeIntervalSince1970 * 1000)
         return "\(place) · \(day) · \(time)"
     }
 
@@ -128,7 +128,7 @@ struct SnapCollage: View {
                 ForEach(Array(people.prefix(3).enumerated()), id: \.element.id) { index, person in
                     ParallaxLayer(motion: motion, depth: depth(index)) {
                         polaroid(person: person, index: index)
-                            .frame(width: width * 0.56)
+                            .frame(width: cardWidth(width))
                     }
                         .offset(x: offsetX(index: index, width: width), y: offsetY(index: index))
                         .rotationEffect(.degrees(rotation(index: index)), anchor: .center)
@@ -152,19 +152,23 @@ struct SnapCollage: View {
         .padding(.top, 18)
     }
 
+    private func cardWidth(_ width: CGFloat) -> CGFloat {
+        width * 0.52
+    }
+
     private func offsetX(index: Int, width: CGFloat) -> CGFloat {
         switch index {
-        case 0: 0
-        case 1: width - width * 0.56
-        default: width * 0.2
+        case 0: 6
+        case 1: width - cardWidth(width) - 6
+        default: (width - cardWidth(width)) / 2
         }
     }
 
     private func offsetY(index: Int) -> CGFloat {
         switch index {
-        case 0: 0
-        case 1: 24
-        default: 112
+        case 0: 6
+        case 1: 26
+        default: 104
         }
     }
 
@@ -178,10 +182,10 @@ struct SnapCollage: View {
 
     private func polaroid(person: WirePerson, index: Int) -> some View {
         VStack(spacing: 0) {
-            photo(for: person, index: index)
+            Color.clear
                 .aspectRatio(1, contentMode: .fit)
+                .overlay { photo(for: person, index: index) }
                 .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
-            Spacer(minLength: 0)
         }
         .padding(7)
         .padding(.bottom, 30)
@@ -229,11 +233,15 @@ struct SnapCollage: View {
         ZStack {
             FrolicColor.chip
             VStack(spacing: 8) {
-                FlowerView(state: .bud, color: person.flower, radius: 18, stem: 18)
+                FlowerView(state: .bud, color: person.flower, radius: 14, stem: 12)
                     .accessibilityHidden(true)
                 Text(label)
                     .font(.system(.caption, weight: .semibold))
                     .foregroundStyle(FrolicColor.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .padding(.horizontal, 8)
             }
         }
     }

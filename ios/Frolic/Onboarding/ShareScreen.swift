@@ -4,21 +4,19 @@ struct ShareScreen: View {
     @Bindable var model: OnboardingModel
 
     var body: some View {
-        OnboardingPage {
+        OnboardingPage(onBack: { model.backToName() }) {
             OnboardingTitle(
                 title: "Your crew is ready",
                 subcopy: "Send this link to your friends.",
                 identifier: "share.title"
             )
-            if let url = model.shareURL {
+            if let code = model.shareCode {
                 HStack(spacing: 12) {
                     FlowerView(state: .folded, color: .marigold, radius: 20, stem: 26)
                         .accessibilityHidden(true)
-                    Text(url.absoluteString)
-                        .frolicFont(.subheadline)
+                    Text(code)
+                        .frolicFont(.bodyEmphasis)
                         .foregroundStyle(FrolicColor.ink)
-                        .lineLimit(2)
-                        .truncationMode(.middle)
                         .textSelection(.enabled)
                     Spacer(minLength: 0)
                 }
@@ -27,7 +25,7 @@ struct ShareScreen: View {
                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.line, lineWidth: 1))
                 .padding(.top, 26)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Invite link, \(url.absoluteString)")
+                .accessibilityLabel(code)
                 .accessibilityIdentifier("share.link")
             }
         } bar: {

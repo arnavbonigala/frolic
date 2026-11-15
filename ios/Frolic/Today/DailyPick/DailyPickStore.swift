@@ -18,7 +18,6 @@ final class DailyPickStore {
     private var client: ConvexClient?
     private var task: Task<Void, Never>?
     private var key: String?
-    private var failTask: Task<Void, Never>?
 
     var myAnswer: String? { pending ?? view?.myAnswer }
     var answered: Bool { myAnswer != nil }
@@ -94,7 +93,10 @@ final class DailyPickStore {
             return
         }
         #endif
-        guard let client, let groupId = identity.groupId else { return }
+        guard let client, let groupId = identity.groupId else {
+            fail(option)
+            return
+        }
         let token = identity.deviceToken
         Task { [weak self] in
             do {
@@ -137,12 +139,7 @@ final class DailyPickStore {
         pending = nil
         failed = true
         UINotificationFeedbackGenerator().notificationOccurred(.error)
-        failTask?.cancel()
-        failTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(4))
-            guard !Task.isCancelled else { return }
-            self?.failed = false
-        }
+        AccessibilityNotification.Announcement(DailyPickCopy.failed).post()
     }
 
     #if DEBUG || E2E

@@ -63,6 +63,7 @@ struct YouToday: Decodable {
 
 struct YouOverview: Decodable {
     var memories: [Memory]
+    var yourCount: Int?
 
     struct Memory: Decodable {
         var youWent: Bool
@@ -360,7 +361,7 @@ final class YouModel {
         )
         do {
             for try await overview in publisher.values {
-                wentCount = overview.memories.filter(\.youWent).count
+                wentCount = overview.yourCount ?? overview.memories.filter(\.youWent).count
             }
         } catch {
             return

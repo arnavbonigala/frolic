@@ -16,6 +16,7 @@ final class FrolicIdentity {
 
     private(set) var deviceToken: String
     private(set) var groupId: String?
+    private var pinnedGroup: String?
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment, defaults: UserDefaults = AppGroup.defaults) {
         if let token = Self.validToken(environment[Self.tokenEnvironmentKey]) {
@@ -28,11 +29,12 @@ final class FrolicIdentity {
             deviceToken = token
         }
         defaults.set(deviceToken, forKey: Self.tokenDefaultsKey)
-        groupId = Self.nonEmpty(environment[Self.groupEnvironmentKey]) ?? Self.storedGroup(defaults)
+        pinnedGroup = Self.nonEmpty(environment[Self.groupEnvironmentKey])
+        groupId = pinnedGroup ?? Self.storedGroup(defaults)
     }
 
     func refresh() {
-        guard let stored = Self.storedGroup(AppGroup.defaults), stored != groupId else { return }
+        guard pinnedGroup == nil, let stored = Self.storedGroup(AppGroup.defaults), stored != groupId else { return }
         groupId = stored
     }
 
@@ -44,6 +46,7 @@ final class FrolicIdentity {
 
     func setGroup(_ id: String?) {
         groupId = Self.nonEmpty(id)
+        if pinnedGroup != nil { pinnedGroup = groupId }
         if let groupId {
             AppGroup.defaults.set(groupId, forKey: Self.groupDefaultsKey)
             AppGroup.defaults.set(groupId, forKey: "session.groupId")

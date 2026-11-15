@@ -102,6 +102,13 @@ struct TodayView: Codable, Hashable {
     var frolicNumber: Double?
 }
 
+struct TodayEta: Codable, Hashable {
+    var userId: String
+    var minutes: Double
+    var onTheWay: Bool
+    var updatedAt: Double
+}
+
 struct TodayPayment: Codable, Hashable {
     var state: String
     var kind: String
@@ -285,9 +292,7 @@ enum TodayCopy {
         if let walk {
             chips.append("\(Int(walk)) min walk")
         }
-        if let sunset = plan.sunsetAt {
-            chips.append("Golden hour " + clock(sunset - 30 * 60 * 1000))
-        }
+        chips.append("Starts " + clock(plan.startsAt))
         return chips
     }
 
