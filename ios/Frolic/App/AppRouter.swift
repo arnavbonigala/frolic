@@ -60,6 +60,25 @@ struct E2ERoute: Equatable {
     }
 }
 
+struct SimulatedLocation: Equatable, Codable {
+    var latitude: Double
+    var longitude: Double
+
+    static let defaultsKey = "e2e.simulatedLocation"
+
+    init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+
+    init?(query: [String: String]) {
+        guard let lat = query["lat"].flatMap(Double.init), let lng = query["lng"].flatMap(Double.init),
+              (-90...90).contains(lat), (-180...180).contains(lng)
+        else { return nil }
+        self.init(latitude: lat, longitude: lng)
+    }
+}
+
 @MainActor
 @Observable
 final class AppRouter {
@@ -67,6 +86,15 @@ final class AppRouter {
     var phaseOverride: ScreenPhase?
     var e2eRoute: E2ERoute?
     var showsGallery = false
+    var simulatedLocation: SimulatedLocation?
+
+    init() {
+        #if DEBUG || E2E
+        if let data = UserDefaults.standard.data(forKey: SimulatedLocation.defaultsKey) {
+            simulatedLocation = try? JSONDecoder().decode(SimulatedLocation.self, from: data)
+        }
+        #endif
+    }
 
     func handle(_ url: URL) {
         guard url.scheme == "frolic" else { return }
@@ -92,11 +120,26 @@ final class AppRouter {
 
     #if DEBUG || E2E
     private func apply(_ route: E2ERoute) {
+        if route.query["clearLocation"] != nil {
+            setSimulatedLocation(nil)
+        } else if let location = SimulatedLocation(query: route.query) {
+            setSimulatedLocation(location)
+        }
+        if route.screen == "location" { return }
         showsGallery = false
         e2eRoute = route
         phaseOverride = route.query["phase"].flatMap(ScreenPhase.init(name:))
         if let tab = route.tab {
             self.tab = tab
+        }
+    }
+
+    private func setSimulatedLocation(_ location: SimulatedLocation?) {
+        simulatedLocation = location
+        if let location, let data = try? JSONEncoder().encode(location) {
+            UserDefaults.standard.set(data, forKey: SimulatedLocation.defaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: SimulatedLocation.defaultsKey)
         }
     }
     #endif
