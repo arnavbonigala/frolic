@@ -7,6 +7,7 @@ import { personalNamespace } from "./mapping";
 
 export const purgeUserRows = internalMutation({
   args: { userId: v.id("users") },
+  returns: v.object({ events: v.number(), more: v.boolean() }),
   handler: async (ctx, { userId }) => {
     const events = await ctx.db.query("memoryEvents").withIndex("by_userId", (q) => q.eq("userId", userId)).take(500);
     for (const e of events) await ctx.db.delete("memoryEvents", e._id);
@@ -18,6 +19,7 @@ export const purgeUserRows = internalMutation({
 
 export const deleteAccountMemory = internalAction({
   args: { userId: v.id("users") },
+  returns: v.object({ deletedDocuments: v.number() }),
   handler: async (ctx, { userId }): Promise<{ deletedDocuments: number }> => {
     let deletedDocuments = 0;
     try {

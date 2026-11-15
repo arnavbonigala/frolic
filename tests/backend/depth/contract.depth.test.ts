@@ -134,6 +134,12 @@ describe("convex function contract", () => {
     expect([...allowlist].filter((name) => covered.has(name))).toEqual([]);
   });
 
+  test("the allowlist names only functions that still exist", async () => {
+    const functions = await registry();
+    const registered = new Set(functions.map(dotted));
+    expect([...allowlist].filter((name) => !registered.has(name))).toEqual([]);
+  });
+
   test("no public function takes an untyped argument", async () => {
     const functions = await registry();
     const loose = functions.filter((fn) => {

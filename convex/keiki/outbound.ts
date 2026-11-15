@@ -21,6 +21,17 @@ export const KEIKI_BASE_URL = "https://onkeiki.com";
 export const DEFAULT_AGENT_ID = "44277a5e-b81d-4bb6-92d2-6c9c0eec47b3";
 const MAX_ATTEMPTS = 3;
 
+export const outboxKind = v.union(
+  v.literal("drop"),
+  v.literal("reveal"),
+  v.literal("hopIn"),
+  v.literal("faded"),
+  v.literal("nudge"),
+  v.literal("snap"),
+  v.literal("collage"),
+  v.literal("money"),
+);
+
 type Kind = Doc<"keikiOutbox">["kind"];
 type Draft = { key: string; kind: Kind; userId?: Id<"users">; target: string; text: string; notBefore: number };
 
@@ -103,6 +114,7 @@ export function dropText(view: { title: string; place: string | null; startsAt: 
 
 export const onDrop = internalMutation({
   args: { frolicId: v.id("frolics") },
+  returns: v.null(),
   handler: async (ctx, { frolicId }) => {
     const c = await context(ctx, frolicId);
     if (!c) return null;
@@ -137,6 +149,7 @@ export function freeText(view: { title: string; startsAt: string; heroKey: strin
 
 export const onFree = internalMutation({
   args: { frolicId: v.id("frolics") },
+  returns: v.null(),
   handler: async (ctx, { frolicId }) => {
     const c = await context(ctx, frolicId);
     if (!c) return null;
@@ -184,6 +197,7 @@ export async function gardenNudge(ctx: MutationCtx, groupId: Id<"groups">, froli
 
 export const onReveal = internalMutation({
   args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")), bloomAt: v.number() },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const c = await context(ctx, args.frolicId);
     if (!c || c.frolic.revealAt === undefined) return null;
@@ -232,6 +246,7 @@ export const onReveal = internalMutation({
 
 export const onFaded = internalMutation({
   args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")) },
+  returns: v.null(),
   handler: async (ctx, { frolicId, userIds }) => {
     const frolic = await ctx.db.get("frolics", frolicId);
     if (!frolic) return null;
@@ -248,6 +263,7 @@ export const onFaded = internalMutation({
 
 export const onLeaveNudge = internalMutation({
   args: { frolicId: v.id("frolics"), leaveAt: v.number() },
+  returns: v.null(),
   handler: async (ctx, { frolicId, leaveAt }) => {
     const c = await context(ctx, frolicId);
     if (!c) return null;
@@ -275,6 +291,7 @@ export const onLeaveNudge = internalMutation({
 
 export const onSnapWindow = internalMutation({
   args: { frolicId: v.id("frolics"), snapAt: v.number() },
+  returns: v.null(),
   handler: async (ctx, { frolicId, snapAt }) => {
     const going = await goingAttendees(ctx, frolicId);
     const checkedIn: Id<"users">[] = [];
@@ -298,6 +315,7 @@ export const onSnapWindow = internalMutation({
 
 export const onCollage = internalMutation({
   args: { frolicId: v.id("frolics"), storageId: v.id("_storage") },
+  returns: v.null(),
   handler: async (ctx, { frolicId, storageId }) => {
     const frolic = await ctx.db.get("frolics", frolicId);
     const url = await ctx.storage.getUrl(storageId);
@@ -327,6 +345,7 @@ export const onMoney = internalMutation({
     event: v.union(v.literal("released"), v.literal("noShowCredit")),
     amountCents: v.number(),
   },
+  returns: v.null(),
   handler: async (ctx, { frolicId, userId, event, amountCents }) => {
     const amount = "$" + (amountCents / 100).toFixed(amountCents % 100 ? 2 : 0);
     const base = keikiEnv().heroBaseUrl;
@@ -351,6 +370,7 @@ export function retryWait(attempts: number): number {
 
 export const due = internalQuery({
   args: { frolicId: v.id("frolics"), now: v.number() },
+  returns: v.array(v.object({ id: v.id("keikiOutbox"), kind: outboxKind, target: v.string(), text: v.string(), attempts: v.number(), stale: v.boolean() })),
   handler: async (ctx, { frolicId, now }) => {
     const frolic = await ctx.db.get("frolics", frolicId);
     const rows = await ctx.db
@@ -384,6 +404,7 @@ export const settle = internalMutation({
     now: v.number(),
     frolicId: v.id("frolics"),
   },
+  returns: v.null(),
   handler: async (ctx, { results, now, frolicId }) => {
     let retryDelay: number | null = null;
     for (const result of results) {
@@ -414,6 +435,7 @@ type NoticeBody = { results?: { outcome?: string }[]; ran?: boolean; unavailable
 
 export const deliver = internalAction({
   args: { frolicId: v.id("frolics") },
+  returns: v.null(),
   handler: async (ctx, { frolicId }) => {
     const now = Date.now();
     const rows = await ctx.runQuery(internal.keiki.outbound.due, { frolicId, now });
