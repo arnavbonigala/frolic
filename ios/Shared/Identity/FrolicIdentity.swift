@@ -2,6 +2,12 @@ import Foundation
 import Observation
 import Security
 
+struct FrolicCrew: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var color: String
+}
+
 @MainActor
 @Observable
 final class FrolicIdentity {
@@ -11,11 +17,13 @@ final class FrolicIdentity {
     static let groupEnvironmentKey = "FROLIC_GROUP_ID"
     static let tokenDefaultsKey = "frolic.deviceToken"
     static let groupDefaultsKey = "frolic.groupId"
+    static let crewsDefaultsKey = "frolic.crews"
     static let keychainService = "com.frolic.app"
     static let keychainAccount = "deviceToken"
 
     private(set) var deviceToken: String
     private(set) var groupId: String?
+    private(set) var crews: [FrolicCrew] = []
     private var pinnedGroup: String?
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment, defaults: UserDefaults = AppGroup.defaults) {
@@ -30,12 +38,56 @@ final class FrolicIdentity {
         }
         defaults.set(deviceToken, forKey: Self.tokenDefaultsKey)
         pinnedGroup = Self.nonEmpty(environment[Self.groupEnvironmentKey])
-        groupId = pinnedGroup ?? Self.storedGroup(defaults)
+        crews = Self.storedCrews(AppGroup.defaults)
+        groupId = pinnedGroup ?? Self.storedGroup(defaults) ?? crews.first?.id
     }
 
     func refresh() {
-        guard pinnedGroup == nil, let stored = Self.storedGroup(AppGroup.defaults), stored != groupId else { return }
-        groupId = stored
+        let stored = Self.storedCrews(AppGroup.defaults)
+        if stored != crews { crews = stored }
+        guard pinnedGroup == nil, let group = Self.storedGroup(AppGroup.defaults), group != groupId else { return }
+        groupId = group
+    }
+
+    func adopt(crews incoming: [FrolicCrew]) {
+        var list: [FrolicCrew] = []
+        for crew in incoming where !list.contains(where: { $0.id == crew.id }) {
+            list.append(crew)
+        }
+        if let pinnedGroup, !list.contains(where: { $0.id == pinnedGroup }) {
+            let known = crews.first { $0.id == pinnedGroup }
+            list.insert(known ?? FrolicCrew(id: pinnedGroup, name: "Your crew", color: ""), at: 0)
+        }
+        if list != crews {
+            crews = list
+            Self.storeCrews(list, AppGroup.defaults)
+        }
+        if let pinnedGroup {
+            if groupId != pinnedGroup { groupId = pinnedGroup }
+            return
+        }
+        if let groupId, list.contains(where: { $0.id == groupId }) { return }
+        guard let next = list.first?.id else { return }
+        groupId = next
+        AppGroup.defaults.set(next, forKey: Self.groupDefaultsKey)
+        AppGroup.defaults.set(next, forKey: "session.groupId")
+    }
+
+    func activate(_ id: String) {
+        guard Self.nonEmpty(id) != nil, id != groupId else { return }
+        setGroup(id)
+    }
+
+    private static func storedCrews(_ defaults: UserDefaults) -> [FrolicCrew] {
+        guard let data = defaults.data(forKey: crewsDefaultsKey),
+              let list = try? JSONDecoder().decode([FrolicCrew].self, from: data)
+        else { return [] }
+        return list
+    }
+
+    private static func storeCrews(_ list: [FrolicCrew], _ defaults: UserDefaults) {
+        guard let data = try? JSONEncoder().encode(list) else { return }
+        defaults.set(data, forKey: crewsDefaultsKey)
     }
 
     private static func storedGroup(_ defaults: UserDefaults) -> String? {
@@ -48,6 +100,10 @@ final class FrolicIdentity {
         groupId = Self.nonEmpty(id)
         if pinnedGroup != nil { pinnedGroup = groupId }
         if let groupId {
+            if !crews.contains(where: { $0.id == groupId }) {
+                crews.append(FrolicCrew(id: groupId, name: "", color: ""))
+                Self.storeCrews(crews, AppGroup.defaults)
+            }
             AppGroup.defaults.set(groupId, forKey: Self.groupDefaultsKey)
             AppGroup.defaults.set(groupId, forKey: "session.groupId")
         } else {

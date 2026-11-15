@@ -74,6 +74,8 @@ final class OnboardingModel {
     var showsInviteEntry = false
     var groupId: String?
     var createdInviteCode: String?
+    var addsCrew = false
+    var onCancel: () -> Void = {}
     private(set) var isFinished = false
 
     var isMidFlow: Bool { groupId != nil && !isFinished }
@@ -110,6 +112,10 @@ final class OnboardingModel {
     func start() {
         guard !didStart else { return }
         didStart = true
+        if addsCrew {
+            if link != nil { loadInvite() }
+            return
+        }
         if let override = InviteLink.launchOverride {
             link = override
         }
@@ -265,6 +271,10 @@ final class OnboardingModel {
 
     func backFromName() {
         failure = nil
+        if addsCrew {
+            onCancel()
+            return
+        }
         step = createdInviteCode == nil ? .join : .share
     }
 

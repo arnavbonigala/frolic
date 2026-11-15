@@ -32,6 +32,7 @@ final class GardenStore {
     @ObservationIgnored private var overviewTask: Task<Void, Never>?
     @ObservationIgnored private var memoryTask: Task<Void, Never>?
     @ObservationIgnored private var loadedMemory: String?
+    private var activeGroup: String?
 
     func start(backend: FrolicBackend, route: E2ERoute?) {
         overviewTask?.cancel()
@@ -52,6 +53,15 @@ final class GardenStore {
             phase = .empty
             return
         }
+        if let active = activeGroup, active != identity.groupId {
+            overview = nil
+            memory = nil
+            onThisDay = nil
+            loadedMemory = nil
+            myUserId = nil
+            phase = .loading
+        }
+        activeGroup = identity.groupId
         if overview == nil, let cached = GardenStore.stored(identity.groupId) {
             overview = cached
             phase = cached.isEmpty ? .empty : .ready

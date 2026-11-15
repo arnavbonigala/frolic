@@ -34,6 +34,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `join.haveLink` | I have an invite link |
 | `join.linkField` | the Invite link field in the paste sheet |
 | `join.findCrew` | Find my crew |
+| `crews.flow.close` | Close, on the add-a-crew flow an invite link opens from inside a crew |
 
 ## Name and photo (`#name`)
 
