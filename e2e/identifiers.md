@@ -14,6 +14,10 @@ Bundle prefix `frolic.` comes free from the bundle; do not repeat it in ids.
 | `state.loading` | any loading placeholder | the screen's own loading copy |
 | `state.error` | any error card | the error copy, never an empty state |
 
+Tab bar: `tab.today`, `tab.crew`, `tab.garden`, `tab.you`, one per tab, with the selected tab carrying the selected trait. Before #55 the bar exposed a single unlabelled `group "Tab Bar"`; these ids are what flows assert now.
+
+Sign-in deep link: `frolic://e2e/signin?token=<deviceToken>&group=<groupId>`. The older `frolic://signin?deviceToken=..&groupId=..` still resolves, and the seed's `users.<who>.link` comes back in that older shape, so a run rewrites it to the new one or leaves it, either works.
+
 Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`, `name`, `taste`, `reading`, `calendar`, `today:open|waiting|on|faded|done`, `today` with `solo` query, `crew`, `garden`, `memory/<n>`, `you`, `otw`, `checkin`, `sunday`, `hopin`).
 
 ## Join (`#join`)
@@ -82,7 +86,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `today.plan.card` | the packet: Sunset at Indian Rock plus chips and Why this |
 | `today.plan.why` | Why this: you're into sunsets, it's free, and the sky's clear until dark. |
 | `today.down` | I'm down |
-| `today.onlyIf` | Only if… |
+| `today.onlyIf` | Only with… |
 | `today.hush` | Nobody sees you're down unless they are too |
 | `today.status.down` | You're down, optionally You're down, if Maya |
 | `today.status.downBody` | If a friend says yes too, you'll both bloom at once. If not, it disappears at 4 and nobody ever knows. |
@@ -108,7 +112,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 
 | Identifier | Visible label |
 | - | - |
-| `onlyIf.title` | I'm down only if… |
+| `onlyIf.title` | I'm down only with… |
 | `onlyIf.body` | Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them. |
 | `onlyIf.friend.<name>` | Maya, Dev, Jordan, Priya |
 | `onlyIf.confirm` | Pick at least one friend, then I'm down if Maya |
@@ -220,7 +224,7 @@ Notification actions are registered on the notification category, not on a view,
 | `web.sharedBy` | Ari shared a plan with Roommates |
 | `web.name` | Your first name |
 | `web.down` | I'm down |
-| `web.hush` | Nobody sees you're down unless someone else is too. No app needed. |
+| `web.hush` | Nobody sees you're down unless someone else is too. |
 | `web.downState` | You're down, Maya |
 | `web.on` | It's on. |
 | `web.getApp` | Get Frolic for the next one |

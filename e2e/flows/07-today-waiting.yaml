@@ -26,4 +26,4 @@ test:
     - type: "instructions"
       step_description: "Tap \"Take it back\""
     - type: "validation"
-      step_description: "The \"I'm down\" and \"Only if…\" buttons are visible again"
+      step_description: "The \"I'm down\" and \"Only with…\" buttons are visible again"

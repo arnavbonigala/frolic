@@ -84,7 +84,7 @@ private struct TodayReadyPreview: View {
                 Button("I'm down") {}
                     .buttonStyle(.frolicPrimary)
                     .accessibilityIdentifier("today.down")
-                Button("Only if…") {}
+                Button("Only with…") {}
                     .buttonStyle(.frolicSecondary)
                     .accessibilityIdentifier("today.onlyIf")
             }

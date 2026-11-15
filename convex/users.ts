@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import {
   assertDeviceToken,
   cleanName,
@@ -195,6 +196,8 @@ export const invitePreview = query({
   },
 });
 
+const PURGE_BATCH = 100;
+
 export const me = query({
   args: { deviceToken: v.string() },
   returns: v.union(
@@ -280,9 +283,111 @@ export const joinAs = internalMutation({
       .query("invites")
       .withIndex("by_code", (q) => q.eq("code", args.inviteCode.trim().toUpperCase()))
       .unique();
-    if (!invite || invite.revoked) throw new ConvexError({ code: "BAD_INVITE", message: "This invite link expired" });
+    if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < Date.now())) {
+      throw new ConvexError({ code: "BAD_INVITE", message: "This invite link expired" });
+    }
     await addMember(ctx, invite.groupId, args.userId, args.via);
     return invite.groupId;
+  },
+});
+
+async function deleteFile(ctx: MutationCtx, storageId: Id<"_storage">): Promise<void> {
+  try {
+    await ctx.storage.delete(storageId);
+  } catch {
+    return;
+  }
+}
+
+async function purgeFrolic(ctx: MutationCtx, frolicId: Id<"frolics">, userId: Id<"users">): Promise<void> {
+  const snaps = await ctx.db
+    .query("snaps")
+    .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
+    .collect();
+  for (const snap of snaps) {
+    await deleteFile(ctx, snap.storageId);
+    await ctx.db.delete("snaps", snap._id);
+  }
+  for (const table of ["hopIns", "etas", "checkins"] as const) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
+      .collect();
+    for (const row of rows) await ctx.db.delete(table, row._id);
+  }
+  const logged = await ctx.db
+    .query("revealLog")
+    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
+    .collect();
+  for (const row of logged) if (row.userId === userId) await ctx.db.delete("revealLog", row._id);
+}
+
+async function purgeRows(ctx: MutationCtx, user: Doc<"users">): Promise<boolean> {
+  const userId = user._id;
+  let finished = true;
+  const memberships = await ctx.db
+    .query("memberships")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .take(PURGE_BATCH);
+  if (memberships.length === PURGE_BATCH) finished = false;
+  for (const membership of memberships) {
+    const availability = await ctx.db
+      .query("availability")
+      .withIndex("by_groupId_and_userId_and_day", (q) =>
+        q.eq("groupId", membership.groupId).eq("userId", userId),
+      )
+      .take(PURGE_BATCH);
+    if (availability.length === PURGE_BATCH) finished = false;
+    for (const row of availability) await ctx.db.delete("availability", row._id);
+    const frolics = await ctx.db
+      .query("frolics")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", membership.groupId))
+      .take(PURGE_BATCH);
+    if (frolics.length === PURGE_BATCH) finished = false;
+    for (const frolic of frolics) await purgeFrolic(ctx, frolic._id, userId);
+    await ctx.db.delete("memberships", membership._id);
+  }
+  for (const table of ["taps", "attendees", "limits", "keikiLinks"] as const) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .take(PURGE_BATCH);
+    if (rows.length === PURGE_BATCH) finished = false;
+    for (const row of rows) await ctx.db.delete(table, row._id);
+  }
+  return finished;
+}
+
+async function finishAccountDeletion(ctx: MutationCtx, user: Doc<"users">): Promise<boolean> {
+  const finished = await purgeRows(ctx, user);
+  if (!finished) {
+    await ctx.scheduler.runAfter(0, internal.users.purgeAccount, { userId: user._id });
+    return false;
+  }
+  if (user.photoId) await deleteFile(ctx, user.photoId);
+  await ctx.db.delete("users", user._id);
+  await ctx.scheduler.runAfter(0, internal.memory.account.deleteAccountMemory, { userId: user._id });
+  return true;
+}
+
+export const deleteAccount = mutation({
+  args: { deviceToken: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    await finishAccountDeletion(ctx, user);
+    return null;
+  },
+});
+
+export const purgeAccount = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get("users", userId);
+    if (!user) return null;
+    await finishAccountDeletion(ctx, user);
+    return null;
   },
 });
 
