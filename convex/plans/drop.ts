@@ -406,6 +406,32 @@ export const writePlan = internalMutation({
   },
 });
 
+export const openDropFrolic = internalMutation({
+  args: { groupId: v.id("groups"), day: v.string(), kind: vDropKind },
+  returns: v.union(v.id("frolics"), v.null()),
+  handler: async (ctx, args): Promise<Id<"frolics"> | null> => {
+    if (args.kind !== "daily" && args.kind !== "weekend") return null;
+    const plan = await existingPlan(ctx, args.groupId, args.day, args.kind);
+    if (!plan) return null;
+    const doc = await ctx.db.get("places", plan.placeId);
+    const place = doc ? PLACE_BY_SLUG.get(doc.slug) : undefined;
+    const travel = place ? tripTo(null, place).minutes : DEFAULT_WALK_MINUTES;
+    const now = Date.now();
+    const leaveAt = plan.startsAt - travel * 60 * 1000;
+    const deadline = Math.min(plan.startsAt, Math.max(leaveAt, now + 60 * 1000));
+    if (deadline <= now) return null;
+    return await ctx.runMutation(internal.frolics.open, {
+      groupId: args.groupId,
+      day: args.day,
+      kind: args.kind,
+      planId: plan._id,
+      window: { start: leaveAt, end: plan.startsAt + plan.durationMinutes * 60 * 1000 },
+      durationMinutes: plan.durationMinutes,
+      deadline,
+    });
+  },
+});
+
 function planWhyInputs(plan: StoredPlan) {
   return {
     placeName: plan.whyInputs.placeName,
@@ -601,6 +627,13 @@ export const dropWorkflow = workflow
       kind: args.kind,
       plan,
     });
+    if (planId) {
+      await step.runMutation(internal.plans.drop.openDropFrolic, {
+        groupId: args.groupId,
+        day: args.day,
+        kind: args.kind,
+      });
+    }
     const swapAt = plan.startsAt - TWO_HOURS;
     if (swapAt > inputs.nowMs) {
       await step.runAction(
@@ -702,6 +735,13 @@ export const dropComplete = internalMutation({
   handler: async (ctx, args): Promise<Id<"plans"> | null> => {
     const failed = args.result.kind !== "success" || args.result.returnValue === null;
     const planId = failed ? await writeFallbackPlan(ctx, args.context) : null;
+    if (planId) {
+      await ctx.runMutation(internal.plans.drop.openDropFrolic, {
+        groupId: args.context.groupId,
+        day: args.context.day,
+        kind: args.context.kind,
+      });
+    }
     await ctx.runMutation(internal.plans.drop.finishRun, {
       groupId: args.context.groupId,
       day: args.context.day,
