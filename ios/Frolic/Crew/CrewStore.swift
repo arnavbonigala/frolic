@@ -365,6 +365,8 @@ final class CrewStore {
                 status = member.isMe ? .went : (iWent ? .wentWithYou : .went)
             } else if member.free?.state == "busy" {
                 status = .busy
+            } else if member.free == nil {
+                status = .notSaid
             } else {
                 status = .free(CrewCopy.freeLine(member.free, now: now))
             }

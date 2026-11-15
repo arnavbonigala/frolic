@@ -59,13 +59,13 @@ enum CrewStandIn {
             lookingNow: true
         )
         var rows: [CrewRow] = [
-            CrewRow(id: "maya", name: "Maya", color: .pink, photoURL: nil, photoAsset: "p_maya", isMe: false,
+            CrewRow(id: "maya", name: "Maya", color: .pink, photoURL: nil, photoAsset: "portrait-maya", isMe: false,
                     status: went ? .wentWithYou : .free("Free till 8"), minutesAway: went ? nil : 6, lookingNow: true),
-            CrewRow(id: "dev", name: "Dev", color: .cobalt, photoURL: nil, photoAsset: "p_dev", isMe: false,
+            CrewRow(id: "dev", name: "Dev", color: .cobalt, photoURL: nil, photoAsset: "portrait-dev", isMe: false,
                     status: went ? .wentWithYou : .free("Free 4 to 9"), minutesAway: went ? nil : 9, lookingNow: true),
-            CrewRow(id: "jordan", name: "Jordan", color: .moss, photoURL: nil, photoAsset: "p_jordan", isMe: false,
+            CrewRow(id: "jordan", name: "Jordan", color: .moss, photoURL: nil, photoAsset: "portrait-jordan", isMe: false,
                     status: went ? .busy : .free("Free till 6"), minutesAway: went ? nil : 15, lookingNow: false),
-            CrewRow(id: "priya", name: "Priya", color: .marigold, photoURL: nil, photoAsset: "p_priya", isMe: false,
+            CrewRow(id: "priya", name: "Priya", color: .marigold, photoURL: nil, photoAsset: "portrait-priya", isMe: false,
                     status: .free(went ? "Free till 10" : "Free 5 to 10"), minutesAway: 11, lookingNow: false),
         ]
         if went {

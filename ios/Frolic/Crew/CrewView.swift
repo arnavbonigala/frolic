@@ -6,6 +6,7 @@ struct CrewRow: Identifiable, Equatable {
         case went
         case wentWithYou
         case busy
+        case notSaid
     }
 
     var id: String
@@ -29,7 +30,14 @@ struct CrewRow: Identifiable, Equatable {
             return "Went today"
         case .busy:
             return "Busy now"
+        case .notSaid:
+            return "Not said yet"
         }
+    }
+
+    var isFolded: Bool {
+        if case .busy = status { return true }
+        return false
     }
 
     var isFree: Bool {
@@ -48,11 +56,13 @@ struct CrewRow: Identifiable, Equatable {
             return ""
         case .busy:
             return "Busy now"
+        case .notSaid:
+            return "Not said yet"
         }
     }
 
     var flowerState: FlowerState {
-        isFree ? .bloom : .folded
+        isFolded ? .folded : .bloom
     }
 }
 

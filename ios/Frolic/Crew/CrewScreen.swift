@@ -21,7 +21,7 @@ struct CrewScreen: View {
                     identifier: "crew"
                 )
                 if let view = store.view, shown == .ready {
-                    CrewFreeControl(text: view.me.detail, isFree: view.me.isFree) {
+                    CrewFreeControl(text: view.me.status == .notSaid ? "Tell your crew when you are free" : view.me.detail, isFree: view.me.isFree) {
                         store.showsFreeSheet = true
                     }
                     .padding(.top, 14)

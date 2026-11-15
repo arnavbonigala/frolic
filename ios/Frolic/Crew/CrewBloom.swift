@@ -12,7 +12,7 @@ struct CrewBloom: View {
 
     private var width: CGFloat { radius * 2 + 8 }
     private var height: CGFloat { radius * 2 + stem + 4 }
-    private var sways: Bool { animates && row.isFree && !reduceMotion }
+    private var sways: Bool { animates && !row.isFolded && !reduceMotion }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -22,8 +22,8 @@ struct CrewBloom: View {
         }
         .frame(width: width, height: height)
         .rotationEffect(.degrees(sways ? (swayed ? 3 : -3) : 0), anchor: .bottom)
-        .saturation(row.isFree ? 1 : 0.25)
-        .opacity(row.isFree ? 1 : 0.6)
+        .saturation(row.isFolded ? 0.25 : 1)
+        .opacity(row.isFolded ? 0.6 : 1)
         .onAppear {
             guard sways else { return }
             withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
