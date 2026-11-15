@@ -14,7 +14,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:open"
+      step_description: "frolic://e2e/today:open?fixture=1"
     - type: "instructions"
       step_description: "Tap \"Only with…\""
     - type: "validation"

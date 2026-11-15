@@ -151,7 +151,7 @@ struct TodayMeadow: View {
 
     private var label: String {
         let free = people.isEmpty ? "Nobody's free yet" : TodayCopy.names(people.map(\.name)) + (people.count == 1 ? " is free" : " are free")
-        return free + (waiting ? ". Your bud is planted. See your crew" : ". See your crew")
+        return free + (waiting ? ". You're down. See your crew" : ". See your crew")
     }
 }
 

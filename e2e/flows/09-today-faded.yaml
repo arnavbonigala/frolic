@@ -14,7 +14,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:faded"
+      step_description: "frolic://e2e/today:faded?fixture=1"
     - type: "validation"
       step_description: "The headline \"This one drifted off\" is visible"
     - type: "validation"

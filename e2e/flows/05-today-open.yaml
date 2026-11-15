@@ -15,7 +15,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:open"
+      step_description: "frolic://e2e/today:open?fixture=1"
     - type: "validation"
       step_description: "A pill at the top right reads \"Free till 8\""
     - type: "validation"

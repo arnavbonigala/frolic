@@ -46,7 +46,7 @@ struct TodayFixture {
             reveal = Self.reveal(start: start, bloomAt: now - 3 * 3_600_000, me: true, canHopIn: false)
         case "off":
             free = CrewFree(state: "busy", window: nil, minutesAway: nil, updatedAt: now)
-        case "none":
+        case "none", "planning":
             phase = .none
         default:
             phase = solo ? .solo : .open
@@ -80,7 +80,9 @@ struct TodayFixture {
                 deadline: TodayCopy.todayAt(hour: 16),
                 window: TodayWindow(start: TodayCopy.todayAt(hour: 12), end: TodayCopy.todayAt(hour: 23)),
                 durationMinutes: 60,
-                plan: plan
+                plan: plan,
+                origin: query["free"] != nil ? "free" : "daily",
+                notice: query["free"] != nil ? "Someone in your crew is free. \(plan.title) at \(TodayCopy.clock(start))?" : nil
             ),
             myTap: myTap,
             reveal: reveal,
@@ -89,6 +91,22 @@ struct TodayFixture {
         crew = CrewView(groupName: "Sunset Crew", members: members, holdEnabled: query["hold"] != "off")
         payment = Self.payment(query["pay"])
         sheet = Self.sheet(query["sheet"])
+    }
+
+    static func tomorrow() -> TodayView {
+        let start = TodayCopy.todayAt(hour: 35)
+        var plan = plan(start: start)
+        plan.title = "Kayaks at the Marina"
+        plan.heroKey = "plan-outdoors"
+        plan.costLabel = "$8 each"
+        return TodayView(
+            phase: .on,
+            groupName: "Sunset Crew",
+            memberCount: 5,
+            frolic: TodayFrolic(frolicId: "fixture-tomorrow", day: TodayCopy.tomorrowString(), kind: "daily", deadline: start, window: TodayWindow(start: start, end: start + 7_200_000), durationMinutes: 120, plan: plan, origin: "daily", notice: nil),
+            myTap: nil,
+            reveal: reveal(start: start, bloomAt: Date().timeIntervalSince1970 * 1000 - 60_000, me: false, canHopIn: true)
+        )
     }
 
     static func avatar(_ key: String) -> String {

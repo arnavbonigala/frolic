@@ -75,9 +75,9 @@ struct GroupSnapScreen: View {
     @ViewBuilder
     private var viewfinderImage: some View {
         if let photo = model.photo, model.stage == .uploading || model.stage == .done {
-            Image(uiImage: photo).resizable().scaledToFill().accessibilityHidden(true)
+            Image(uiImage: photo).resizable().scaledToFill().accessibilityLabel("Your shot")
         } else if let shot = model.libraryShot {
-            Image(uiImage: shot).resizable().scaledToFill().accessibilityHidden(true)
+            Image(uiImage: shot).resizable().scaledToFill().accessibilityLabel("Your shot")
         } else if model.camera.mode == .ready {
             CameraPreview(session: model.camera.session).accessibilityLabel("Camera view")
         } else if usesStill, let still = UIImage(named: "plan-sunsets") ?? UIImage(named: "hills_sunset") {

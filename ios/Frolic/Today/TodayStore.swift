@@ -52,8 +52,13 @@ final class TodayStore {
     private(set) var pendingFree: CrewFree?
     private(set) var isFixture = false
     private(set) var startingPlan = false
-    private(set) var startFailed = false
-    var imFreeEnabled = TodayFeatures.imFree
+    private(set) var startError: String?
+    private(set) var drop: TodayDrop?
+    private(set) var tomorrow: TodayView?
+    private(set) var gardenHealth: TodayGardenHealth?
+    private(set) var onThisDay: TodayOnThisDay?
+    var walkFrom: (Double, Double)?
+    var hintSeen = AppGroup.defaults.bool(forKey: "today.hint.down")
 
     var sheet: Sheet?
     var picks: Set<String> = []
@@ -66,6 +71,7 @@ final class TodayStore {
     private var paymentFrolic: String?
     private var bloomedFrolic: String?
     private var routeKey: String?
+    private var dropFrolic: String?
 
     func now() -> Double {
         Date().timeIntervalSince1970 * 1000 + offset
@@ -145,6 +151,7 @@ final class TodayStore {
         case .none:
             return myFree?.state == "busy" ? .off : .none
         case .solo, .open, .waiting:
+            if today.frolic != nil && today.frolic?.plan == nil { return .none }
             if today.myTap?.kind == "notToday" || (myFree?.state == "busy" && !isDown) { return .off }
             if solo { return .solo(waiting: isDown) }
             return isDown ? .waiting(onlyIf: tapOnlyIf.map(\.name)) : .open
@@ -163,7 +170,7 @@ final class TodayStore {
         routeKey = newKey
         stop()
         #if DEBUG || E2E
-        if let route, route.screen == "today", route.query["token"] == nil, let fixture = TodayFixture(route: route) {
+        if let route, route.screen == "today", route.query["fixture"] == "1", let fixture = TodayFixture(route: route) {
             isFixture = true
             applyFixture(fixture, route: route)
             return
@@ -265,7 +272,6 @@ final class TodayStore {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         sheet = nil
         pending = .sitOut
-        showNotice("All good. Next time.")
         guard !isFixture else { return }
         send("frolics:sitOut", ["frolicId": frolicId], expecting: .sitOut)
     }
@@ -302,52 +308,66 @@ final class TodayStore {
     func freeAfterAll() {
         let end = TodayCopy.todayAt(hour: 20)
         setFree("now", window: TodayWindow(start: min(now(), end - 60_000), end: end))
-        showNotice("Back in. " + TodayCopy.freeLabel(pendingFree))
     }
 
     func imFree(minutes: Double) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         sheet = nil
-        startFailed = false
+        startError = nil
         startingPlan = true
-        let end = now() + minutes * 60_000
-        pendingFree = CrewFree(state: "now", window: TodayWindow(start: now(), end: end), minutesAway: myFree?.minutesAway, updatedAt: now())
-        guard !isFixture, let client, let groupId = identity.groupId else {
-            if isFixture {
-                tasks.append(Task { [weak self] in
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    self?.startingPlan = false
-                    self?.startFailed = true
-                })
-            }
+        let forMinutes = min(240, max(60, minutes.rounded()))
+        pendingFree = CrewFree(state: "now", window: TodayWindow(start: now(), end: now() + forMinutes * 60_000), minutesAway: myFree?.minutesAway, updatedAt: now())
+        if isFixture {
+            tasks.append(Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                self?.startingPlan = false
+                self?.startError = "That didn't start. Try again."
+            })
+            return
+        }
+        guard let client, let groupId = identity.groupId else {
+            startingPlan = false
+            startError = "Frolic isn't connected to a server yet."
             return
         }
         let token = identity.deviceToken
         tasks.append(Task { [weak self] in
             do {
-                try await client.mutation("frolics:imFree", with: ["deviceToken": token, "groupId": groupId, "forMinutes": minutes])
+                let _: TodayImFreeResult = try await client.mutation("frolics:imFree", with: ["deviceToken": token, "groupId": groupId, "forMinutes": forMinutes])
+                guard let self else { return }
+                if self.today?.frolic?.plan != nil && self.today?.phase != TodayPhase.none { self.startingPlan = false }
+                try? await Task.sleep(nanoseconds: 20_000_000_000)
+                if self.startingPlan && self.today?.frolic?.plan == nil {
+                    self.startingPlan = false
+                    self.startError = "That didn't start. Try again."
+                }
             } catch {
                 guard let self else { return }
                 self.startingPlan = false
-                self.startFailed = true
                 self.pendingFree = nil
-                self.fail(error)
+                self.startError = Self.imFreeMessage(for: error)
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
             }
         })
     }
 
+    func seeHint() {
+        guard !hintSeen else { return }
+        hintSeen = true
+        AppGroup.defaults.set(true, forKey: "today.hint.down")
+    }
+
     func onMyWay() {
-        guard let frolicId = frolic?.frolicId else { return }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        guard let frolicId = frolic?.frolicId, !frolicId.isEmpty else { return }
         NotificationCenter.default.post(name: TodayInbox.onMyWayNotification, object: nil, userInfo: ["frolicId": frolicId])
-        guard !isFixture else {
-            showNotice("You're on your way.")
-            return
-        }
-        let minutes = (myFree?.minutesAway ?? 0).rounded()
+        guard !isFixture else { return }
+        let minutes = (walkMinutes ?? 0).rounded()
         send("etas:setMine", ["frolicId": frolicId, "minutes": minutes, "onTheWay": true], expecting: nil)
-        let names = TodayCopy.names(goingFriendNames)
-        showNotice(names.isEmpty ? "You're on your way." : "You're on your way. \(names) can see you're coming.")
+    }
+
+    var walkMinutes: Double? {
+        TodayCopy.walkMinutes(plan: plan, minutesAway: myFree?.minutesAway, from: walkFrom)
     }
 
     func prepareShare() {
@@ -499,15 +519,54 @@ final class TodayStore {
     private func subscribe(groupId: String) {
         guard let client, let token = identity.deviceToken as String? else { return }
         let day = TodayCopy.dayString()
+        let cacheKey = "today.cache.\(groupId).\(day)"
+        if today == nil, let data = AppGroup.defaults.data(forKey: cacheKey), let cached = try? JSONDecoder().decode(TodayView.self, from: data) {
+            today = cached
+            load = .ready
+        }
         tasks.append(Task { [weak self] in
             do {
                 let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
                 for try await view in client.subscribe(to: "frolics:today", with: args, yielding: TodayView.self).values {
                     self?.apply(view)
+                    if let data = try? JSONEncoder().encode(view) {
+                        AppGroup.defaults.set(data, forKey: cacheKey)
+                    }
                 }
             } catch {
                 guard let self else { return }
                 if self.today == nil { self.load = .error(Self.message(for: error)) }
+            }
+        })
+        tasks.append(Task { [weak self] in
+            do {
+                let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
+                for try await value in client.subscribe(to: "garden:overview", with: args, yielding: TodayGardenOverview.self).values {
+                    self?.gardenHealth = value.health
+                }
+            } catch {
+                self?.gardenHealth = nil
+            }
+        })
+        tasks.append(Task { [weak self] in
+            do {
+                let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
+                for try await value in client.subscribe(to: "garden:onThisDay", with: args, yielding: TodayOnThisDay?.self).values {
+                    self?.onThisDay = value
+                }
+            } catch {
+                self?.onThisDay = nil
+            }
+        })
+        tasks.append(Task { [weak self] in
+            do {
+                let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId, "day": TodayCopy.tomorrowString()]
+                for try await view in client.subscribe(to: "frolics:today", with: args, yielding: TodayView.self).values {
+                    guard let self else { return }
+                    self.tomorrow = view.frolic?.day == TodayCopy.tomorrowString() ? view : nil
+                }
+            } catch {
+                self?.tomorrow = nil
             }
         })
         tasks.append(Task { [weak self] in
@@ -544,12 +603,32 @@ final class TodayStore {
         })
     }
 
+    private func subscribeDrop(frolicId: String) {
+        guard let client else { return }
+        let token = identity.deviceToken
+        drop = nil
+        tasks.append(Task { [weak self] in
+            do {
+                let args: [String: ConvexEncodable?] = ["deviceToken": token, "frolicId": frolicId]
+                for try await value in client.subscribe(to: "drops:forPlan", with: args, yielding: TodayDrop?.self).values {
+                    self?.drop = value
+                }
+            } catch {
+                self?.drop = nil
+            }
+        })
+    }
+
     private func apply(_ view: TodayView) {
         today = view
         load = .ready
-        if view.phase != .none { startingPlan = false }
         if let pending, confirms(pending) {
             self.pending = nil
+        }
+        if view.frolic?.plan != nil { startingPlan = false }
+        if let frolicId = view.frolic?.frolicId, dropFrolic != frolicId {
+            dropFrolic = frolicId
+            subscribeDrop(frolicId: frolicId)
         }
         if let frolicId = view.frolic?.frolicId, paymentFrolic != frolicId, view.phase == .on || view.phase == .done {
             paymentFrolic = frolicId
@@ -568,7 +647,12 @@ final class TodayStore {
         bloomed = false
         bloomedFrolic = nil
         scheduleBloom()
-        imFreeEnabled = TodayFeatures.imFree || route.query["imfree"] != nil
+        drop = route.query["drop"] != nil ? TodayDrop(hostedBy: "Cal Kayak Club", priceLabel: "$8", seatsLeft: 4) : nil
+        tomorrow = route.query["tomorrow"] != nil ? TodayFixture.tomorrow() : nil
+        startingPlan = route.state == "planning"
+        gardenHealth = route.query["garden"] != nil ? TodayGardenHealth(state: "thirsty", line: "Your garden's getting thirsty", cta: "I'm free") : nil
+        onThisDay = route.query["garden"] != nil ? TodayOnThisDay(frolicId: "fixture-past", label: "1 week ago today", title: "Cheese Board pizza", heroKey: "plan-late-night-food", photoUrl: nil) : nil
+        if route.query["hint"] != nil { hintSeen = false }
         if fixture.sheet == .onlyIf {
             picks = Set(route.query["picks"].map { $0.split(separator: ",").map(String.init) } ?? [])
         }
@@ -641,6 +725,22 @@ final class TodayStore {
         }
     }
 
+    static func imFreeMessage(for error: Error) -> String {
+        guard let clientError = error as? ClientError, case .ConvexError(let data) = clientError,
+              let payload = data.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: payload) as? [String: Any]
+        else { return "Check your connection and try again." }
+        if object["kind"] as? String == "RateLimited" {
+            let seconds = Int(((object["retryAfter"] as? Double) ?? 60_000) / 1000)
+            return seconds >= 90 ? "Try again in \(Int((Double(seconds) / 60).rounded())) minutes." : "Try again in \(max(seconds, 1)) seconds."
+        }
+        switch object["code"] as? String {
+        case "BAD_MINUTES": return "Pick how long you're free."
+        case "UNKNOWN_DEVICE", "NOT_A_MEMBER": return "Join a crew first."
+        default: return (object["message"] as? String) ?? "That didn't start. Try again."
+        }
+    }
+
     private static func convexMessage(_ data: String) -> String? {
         guard let payload = data.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: payload) as? [String: Any]
@@ -659,8 +759,4 @@ struct TodayShareItem: Identifiable, Hashable {
     var url: URL
     var title: String
     var id: String { url.absoluteString }
-}
-
-enum TodayFeatures {
-    static let imFree = false
 }

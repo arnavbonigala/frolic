@@ -365,7 +365,10 @@ private struct TodayImFreeSheet: View {
         let options: [(String, Double, String)] = [("1 hour", 60, "1h"), ("2 hours", 120, "2h"), ("3 hours", 180, "3h"), ("Tonight", tonight, "tonight")]
         VStack(alignment: .leading, spacing: 0) {
             TodaySheetTitle(text: "I'm free for", identifier: "imFree.sheet.title")
-            TodaySheetBody(text: "Frolic picks a plan now and counts you as down. Your crew never sees who started it.")
+            let free = store.freeFriends.map(\.name)
+            if !free.isEmpty {
+                TodaySheetBody(text: TodayCopy.names(free) + (free.count == 1 ? " is free right now" : " are free right now"), identifier: "imFree.sheet.proof")
+            }
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 ForEach(options, id: \.2) { option in
                     Button(option.0) { store.imFree(minutes: option.1.rounded()) }
@@ -376,7 +379,7 @@ private struct TodayImFreeSheet: View {
             .padding(.top, 16)
             Spacer(minLength: 0)
         }
-        .presentationDetents([.height(320), .large])
+        .presentationDetents([.height(300), .large])
     }
 }
 

@@ -1,0 +1,185 @@
+import SwiftUI
+
+struct CalendarScreen: View {
+    @Bindable var model: OnboardingModel
+
+    var body: some View {
+        OnboardingPage {
+            OnboardingTitle(
+                title: "Never type when you're free",
+                subcopy: "Your crew only sees when you're free",
+                identifier: "calendar.title"
+            )
+            switch model.calendarPhase {
+            case .reading:
+                skeleton
+            case .ready:
+                week
+            case .denied:
+                OnboardingStateCard(
+                    title: "Frolic can't see your calendar",
+                    detail: "Tell it each day, or allow it in Settings.",
+                    actionTitle: "I'll tell it each day",
+                    secondaryTitle: "Open Settings",
+                    onAction: { model.tellItEachDay() },
+                    onSecondary: { model.openSettings() },
+                    identifier: "state.error"
+                )
+                .padding(.top, 20)
+            case .empty:
+                OnboardingStateCard(
+                    title: "Nothing to show yet",
+                    detail: "Your calendar has no free days to read.",
+                    actionTitle: "I'll tell it each day",
+                    onAction: { model.tellItEachDay() },
+                    identifier: "state.empty"
+                )
+                .padding(.top, 20)
+            }
+        } bar: {
+            if model.calendarPhase == .ready || model.calendarPhase == .reading {
+                Button("Use my calendar") {
+                    Task { await model.useCalendar() }
+                }
+                .buttonStyle(.frolicPrimary)
+                .disabled(model.calendarPhase != .ready || model.isSubmitting)
+                .accessibilityIdentifier("calendar.use")
+            }
+            Button("I'll tell it each day") { model.tellItEachDay() }
+                .buttonStyle(.frolicText)
+                .accessibilityIdentifier("calendar.manual")
+        }
+        .sheet(isPresented: $model.showsFreeSheet) {
+            FreeSheet(model: model)
+        }
+    }
+
+    private var week: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            FrolicGroup {
+                ForEach(Array(model.freeDays.enumerated()), id: \.element.id) { index, day in
+                    HStack {
+                        Text(day.label)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(FrolicColor.ink)
+                        Spacer(minLength: 8)
+                        Text(day.value)
+                            .font(.system(size: 17))
+                            .foregroundStyle(FrolicColor.secondaryText)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .frame(minHeight: 60)
+                    .overlay(alignment: .top) {
+                        if index > 0 { FrolicColor.line.frame(height: 0.5).padding(.leading, 16) }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier(day.id == "today" ? "calendar.row.today" : "calendar.row.\(day.id)")
+                }
+            }
+            .padding(.top, 20)
+            Text("This is what your crew would see this week.")
+                .frolicFont(.footnote)
+                .foregroundStyle(FrolicColor.secondaryText)
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
+        }
+    }
+
+    private var skeleton: some View {
+        FrolicGroup {
+            ForEach(0..<5, id: \.self) { index in
+                HStack {
+                    RoundedRectangle(cornerRadius: 6).fill(FrolicColor.chip).frame(width: 44, height: 16)
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 6).fill(FrolicColor.chip).frame(width: 120, height: 16)
+                }
+                .padding(.horizontal, 16)
+                .frame(minHeight: 60)
+                .overlay(alignment: .top) {
+                    if index > 0 { FrolicColor.line.frame(height: 0.5).padding(.leading, 16) }
+                }
+            }
+        }
+        .padding(.top, 20)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Reading your calendar")
+        .accessibilityIdentifier("state.loading")
+    }
+}
+
+struct FreeSheet: View {
+    @Bindable var model: OnboardingModel
+    @State private var pick = "till8"
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("When are you free today?")
+                .frolicFont(.sheetTitle)
+                .foregroundStyle(FrolicColor.ink)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("free.sheet.title")
+            Text("Your crew sees this. What you're doing stays private.")
+                .frolicFont(.subheadline)
+                .foregroundStyle(FrolicColor.secondaryText)
+            FrolicGroup {
+                option("Free now till 8 PM", sub: "From your calendar", key: "till8", id: "free.sheet.till8", divider: false)
+                option("Free 5 PM to 8 PM", sub: "Set by you, just for today", key: "after5", id: "free.sheet.after5", divider: true)
+                option("Not today", sub: "No plan for you today. Nobody gets told.", key: "no", id: "free.sheet.notToday", divider: true)
+            }
+            Button("Done") {
+                Task {
+                    switch pick {
+                    case "after5": await model.chooseFree(.window(Self.window(from: 17)))
+                    case "no": await model.chooseFree(.notToday)
+                    default: await model.chooseFree(.window(Self.window(from: nil)))
+                    }
+                }
+            }
+            .buttonStyle(.frolicPrimary)
+            .padding(.top, 6)
+            .accessibilityIdentifier("free.sheet.done")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 22)
+        .presentationDetents([.medium, .large])
+        .presentationBackground(FrolicColor.cream)
+    }
+
+    private func option(_ title: String, sub: String, key: String, id: String, divider: Bool) -> some View {
+        Button { pick = key } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(FrolicColor.ink)
+                    Text(sub).font(.system(size: 14)).foregroundStyle(FrolicColor.secondaryText)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: pick == key ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(pick == key ? FrolicColor.ink : FrolicColor.disabled)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(minHeight: 60)
+            .contentShape(Rectangle())
+            .overlay(alignment: .top) {
+                if divider { FrolicColor.line.frame(height: 0.5).padding(.leading, 16) }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(pick == key ? .isSelected : [])
+        .accessibilityIdentifier(id)
+    }
+
+    static func window(from hour: Int?) -> DateInterval {
+        let calendar = Calendar.current
+        let now = Date()
+        let eight = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now) ?? now.addingTimeInterval(3600)
+        let end = eight > now.addingTimeInterval(1800) ? eight : now.addingTimeInterval(10800)
+        let start = hour.flatMap { calendar.date(bySettingHour: $0, minute: 0, second: 0, of: now) } ?? now
+        return DateInterval(start: min(max(start, now), end.addingTimeInterval(-900)), end: end)
+    }
+}
