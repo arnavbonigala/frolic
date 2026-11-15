@@ -569,6 +569,13 @@ export default defineSchema({
     at: v.number(),
   }).index("by_requestKey", ["requestKey"]),
 
+  gardenNudges: defineTable({
+    groupId: v.id("groups"),
+    anchor: v.union(v.id("frolics"), v.null()),
+    text: v.string(),
+    sentAt: v.number(),
+  }).index("by_groupId", ["groupId"]),
+
   tasteProfiles: defineTable({
     groupId: v.id("groups"),
     tags: v.array(v.string()),

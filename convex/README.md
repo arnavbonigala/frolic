@@ -377,6 +377,15 @@ The e2e demo seed sets those four portraits and flower colours, so the app, the 
 - `sinceLine` is `12 before you, 1 with you`, or `all before you joined` when none are yours.
 - `weekLine` is the crew's taste line with a lowercase opening, used under the taste card. `taste` is `{ headline, why }` once a taste profile exists, else `null`.
 - `fund` is `{ line, frolicTitle }` for the newest frolic the Frolic Fund paid into, else `null`.
+- Pass `day` (the crew's local `YYYY-MM-DD`) when you have it; it defaults to today in the crew's timezone.
+- A flower is planted by every frolic that happened (`on` or `done`) with 2 or more going. Nothing is stored as a counter.
+- `health` is `{ state, daysSince, line, cta }`. `state` comes from days since the last flower (or since the crew was made): `thriving` 0 to 2, `fine` 3 to 4, `thirsty` 5 to 7, `wilting` 8+. `line` is `Your garden is thriving`, `Your garden is doing fine`, `Your garden is getting thirsty. Anyone free?` or `Your garden misses you`, and `Your first frolic plants the first flower` before any flower. `cta` is `"imFree"` when thirsty or wilting, else `null`.
+- `collection` is `{ varieties, flowers }`. `varieties` is always six rows `{ key, name, count, unlocked, hint }` in this order: `goldenPoppy` (sunsets), `wildLupine` (outdoors), `nightJasmine` (late-night food), `sweetPea` (games), `daisy` (free stuff), `ranunculus` (a paid Frolic Drop, the rare one). `hint` is set only while locked, e.g. `Catch a sunset together`. `flowers` is one `{ frolicId, variety }` per flower, newest first; `variety` is `null` for a plan outside the six.
+- `milestone` is `{ reached, next, nextAt, line }` with keys `bench` (3), `path` (10), `lights` (25). `line` names the next upgrade, e.g. `3 frolics: the garden gets a bench`.
+
+**`garden.onThisDay({ deviceToken, groupId, day? })`** returns `{ frolicId, daysAgo, label, title, heroKey, photoUrl }` for a flower from exactly 7 days ago (`1 week ago today`), else 30 days ago (`1 month ago today`), else `null`. `photoUrl` is the newest snap, else the collage, once the frolic is `done`.
+
+**`garden.nudge({ deviceToken, groupId })`** is the in-app side of the garden nudge: `{ line, cta: "imFree", sentAt }` while the thirsty streak it was sent for is still running, else `null`. The `garden nudge` cron runs hourly and acts at 5pm in each crew's timezone: when a crew's garden is thirsty it records one nudge per streak (keyed by the crew's last flower) and queues `Your garden's getting thirsty. Anyone free tonight?` to each linked texter and linked group chat through the Keiki outbox. Paused Keiki links are skipped. It names nobody.
 
 **`garden.memory({ deviceToken, frolicId })`** returns `{ frolicId, title, dateLine, caption, heroKey, place, fundLine, going, photos }`.
 - `photos` are server URLs oldest first with a generated caption each, and stay hidden from you while the frolic is still happening until you add your own snap. Once it is `done`, every photo is visible to the crew.
