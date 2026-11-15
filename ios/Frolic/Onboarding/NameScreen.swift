@@ -11,16 +11,6 @@ struct NameScreen: View {
                 title: "What do your friends call you?",
                 identifier: "name.title"
             )
-            if let failure = model.failure {
-                OnboardingStateCard(
-                    title: failure.title,
-                    detail: failure.detail,
-                    actionTitle: failure.canRetry ? "Try again" : nil,
-                    onAction: { Task { await model.submitName() } },
-                    identifier: "state.error"
-                )
-                .padding(.top, 16)
-            }
             photoButton
                 .padding(.top, 24)
             nameField
@@ -29,22 +19,40 @@ struct NameScreen: View {
                 Text("Your crew sees your name and photo.")
                     .accessibilityIdentifier("name.foot")
                 Spacer(minLength: 8)
-                Text("\(model.firstName.count)/\(OnboardingModel.nameLimit)")
-                    .monospacedDigit()
-                    .accessibilityLabel("\(model.firstName.count) of \(OnboardingModel.nameLimit) characters")
-                    .accessibilityIdentifier("name.counter")
+                if model.showsCounter {
+                    Text("\(model.firstName.count)/\(OnboardingModel.nameLimit)")
+                        .monospacedDigit()
+                        .foregroundStyle(model.firstName.count >= OnboardingModel.nameLimit ? FrolicColor.ink : FrolicColor.secondaryText)
+                        .accessibilityLabel("\(model.firstName.count) of \(OnboardingModel.nameLimit) characters")
+                        .accessibilityIdentifier("name.counter")
+                        .transition(.opacity)
+                }
             }
             .frolicFont(.footnote)
             .foregroundStyle(FrolicColor.secondaryText)
             .padding(.top, 12)
             .padding(.horizontal, 4)
+            .animation(.easeOut(duration: 0.2), value: model.showsCounter)
         } bar: {
-            Button("Continue") {
-                Task { await model.submitName() }
+            VStack(spacing: 4) {
+                if let failure = model.failure {
+                    OnboardingNotice(
+                        title: failure.title,
+                        detail: failure.detail,
+                        actionTitle: failure.canRetry ? "Try again" : nil,
+                        onAction: { Task { await model.submitName() } }
+                    )
+                    .accessibilityIdentifier("state.error")
+                    .transition(.opacity)
+                }
+                Button("Continue") {
+                    Task { await model.submitName() }
+                }
+                .buttonStyle(.frolicPrimary)
+                .disabled(trimmed.isEmpty || model.isSubmitting)
+                .accessibilityIdentifier("name.continue")
             }
-            .buttonStyle(.frolicPrimary)
-            .disabled(trimmed.isEmpty || model.isSubmitting)
-            .accessibilityIdentifier("name.continue")
+            .animation(.easeOut(duration: 0.2), value: model.failure)
         }
         .sheet(isPresented: $model.showsPhotoSheet) {
             PhotoSheet(model: model)

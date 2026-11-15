@@ -89,6 +89,45 @@ struct OnboardingStateCard: View {
     }
 }
 
+struct OnboardingNotice: View {
+    var title: String
+    var detail: String
+    var actionTitle: String?
+    var onAction: (() -> Void)?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(FlowerColor.marigold.deep)
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .frolicFont(.bodyEmphasis)
+                    .foregroundStyle(FrolicColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(detail)
+                    .frolicFont(.footnote)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            if let actionTitle, let onAction {
+                Button(actionTitle, action: onAction)
+                    .buttonStyle(.frolicText)
+                    .frame(minHeight: 44)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct OnboardingSpinner: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var spinning = false
