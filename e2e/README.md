@@ -74,6 +74,12 @@ Checks every flow against Revyl's schema (unknown keys, block fields per type, m
 
 Run it before pushing a flow. It installs `yaml` into `~/.capy/work/deps` the first time and touches nothing in the repo.
 
+## The reveal race
+
+    REVEAL_RACES=10 node e2e/tools/reveal-race.mjs
+
+Proves the reveal on the shared deployment with no phone in the loop. Each race seeds a fresh crew, places two taps through a warm-socket barrier so they land inside the same 100ms, then reads the app's own queries with every member's device token. It exits non zero unless every race shows one reveal record per committed phone, one `revealAt` shared by the attendee rows and by both clients' reads, no second reveal when `advance` is called twice, and no tap, only-if, reveal, ETA or snap readable before `revealAt`. It closes with one straggler crew whose third tap lands 400ms into the 1500ms delay, to prove the instant does not move. It reads `E2E_URL`, `E2E_SECRET` and `SHARED_CONVEX_URL`, uses only runs named `p1reveal*`, and resets every run at the end.
+
 ## Naming
 
 - File and `metadata.name` agree: `NN-screen.yaml` and `frolic-<screen>`. Numbers are the mock's reading order, and a letter suffix (`05b`) is another state of the same screen.
