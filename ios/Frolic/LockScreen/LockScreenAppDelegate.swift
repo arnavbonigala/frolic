@@ -96,6 +96,7 @@ enum LockScreenDemo {
         let state = parts.count > 1 ? parts[1] : nil
         switch screen {
         case "drop":
+            if await NotificationPermission.needsAsk() { await NotificationPermission.request() }
             let live = query["live"] == "1" ? LockScreenStore.snapshot : nil
             let sunset = live.flatMap { DropNotifications.sunsetDate(on: .now, lat: $0.placeLat, lng: $0.placeLng) }
                 ?? Calendar.current.date(bySettingHour: 16, minute: 58, second: 0, of: .now)
