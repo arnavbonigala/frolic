@@ -9,6 +9,7 @@ struct GardenBed: View {
 
     @ScaledMetric(relativeTo: .title3) private var countSize: CGFloat = 20
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
+    @ScaledMetric(relativeTo: .title3) private var bedHeight: CGFloat = 200
 
     init(count: Int, caption: String) {
         self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
@@ -52,18 +53,21 @@ struct GardenBed: View {
                 Text(countLine)
                     .font(.system(size: countSize, weight: .heavy, design: .rounded))
                     .foregroundStyle(FrolicColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("garden.count")
                 Text(sinceLine)
                     .font(.system(size: captionSize, weight: .medium))
                     .foregroundStyle(FrolicColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.leading, 16)
+            .padding(.trailing, 16)
             .padding(.top, 14)
         }
-        .frame(height: 200)
+        .frame(height: bedHeight)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
-        .accessibilityElement(children: .contain)
+        .accessibilityElement(children: .combine)
     }
 }
 

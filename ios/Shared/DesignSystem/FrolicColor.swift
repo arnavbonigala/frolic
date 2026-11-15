@@ -15,7 +15,7 @@ extension Color {
 enum FrolicColor {
     static let ink = Color(hex: 0x23180F)
     static let secondaryText = Color(hex: 0x6B5F55)
-    static let tertiaryText = Color(hex: 0x8F8379)
+    static let tertiaryText = Color(hex: 0x74685D)
     static let chipText = Color(hex: 0x4F443A)
     static let placeholderText = Color(hex: 0xA2978C)
     static let cream = Color(hex: 0xFFF8EC)

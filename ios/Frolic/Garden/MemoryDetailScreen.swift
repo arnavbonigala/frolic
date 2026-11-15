@@ -13,6 +13,12 @@ struct MemoryDetailScreen: View {
     @State private var pickedPhoto: PhotosPickerItem?
     @State private var uploading = false
 
+    @ScaledMetric(relativeTo: .callout) private var placeSize: CGFloat = 16
+    @ScaledMetric(relativeTo: .footnote) private var addTileWidth: CGFloat = 130
+    @ScaledMetric(relativeTo: .footnote) private var addTileHeight: CGFloat = 160
+    @ScaledMetric(relativeTo: .title2) private var addIconSize: CGFloat = 22
+    @ScaledMetric(relativeTo: .footnote) private var addLabelSize: CGFloat = 13
+
     private var shown: ScreenPhase { router.resolve(store.memoryPhase, isOnline: connectivity.isOnline) }
 
     private var memory: GardenMemory? { store.memory?.frolicId == row.frolicId ? store.memory : nil }
@@ -135,9 +141,8 @@ struct MemoryDetailScreen: View {
             }
             Spacer(minLength: 0)
         }
-        .frame(height: 96)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Went: \(memory.namesLine)")
     }
 
@@ -148,8 +153,9 @@ struct MemoryDetailScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     if let place = memory.place {
                         Text(place.name)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: placeSize, weight: .semibold))
                             .foregroundStyle(FrolicColor.ink)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     if let caption = memory.caption, !caption.isEmpty {
                         Text(GardenSentence.from(caption))
@@ -192,18 +198,19 @@ struct MemoryDetailScreen: View {
                                 ProgressView().tint(FrolicColor.ink)
                             } else {
                                 Image(systemName: "plus")
-                                    .font(.system(size: 22, weight: .bold))
+                                    .font(.system(size: addIconSize, weight: .bold))
                             }
                             Text("Add your photo")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.system(size: addLabelSize, weight: .semibold))
+                                .multilineTextAlignment(.center)
                         }
                         .foregroundStyle(FrolicColor.ink)
-                        .frame(width: 130, height: 160)
+                        .frame(width: addTileWidth, height: addTileHeight)
                         .background(FrolicColor.chip, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .disabled(uploading)
                     .accessibilityIdentifier("memory.addPhoto")
-                    .accessibilityLabel("Add your photo")
+                    .accessibilityLabel(uploading ? "Adding your photo" : "Add your photo")
                 }
                 ForEach(memory.photos) { photo in
                     GardenRemoteImage(url: photo.url, heroKey: photo.heroKey ?? memory.heroKey)

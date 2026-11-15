@@ -84,6 +84,10 @@ struct GardenCollectionShelf: View {
 private struct GardenVarietyCard: View {
     var variety: GardenVariety
 
+    @ScaledMetric(relativeTo: .footnote) private var cardWidth: CGFloat = 128
+    @ScaledMetric(relativeTo: .body) private var cardMinHeight: CGFloat = 150
+    @ScaledMetric(relativeTo: .footnote) private var nameSize: CGFloat = 14
+
     var body: some View {
         VStack(spacing: 6) {
             FlowerView(color: variety.color, radius: 20, stem: 18)
@@ -91,9 +95,10 @@ private struct GardenVarietyCard: View {
                 .opacity(variety.unlocked ? 1 : 0.28)
                 .accessibilityHidden(true)
             Text(variety.name)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: nameSize, weight: .semibold))
                 .foregroundStyle(variety.unlocked ? FrolicColor.ink : FrolicColor.secondaryText)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text(detail)
                 .frolicFont(.flowerName)
                 .foregroundStyle(FrolicColor.secondaryText)
@@ -101,22 +106,31 @@ private struct GardenVarietyCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .frame(width: 128)
-        .frame(minHeight: 150, alignment: .top)
+        .frame(width: cardWidth)
+        .frame(minHeight: cardMinHeight, alignment: .top)
         .background(FrolicColor.paper.opacity(variety.unlocked ? 1 : 0.6), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(variety.name), \(variety.unlocked ? "grown \(variety.flowerCount)" : "locked. \(variety.hint ?? "")")")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
     }
 
     private var detail: String {
         if variety.unlocked { return variety.flowerCount == 1 ? "1 grown" : "\(variety.flowerCount) grown" }
         return variety.hint ?? ""
     }
+
+    private var spoken: String {
+        if variety.unlocked { return "\(variety.name), \(detail)" }
+        guard let hint = variety.hint, !hint.isEmpty else { return "\(variety.name), locked" }
+        return "\(variety.name), locked. \(hint)"
+    }
 }
 
 struct GardenOnThisDayCard: View {
     var card: GardenOnThisDay
+
+    @ScaledMetric(relativeTo: .caption2) private var dateSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .callout) private var titleSize: CGFloat = 16
 
     var body: some View {
         HStack(spacing: 12) {
@@ -133,13 +147,14 @@ struct GardenOnThisDayCard: View {
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(card.dateLine ?? "On this day")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: dateSize, weight: .bold))
                     .tracking(0.3)
                     .foregroundStyle(FrolicColor.tertiaryText)
                 if let title = card.title {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: titleSize, weight: .semibold))
                         .foregroundStyle(FrolicColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if let line = card.line {
                     Text(line)

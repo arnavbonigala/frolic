@@ -65,8 +65,9 @@ struct FlowerView: View {
                 Text(person.name)
                     .frolicFont(.flowerName)
                     .foregroundStyle(state == .bud ? FrolicColor.ink : FrolicColor.secondaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                    .multilineTextAlignment(.center)
             }
         }
         .rotationEffect(.degrees(sways ? lean : 0), anchor: .bottom)

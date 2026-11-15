@@ -5,6 +5,9 @@ struct GardenSemesterLine: View {
     var places: Int
     var friends: Int
 
+    @ScaledMetric(relativeTo: .caption2) private var eyebrowSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .title3) private var totalSize: CGFloat = 20
+
     private var parts: [String] {
         [
             frolics > 0 ? (frolics == 1 ? "1 frolic" : "\(frolics) frolics") : nil,
@@ -17,16 +20,17 @@ struct GardenSemesterLine: View {
         if frolics > 0 {
             VStack(alignment: .leading, spacing: 2) {
                 Text("This semester")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: eyebrowSize, weight: .bold))
                     .tracking(0.3)
                     .foregroundStyle(FrolicColor.tertiaryText)
                 Text(parts.joined(separator: ", "))
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .font(.system(size: totalSize, weight: .heavy, design: .rounded))
                     .foregroundStyle(FrolicColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("This semester, \(parts.joined(separator: ", "))")
             .accessibilityIdentifier("garden.semester")
         }
     }

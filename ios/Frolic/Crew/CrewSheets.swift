@@ -49,8 +49,9 @@ struct CrewFreeSheet: View {
                             Text(option.title)
                                 .frolicFont(.bodyEmphasis)
                                 .foregroundStyle(FrolicColor.ink)
+                                .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
-                            if option.kind == .busy ? isBusy : current == option.title {
+                            if isChosen(option) {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(FrolicColor.free)
@@ -68,6 +69,7 @@ struct CrewFreeSheet: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(isChosen(option) ? .isSelected : [])
                     .accessibilityIdentifier(option.identifier)
                 }
             }
@@ -86,6 +88,10 @@ struct CrewFreeSheet: View {
                 .padding(.top, 16)
                 .accessibilityIdentifier("free.sheet.done")
         }
+    }
+
+    private func isChosen(_ option: CrewFreeOption) -> Bool {
+        option.kind == .busy ? isBusy : current == option.title
     }
 }
 
