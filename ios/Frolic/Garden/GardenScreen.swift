@@ -72,6 +72,8 @@ struct GardenScreen: View {
 
     private func ready(_ overview: GardenOverview) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            GardenSemesterLine(frolics: overview.semester(me: store.myUserId).frolics, places: overview.semester(me: store.myUserId).places, friends: overview.semester(me: store.myUserId).friends)
+                .padding(.top, 16)
             if let card = store.onThisDay {
                 GardenOnThisDayCard(card: card)
                     .padding(.top, 16)
