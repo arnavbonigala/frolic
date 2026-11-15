@@ -113,6 +113,11 @@ struct GardenOverview: Codable, Hashable {
     }
 
     var isEmpty: Bool { memories.isEmpty }
+
+    func yourFlower(me: String?) -> GardenPerson? {
+        guard let me else { return nil }
+        return memories.compactMap { row in row.going.first { $0.userId == me } }.first
+    }
 }
 
 struct GardenPlace: Decodable, Hashable {

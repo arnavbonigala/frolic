@@ -3,7 +3,7 @@ import SwiftUI
 struct GardenBed: View {
     var countLine: String
     var sinceLine: String
-    var yourFlower: Bool
+    var you: GardenPerson?
     var colors: [FlowerColor] = []
     var health: GardenHealthState = .fine
 
@@ -11,18 +11,24 @@ struct GardenBed: View {
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
 
     init(count: Int, caption: String) {
-        self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
+        self.init(countLine: "\(count) frolics", sinceLine: caption, you: nil, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
     }
 
-    init(countLine: String, sinceLine: String, yourFlower: Bool, colors: [FlowerColor], health: GardenHealthState = .fine) {
+    init(countLine: String, sinceLine: String, you: GardenPerson?, colors: [FlowerColor], health: GardenHealthState = .fine) {
         self.health = health
         self.countLine = countLine
         self.sinceLine = sinceLine
-        self.yourFlower = yourFlower
+        self.you = you
         self.colors = colors
     }
 
     private let stems: [CGFloat] = [30, 52, 40, 64, 36, 58, 44, 70, 32, 50, 42, 60]
+
+    private var meadow: [FlowerColor] { Array(colors.suffix(11)) }
+
+    private func droop(_ index: Int) -> Double {
+        health.droop * (index.isMultiple(of: 2) ? 1 : -1) * (0.6 + Double(index % 3) * 0.25)
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -37,11 +43,18 @@ struct GardenBed: View {
                 endPoint: .bottom
             )
             HStack(alignment: .bottom, spacing: -10) {
-                ForEach(colors.indices, id: \.self) { index in
-                    FlowerView(color: colors[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
+                ForEach(Array(meadow.enumerated()), id: \.offset) { index, color in
+                    FlowerView(color: color, radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
                         .scaleEffect(health.flowerScale, anchor: .bottom)
                         .saturation(health.saturation)
-                        .rotationEffect(.degrees(health.droop * (index.isMultiple(of: 2) ? 1 : -1) * (0.6 + Double(index % 3) * 0.25)), anchor: .bottom)
+                        .rotationEffect(.degrees(droop(index)), anchor: .bottom)
+                }
+                if let you {
+                    GardenFlower(person: you, color: you.color, radius: 20, stem: 74)
+                        .scaleEffect(health.flowerScale, anchor: .bottom)
+                        .saturation(health.saturation)
+                        .rotationEffect(.degrees(droop(meadow.count)), anchor: .bottom)
+                        .offset(y: 3)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)

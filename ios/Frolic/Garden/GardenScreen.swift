@@ -79,7 +79,7 @@ struct GardenScreen: View {
                 GardenOnThisDayCard(card: card)
                     .padding(.top, 16)
             }
-            GardenBed(countLine: overview.countLine, sinceLine: overview.cleanSinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { row in row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
+            GardenBed(countLine: overview.countLine, sinceLine: overview.cleanSinceLine, you: overview.yourFlower(me: store.myUserId), colors: overview.memories.prefix(14).reversed().map { row in row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
                 .padding(.top, 16)
             if let health = overview.health {
                 GardenHealthRow(health: health) {
