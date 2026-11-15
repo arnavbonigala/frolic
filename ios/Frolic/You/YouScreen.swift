@@ -184,6 +184,10 @@ private struct YouContent: View {
         }
     }
 
+    private var hasWent: Bool {
+        (model.wentCount ?? 0) > 0
+    }
+
     private var card: some View {
         FrolicCard {
             HStack(spacing: 12) {
@@ -200,7 +204,7 @@ private struct YouContent: View {
                         }
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Your first frolic")
+                        Text((model.wentCount ?? 1) <= 1 ? "Your first frolic" : "Today's frolic")
                             .font(.system(size: cardTitleSize, weight: .semibold))
                             .foregroundStyle(FrolicColor.ink)
                         Text(model.card.friendLine)
@@ -217,10 +221,10 @@ private struct YouContent: View {
                         state: .bud
                     )
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("No frolics yet")
+                        Text(hasWent ? "Your flower is growing" : "No frolics yet")
                             .font(.system(size: cardTitleSize, weight: .semibold))
                             .foregroundStyle(FrolicColor.ink)
-                        Text("Your first flower grows the first time you go.")
+                        Text(hasWent ? "It blooms again the next time you go." : "Your first flower grows the first time you go.")
                             .frolicFont(.subheadline)
                             .foregroundStyle(FrolicColor.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
