@@ -32,6 +32,7 @@ struct RootView: View {
             }
         }
         .tint(FrolicColor.ink)
+        .overlay(alignment: .bottom) { TabAccessibilityOverlay() }
         .accessibilityIdentifier("app.root")
         #if DEBUG || E2E
         .sheet(isPresented: $router.showsGallery) {
