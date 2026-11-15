@@ -180,15 +180,22 @@ type TapWrite = {
   window?: { start: number; end: number };
 };
 
+export function tapErrorAnswer(data: { code?: string; kind?: string } | undefined) {
+  if (data?.code === "CLOSED") return closedAnswer;
+  if (data?.code === "BAD_ONLY_IF") return unclearAnswer;
+  if (data?.code === "BAD_WINDOW") return timeUnclearAnswer;
+  if (data?.kind === "RateLimited") return slowDownAnswer;
+  return null;
+}
+
 async function writeTap(ctx: MutationCtx, input: TapWrite) {
   try {
     await ctx.runMutation(tapAs, { ...input, source: "imessage" });
     return null;
   } catch (error) {
     if (error instanceof ConvexError) {
-      const data = error.data as { code?: string; kind?: string } | undefined;
-      if (data?.code === "CLOSED") return closedAnswer;
-      if (data?.kind === "RateLimited") return slowDownAnswer;
+      const answer = tapErrorAnswer(error.data as { code?: string; kind?: string } | undefined);
+      if (answer) return answer;
     }
     throw error;
   }
@@ -287,6 +294,9 @@ async function revealedAttendee(ctx: QueryCtx, me: Who, now: number) {
   if (!going.some((a) => a.userId === me.user._id)) return null;
   return frolic;
 }
+
+const unclearAnswer = { ok: false, error: "names_unclear", say: "Ask which friend they mean. Nothing was saved." };
+const timeUnclearAnswer = { ok: false, error: "time_unclear", say: "Ask for a time like 7 or 7:30. Nothing was saved." };
 
 const notGoing = { ok: false, error: "not_on", say: "This only works once a plan is on and they're in it." };
 
@@ -441,7 +451,17 @@ export const joinCrew = internalMutation({
       .query("users")
       .withIndex("by_phone", (q) => q.eq("phone", phone))
       .first();
-    const userId = existing?._id ?? (await ctx.runMutation(createUserAs, { name: cleanName, phone }));
+    let userId = existing?._id;
+    if (!userId) {
+      const appTwin = (await crewMembers(ctx, invite.groupId)).filter(
+        (m) => !m.phone && firstName(m.name).toLowerCase() === cleanName.split(/\s+/)[0].toLowerCase(),
+      );
+      if (appTwin.length === 1) {
+        userId = appTwin[0]._id;
+        await ctx.db.patch("users", userId, { phone });
+      }
+    }
+    if (!userId) userId = await ctx.runMutation(createUserAs, { name: cleanName, phone });
     const member = await ctx.db
       .query("memberships")
       .withIndex("by_groupId_and_userId", (q) => q.eq("groupId", invite.groupId).eq("userId", userId))

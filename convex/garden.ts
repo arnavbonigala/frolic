@@ -1,17 +1,16 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
-import { query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { templateCopy } from "./ai/copy";
+import { heroKeyOf } from "./lib/heroArt";
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
 import { decodeTasteLine } from "./memory/read";
 import { templateTaste } from "./memory/taste";
-import { HERO_KEYS, PLACE_BY_SLUG, heroKeyFor } from "./places/data";
-import { dateLabel, localParts } from "./plans/time";
 import { flowerColor } from "./schema";
 
-const heroKeyValue = v.union(...HERO_KEYS.map((k) => v.literal(k)), v.null());
+const MAX_MEMORIES = 30;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const person = v.object({
   userId: v.id("users"),
@@ -20,50 +19,107 @@ const person = v.object({
   photoUrl: v.union(v.string(), v.null()),
 });
 
-const MAX_MEMORIES = 30;
+const memoryCard = v.object({
+  frolicId: v.id("frolics"),
+  title: v.string(),
+  dateLine: v.string(),
+  heroKey: v.union(v.string(), v.null()),
+  photoUrl: v.union(v.string(), v.null()),
+  youWent: v.boolean(),
+  going: v.array(person),
+});
 
-async function placeFor(ctx: QueryCtx, frolic: Doc<"frolics">) {
-  const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
-  const place = plan ? await ctx.db.get("places", plan.placeId) : null;
-  const known = place ? PLACE_BY_SLUG.get(place.slug) : undefined;
-  return { plan, place, heroKey: known ? heroKeyFor(known) : place ? ("plan-free-stuff" as const) : null };
-}
-
-async function goingPeople(ctx: QueryCtx, frolic: Doc<"frolics">, viewer: Id<"users">) {
-  const attendees = await ctx.db
-    .query("attendees")
-    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
-    .take(100);
-  const people = [];
-  let viewerWent = false;
-  for (const a of attendees) {
-    if (a.status !== "going") continue;
-    if (a.userId === viewer) {
-      viewerWent = true;
-      continue;
-    }
-    const user = await ctx.db.get("users", a.userId);
-    const membership = await ctx.db
-      .query("memberships")
-      .withIndex("by_groupId_and_userId", (q) => q.eq("groupId", frolic.groupId).eq("userId", a.userId))
-      .unique();
-    if (!user || !membership) continue;
-    people.push({ userId: user._id, name: user.name, color: membership.color, photoUrl: await photoUrlOf(ctx, user) });
+function dayIn(timezone: string, at: number): string {
+  const options = { year: "numeric", month: "2-digit", day: "2-digit" } as const;
+  try {
+    return new Intl.DateTimeFormat("en-CA", { ...options, timeZone: timezone }).format(at);
+  } catch {
+    return new Intl.DateTimeFormat("en-CA", { ...options, timeZone: "America/Los_Angeles" }).format(at);
   }
-  return { people, viewerWent };
 }
 
-function dateLine(frolic: Doc<"frolics">): string {
-  const today = localParts(Date.now()).day;
-  return frolic.day === today ? "Today" : dateLabel(frolic.day);
+function dateLineFor(day: string, timezone: string, now: number): string {
+  if (day === dayIn(timezone, now)) return "Today";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return day;
+  return `${MONTHS[Number(match[2]) - 1]} ${Number(match[3])}`;
 }
 
-async function fundLineFor(ctx: QueryCtx, frolicId: Id<"frolics">): Promise<string | null> {
-  const entries = await ctx.db.query("fundLedger").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(50);
-  const cents = entries.filter((e) => e.entry === "payout").reduce((sum, e) => sum + Math.abs(e.amountCents), 0);
-  if (cents === 0) return null;
-  const dollars = "$" + (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
-  return "The Frolic Fund covered " + dollars + " of this one.";
+function captionFor(placeName: string, day: string, people: number): string {
+  const copy = templateCopy({ kind: "gardenCaption", placeName, date: day, people, memory: null });
+  return copy.kind === "gardenCaption" ? copy.text : "";
+}
+
+function dollars(cents: number): string {
+  const value = Math.abs(cents) / 100;
+  return Number.isInteger(value) ? `$${value}` : `$${value.toFixed(2)}`;
+}
+
+type MemoryRow = {
+  frolic: Doc<"frolics">;
+  plan: Doc<"plans"> | null;
+  place: Doc<"places"> | null;
+  going: Doc<"attendees">[];
+  snaps: Doc<"snaps">[];
+  collage: Doc<"collages"> | null;
+};
+
+async function memoryRows(
+  ctx: QueryCtx,
+  groupId: Id<"groups">,
+): Promise<MemoryRow[]> {
+  const frolics = await ctx.db
+    .query("frolics")
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
+    .order("desc")
+    .take(60);
+  const rows: MemoryRow[] = [];
+  for (const frolic of frolics) {
+    if (frolic.status !== "on" && frolic.status !== "done") continue;
+    const attendees = await ctx.db
+      .query("attendees")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+      .take(50);
+    const going = attendees.filter((a) => a.status === "going");
+    if (going.length === 0) continue;
+    const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
+    const place = plan ? await ctx.db.get("places", plan.placeId) : null;
+    const snaps = await ctx.db
+      .query("snaps")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+      .take(50);
+    const collage = await ctx.db
+      .query("collages")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+      .first();
+    rows.push({ frolic, plan, place, going, snaps, collage });
+  }
+  rows.sort((a, b) => {
+    const left = a.frolic.startsAt ?? a.frolic.matchedAt ?? a.frolic._creationTime;
+    const right = b.frolic.startsAt ?? b.frolic.matchedAt ?? b.frolic._creationTime;
+    return right - left;
+  });
+  return rows.slice(0, MAX_MEMORIES);
+}
+
+async function people(
+  ctx: QueryCtx,
+  memberships: Doc<"memberships">[],
+  userIds: Id<"users">[],
+) {
+  const out = [];
+  for (const userId of userIds) {
+    const membership = memberships.find((m) => m.userId === userId);
+    const user = await ctx.db.get("users", userId);
+    if (!membership || !user) continue;
+    out.push({
+      userId,
+      name: user.name,
+      color: membership.color,
+      photoUrl: await photoUrlOf(ctx, user),
+    });
+  }
+  return out;
 }
 
 export const overview = query({
@@ -74,58 +130,87 @@ export const overview = query({
     count: v.number(),
     sinceLine: v.string(),
     weekLine: v.string(),
-    taste: v.object({ headline: v.string(), why: v.string() }),
+    taste: v.union(v.object({ headline: v.string(), why: v.string() }), v.null()),
     fund: v.union(v.object({ line: v.string(), frolicTitle: v.string() }), v.null()),
-    memories: v.array(
-      v.object({
-        frolicId: v.id("frolics"),
-        title: v.string(),
-        dateLine: v.string(),
-        heroKey: heroKeyValue,
-        photoUrl: v.union(v.string(), v.null()),
-        youWent: v.boolean(),
-        going: v.array(person),
-      }),
-    ),
+    memories: v.array(memoryCard),
   }),
-  handler: async (ctx, { deviceToken, groupId }) => {
-    const user = await userFromToken(ctx, deviceToken);
-    await requireMember(ctx, groupId, user._id);
-    const group = await ctx.db.get("groups", groupId);
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    await requireMember(ctx, args.groupId, user._id);
+    const group = await ctx.db.get("groups", args.groupId);
     if (!group) throw new ConvexError({ code: "NOT_FOUND", message: "This crew is gone" });
-    const rows = await ctx.db
-      .query("frolics")
-      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
-      .order("desc")
-      .take(MAX_MEMORIES * 2);
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
+      .take(100);
+    const rows = await memoryRows(ctx, args.groupId);
+    const now = Date.now();
+
     const memories = [];
+    let mine = 0;
     let fund: { line: string; frolicTitle: string } | null = null;
-    for (const frolic of rows) {
-      if (frolic.status !== "on" && frolic.status !== "done") continue;
-      const { people, viewerWent } = await goingPeople(ctx, frolic, user._id);
-      if (people.length === 0 && !viewerWent) continue;
-      const { plan, heroKey } = await placeFor(ctx, frolic);
-      const snap = await ctx.db.query("snaps").withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id)).first();
-      const photoUrl = snap ? await ctx.storage.getUrl(snap.storageId) : null;
-      const title = plan?.title ?? "A frolic";
+    for (const row of rows) {
+      const went = row.going.some((a) => a.userId === user._id);
+      if (went) mine++;
+      const newestSnap = row.snaps[row.snaps.length - 1];
+      const seen = row.frolic.status === "done" || row.snaps.some((s) => s.userId === user._id);
+      const photo = seen
+        ? newestSnap
+          ? await ctx.storage.getUrl(newestSnap.storageId)
+          : row.collage
+            ? await ctx.storage.getUrl(row.collage.storageId)
+            : null
+        : null;
+      memories.push({
+        frolicId: row.frolic._id,
+        title: row.plan?.title ?? "A frolic",
+        dateLine: dateLineFor(row.frolic.day, group.timezone, now),
+        heroKey: row.place ? heroKeyOf(row.place.slug) : null,
+        photoUrl: photo,
+        youWent: went,
+        going: await people(ctx, memberships, row.going.map((a) => a.userId)),
+      });
       if (!fund) {
-        const line = await fundLineFor(ctx, frolic._id);
-        if (line) fund = { line, frolicTitle: title };
+        const payout = await ctx.db
+          .query("fundLedger")
+          .withIndex("by_frolicId", (q) => q.eq("frolicId", row.frolic._id))
+          .take(20);
+        const covered = payout.find((entry) => entry.entry === "payout");
+        if (covered) {
+          fund = {
+            line: `The Frolic Fund covered ${dollars(covered.amountCents)} of this one.`,
+            frolicTitle: row.plan?.title ?? "A frolic",
+          };
+        }
       }
-      memories.push({ frolicId: frolic._id, title, dateLine: dateLine(frolic), heroKey, photoUrl, youWent: viewerWent, going: people });
-      if (memories.length === MAX_MEMORIES) break;
     }
-    const mine = memories.filter((m) => m.youWent).length;
-    const profile = await ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", groupId)).unique();
-    const stored = decodeTasteLine(profile?.card);
-    const line = stored ?? templateTaste(profile?.tags ?? [], []);
+
+    const tasteRow = await ctx.db
+      .query("tasteProfiles")
+      .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
+      .unique();
+    const stored = decodeTasteLine(tasteRow?.card);
+    const stats = await ctx.db
+      .query("memoryTagStats")
+      .withIndex("by_groupId_and_tag", (q) => q.eq("groupId", args.groupId))
+      .take(200);
+    const topTags = stats
+      .filter((s) => s.liked > 0)
+      .sort((a, b) => b.liked - a.liked)
+      .slice(0, 3)
+      .map((s) => s.tag);
+    const line = stored ?? templateTaste(topTags, []);
+    const taste = stored ? { headline: line.headline, why: line.why } : null;
+    const weekLine = line.why.charAt(0).toLowerCase() + line.why.slice(1);
+    const count = memories.length;
+
     return {
       groupName: group.name,
       youWent: mine > 0,
-      count: memories.length,
-      sinceLine: mine === 0 ? "all before you joined" : memories.length === mine ? mine + " with you" : memories.length - mine + " before you, " + mine + " with you",
-      weekLine: line.why.charAt(0).toLowerCase() + line.why.slice(1),
-      taste: { headline: line.headline, why: line.why },
+      count,
+      sinceLine: mine === 0 ? "all before you joined" : `${count - mine} before you, ${mine} with you`,
+      weekLine,
+      taste,
       fund,
       memories,
     };
@@ -139,41 +224,121 @@ export const memory = query({
     title: v.string(),
     dateLine: v.string(),
     caption: v.union(v.string(), v.null()),
-    heroKey: heroKeyValue,
-    place: v.union(v.object({ name: v.string(), heroKey: heroKeyValue }), v.null()),
+    heroKey: v.union(v.string(), v.null()),
+    place: v.union(v.object({ name: v.string(), heroKey: v.union(v.string(), v.null()) }), v.null()),
     fundLine: v.union(v.string(), v.null()),
     going: v.array(person),
     photos: v.array(v.object({ url: v.string(), caption: v.union(v.string(), v.null()) })),
   }),
-  handler: async (ctx, { deviceToken, frolicId }) => {
-    const user = await userFromToken(ctx, deviceToken);
-    const frolic = await ctx.db.get("frolics", frolicId);
-    if (!frolic) throw new ConvexError({ code: "NOT_FOUND", message: "That frolic is gone" });
-    const membership = await requireMember(ctx, frolic.groupId, user._id);
-    const { people, viewerWent } = await goingPeople(ctx, frolic, user._id);
-    const { plan, place, heroKey } = await placeFor(ctx, frolic);
-    const me = await ctx.db.get("users", user._id);
-    const going = viewerWent && me
-      ? [{ userId: me._id, name: "You", color: membership.color, photoUrl: await photoUrlOf(ctx, me) }, ...people]
-      : people;
-    const snaps = await ctx.db.query("snaps").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(20);
-    const photos = [];
-    for (const snap of snaps.sort((a, b) => a.takenAt - b.takenAt)) {
-      const url = await ctx.storage.getUrl(snap.storageId);
-      if (url) photos.push({ url, caption: null });
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    const frolic = await ctx.db.get("frolics", args.frolicId);
+    if (!frolic) throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
+    await requireMember(ctx, frolic.groupId, user._id);
+    const group = await ctx.db.get("groups", frolic.groupId);
+    if (!group) throw new ConvexError({ code: "NOT_FOUND", message: "This crew is gone" });
+    if (frolic.status === "faded") {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This frolic did not happen" });
     }
-    const placeName = place?.name ?? plan?.title ?? "the park";
-    const copy = templateCopy({ kind: "gardenCaption", placeName, date: frolic.day, people: going.length, memory: null });
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_groupId", (q) => q.eq("groupId", frolic.groupId))
+      .take(100);
+    const attendees = await ctx.db
+      .query("attendees")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+      .take(50);
+    const going = attendees.filter((a) => a.status === "going");
+    const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
+    const place = plan ? await ctx.db.get("places", plan.placeId) : null;
+    const snaps = await ctx.db
+      .query("snaps")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+      .order("asc")
+      .take(50);
+    const mineSnap = snaps.some((s) => s.userId === user._id);
+    const visible = frolic.status === "done" || mineSnap ? snaps : [];
+    const photos = [];
+    for (const snap of visible) {
+      const url = await ctx.storage.getUrl(snap.storageId);
+      if (url) {
+        photos.push({
+          url,
+          caption: snap.caption ?? captionFor(place?.name ?? "the park", frolic.day, going.length),
+        });
+      }
+    }
+    const payout = await ctx.db
+      .query("fundLedger")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+      .take(20);
+    const covered = payout.find((entry) => entry.entry === "payout");
     return {
-      frolicId,
+      frolicId: frolic._id,
       title: plan?.title ?? "A frolic",
-      dateLine: dateLine(frolic),
-      caption: copy.kind === "gardenCaption" ? copy.text : null,
-      heroKey,
-      place: place ? { name: place.name, heroKey } : null,
-      fundLine: await fundLineFor(ctx, frolicId),
-      going,
+      dateLine: dateLineFor(frolic.day, group.timezone, Date.now()),
+      caption: captionFor(place?.name ?? "the park", frolic.day, going.length),
+      heroKey: place ? heroKeyOf(place.slug) : null,
+      place: place ? { name: place.name, heroKey: heroKeyOf(place.slug) } : null,
+      fundLine: covered ? `The Frolic Fund covered ${dollars(covered.amountCents)} of this one.` : null,
+      going: await people(ctx, memberships, going.map((a) => a.userId)),
       photos,
     };
+  },
+});
+
+export const setMine = mutation({
+  args: {
+    deviceToken: v.string(),
+    frolicId: v.id("frolics"),
+    storageId: v.optional(v.id("_storage")),
+    caption: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    const frolic = await ctx.db.get("frolics", args.frolicId);
+    if (!frolic) throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
+    await requireMember(ctx, frolic.groupId, user._id);
+    if (frolic.status === "faded") {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This frolic did not happen" });
+    }
+    const attendee = await ctx.db
+      .query("attendees")
+      .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", args.frolicId).eq("userId", user._id))
+      .unique();
+    if (attendee?.status !== "going") {
+      throw new ConvexError({ code: "NOT_GOING", message: "Memories are for people who went" });
+    }
+    const caption = args.caption?.trim();
+    if (caption !== undefined && (caption.length === 0 || caption.length > 80 || /[\u2014!]/.test(caption))) {
+      throw new ConvexError({ code: "BAD_CAPTION", message: "Captions are short and calm, up to 80 characters" });
+    }
+    const existing = await ctx.db
+      .query("snaps")
+      .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", args.frolicId).eq("userId", user._id))
+      .take(20);
+    const mine = existing[existing.length - 1];
+    const now = Date.now();
+    if (mine) {
+      await ctx.db.patch("snaps", mine._id, {
+        ...(args.storageId !== undefined ? { storageId: args.storageId } : {}),
+        ...(caption !== undefined ? { caption } : {}),
+      });
+      return null;
+    }
+    if (args.storageId === undefined) {
+      throw new ConvexError({ code: "NO_PHOTO", message: "Add a photo first" });
+    }
+    await ctx.db.insert("snaps", {
+      frolicId: args.frolicId,
+      groupId: frolic.groupId,
+      userId: user._id,
+      storageId: args.storageId,
+      snapAt: frolic.snapAt ?? now,
+      takenAt: now,
+      caption,
+    });
+    return null;
   },
 });

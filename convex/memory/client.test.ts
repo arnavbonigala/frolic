@@ -21,6 +21,24 @@ describe("supermemory client", () => {
     expect(f).toHaveBeenCalledTimes(2);
   });
 
+  test("reads do not retry inline and every call carries a timeout signal", async () => {
+    const f = vi.fn().mockResolvedValue(new Response("no", { status: 503 }));
+    const c = createClient("k", f as unknown as typeof fetch, 2, async () => {});
+    await expect(c.search("n", { query: "q" })).rejects.toBeInstanceOf(SupermemoryError);
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(f.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    await expect(c.profile("n")).rejects.toBeInstanceOf(SupermemoryError);
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  test("a hung request is aborted by the read timeout", async () => {
+    const f = vi.fn((_u: string, init: RequestInit) => new Promise<Response>((_res, rej) => init.signal!.addEventListener("abort", () => rej(new Error("aborted")))));
+    const c = createClient("k", f as unknown as typeof fetch, 0, async () => {});
+    const started = Date.now();
+    await expect(c.search("n", { query: "q" })).rejects.toThrow("aborted");
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+
   test("does not retry a 400", async () => {
     const f = vi.fn().mockResolvedValue(new Response("bad", { status: 400 }));
     const c = createClient("k", f as unknown as typeof fetch, 2, async () => {});

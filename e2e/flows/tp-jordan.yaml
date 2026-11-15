@@ -10,7 +10,7 @@ test:
   build:
     name: "frolic-ios"
   device:
-    model: "iPhone 17 Pro"
+    model: "iPhone 17 Pro Max"
     orientation: "portrait"
   blocks:
     - type: "manual"

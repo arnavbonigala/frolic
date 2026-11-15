@@ -1,8 +1,10 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
+import { personalNamespace, planWrites } from "../memory/mapping";
+import { tapErrorAnswer } from "./tools";
 import type { Id } from "../_generated/dataModel";
-import { ANA_PHONE, SAM_PHONE, linkChat, linkPhone, nowFor, seedCrew } from "../../keiki/test/seed";
+import { ANA_PHONE, INVITE_CODE, SAM_PHONE, linkChat, linkPhone, nowFor, seedCrew } from "../../keiki/test/seed";
 import type { Seed, SeedOptions, T } from "../../keiki/test/seed";
 import {
   API_KEY,
@@ -33,6 +35,7 @@ import {
 } from "../../keiki/test/harness";
 
 const CHAT = "imsg:chat:abc";
+const MAYA_TEXT_PHONE = "+15105550107";
 const SECRET_LINE = "Nobody sees you're down unless they are too. That goes for you as well.";
 const SNAP = { url: "https://files.frolic.test/snap-1.jpg", mime_type: "image/jpeg", size: 300 };
 const VCARD = { url: "https://files.frolic.test/location-1.vcf", mime_type: "text/vcard", size: 120 };
@@ -326,6 +329,7 @@ describe("get_member", () => {
       crew: "Sunset Crew",
       friends: ["Maya", "Dev", "Ana"],
       paused: false,
+      crewTaste: { loves: [], keepsPassingOn: [] },
     });
   });
 
@@ -774,6 +778,26 @@ describe("remember", () => {
     expect(result.body).toEqual({ ok: true, remembered: "Maya hates hikes." });
   });
 
+  it("writes the note to the same personal memory the app uses", async () => {
+    const { t, seed } = await seeded();
+    await toolResult(t, "remember", { phone: SAM_PHONE, input: { text: "Sam is vegetarian." } });
+    const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ kind: "limit", userId: seed.samId, source: "imessage", payload: { text: "Sam is vegetarian." } });
+    const writes = planWrites(events[0].eventKey, { kind: events[0].kind, groupId: events[0].groupId, userId: events[0].userId, payload: events[0].payload });
+    expect(writes.writes.map((w) => w.namespace)).toEqual([personalNamespace(seed.samId)]);
+  });
+
+  it("records an iMessage pass as a personal skip in the same namespace", async () => {
+    const { t, seed } = await seeded();
+    await toolResult(t, "tap_pass", { phone: SAM_PHONE });
+    const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
+    const skip = events.find((e) => e.kind === "skip");
+    expect(skip).toMatchObject({ userId: seed.samId, source: "imessage" });
+    const writes = planWrites(skip!.eventKey, { kind: skip!.kind, groupId: skip!.groupId, userId: skip!.userId, payload: skip!.payload });
+    expect(writes.writes.map((w) => w.namespace)).toEqual([personalNamespace(seed.samId)]);
+  });
+
   it("refuses an empty note", async () => {
     const { t } = await seeded();
     const result = await toolResult(t, "remember", { phone: SAM_PHONE, input: { text: "   " } });
@@ -887,5 +911,64 @@ describe("signed access", () => {
 
   it("keeps the map link fixture the check-in test reads", () => {
     expect(INDIAN_ROCK_MAP_LINK).toContain("37.8925,-122.2717");
+  });
+});
+
+describe("which frolic a texter sees", () => {
+  it("keeps today's open plan when a later day is seeded closed", async () => {
+    const { t, seed } = await seeded();
+    const laterId = await t.run(async (ctx) =>
+      ctx.db.insert("frolics", {
+        groupId: seed.groupId,
+        day: "2026-11-17",
+        kind: "daily",
+        planId: seed.planId,
+        status: "faded",
+        window: { start: seed.now + 86_400_000, end: seed.now + 90_000_000 },
+        durationMinutes: 60,
+        deadline: seed.now + 88_000_000,
+      }),
+    );
+    const before = await toolResult(t, "get_today", { phone: SAM_PHONE });
+    expect(before.body.plan.title).toBe("Sunset at Indian Rock");
+
+    await patchFrolic(t, laterId, { status: "open" });
+    const after = await toolResult(t, "get_today", { phone: SAM_PHONE });
+    expect(after.status).toBe(200);
+    expect(after.body.ok).toBe(true);
+  });
+
+  it("prefers a revealed plan over an older open one", async () => {
+    const { t, seed } = await seeded();
+    await patchFrolic(t, seed.frolicId, { status: "on", revealAt: seed.now - 1000, bloomAt: seed.now - 1000 });
+    const result = await toolResult(t, "get_today", { phone: SAM_PHONE });
+    expect(result.body.phase).toBe("on");
+  });
+});
+
+describe("tap refusals", () => {
+  it("answers a which-friend question for a name outside the crew and a bad window", () => {
+    expect(tapErrorAnswer({ code: "BAD_ONLY_IF" })).toEqual({ ok: false, error: "names_unclear", say: "Ask which friend they mean. Nothing was saved." });
+    expect(tapErrorAnswer({ code: "BAD_WINDOW" })).toEqual({ ok: false, error: "time_unclear", say: "Ask for a time like 7 or 7:30. Nothing was saved." });
+    expect(tapErrorAnswer({ code: "CLOSED" })?.error).toBe("closed");
+    expect(tapErrorAnswer({ kind: "RateLimited" })?.error).toBe("slow_down");
+    expect(tapErrorAnswer({ code: "SOMETHING_ELSE" })).toBeNull();
+  });
+});
+
+describe("joining by text", () => {
+  it("links the app twin instead of adding a second person with the same name", async () => {
+    const { t, seed } = await seeded({ samJoins: false });
+    const before = await t.run(async (ctx) => (await ctx.db.get("users", seed.mayaId))!.phone);
+    expect(before ?? null).toBeNull();
+    const result = await toolResult(t, "join_crew", { phone: MAYA_TEXT_PHONE, input: { invite_code: INVITE_CODE, first_name: "Maya" } });
+    expect(result.body.ok).toBe(true);
+    const after = await t.run(async (ctx) => (await ctx.db.get("users", seed.mayaId))!.phone);
+    expect(after).toBe(MAYA_TEXT_PHONE);
+    const memberships = await t.run(async (ctx) => await ctx.db.query("memberships").withIndex("by_groupId", (q) => q.eq("groupId", seed.groupId)).take(20));
+    expect(memberships.filter((row) => row.userId === seed.mayaId)).toHaveLength(1);
+    expect(memberships).toHaveLength(4);
+    const link = await t.run(async (ctx) => await ctx.db.query("keikiLinks").withIndex("by_phone", (q) => q.eq("phone", MAYA_TEXT_PHONE)).unique());
+    expect(link?.userId).toBe(seed.mayaId);
   });
 });

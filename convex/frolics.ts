@@ -6,13 +6,9 @@ import { findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOut
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
 import { rateLimiter } from "./lib/rateLimits";
-import { HERO_KEYS, PLACE_BY_SLUG, heroKeyFor } from "./places/data";
+import { heroKeyOf } from "./lib/heroArt";
+import { HERO_KEYS } from "./places/data";
 import { timeWindow } from "./schema";
-
-function heroKeyOf(slug: string) {
-  const seeded = PLACE_BY_SLUG.get(slug);
-  return seeded ? heroKeyFor(seeded) : ("plan-free-stuff" as const);
-}
 
 export const open = internalMutation({
   args: {

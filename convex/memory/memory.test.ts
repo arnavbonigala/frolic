@@ -148,6 +148,14 @@ describe("ingest", () => {
     expect(await t.action(internal.memory.ingest.flushDue, {})).toBe(1);
   });
 
+  test("a check-in recorded without revealAt is held to now instead of failing the check-in", async () => {
+    const { t, maya, groupId } = await seed();
+    const r = await t.mutation(internal.memory.events.recordEvent, { eventKey: "ci:1", kind: "checkin", groupId, userId: maya, payload: { placeName: "Indian Rock" } });
+    expect(r.queued).toBe(true);
+    const row = await t.run((ctx) => ctx.db.get("memoryEvents", r.eventId));
+    expect(row!.revealAt).toBeDefined();
+  });
+
   test("a reveal without revealAt is refused", async () => {
     const { t, maya, groupId } = await seed();
     await expect(t.mutation(internal.memory.events.recordEvent, { eventKey: "r0", kind: "reveal", groupId, payload: { memberIds: [maya] } })).rejects.toThrow("needs revealAt");
@@ -185,9 +193,9 @@ describe("stats and context", () => {
       });
     });
     const skippers = skips >= 2 ? [ids.maya, ids.dev] : skips === 1 ? [ids.maya] : [];
-    await t.run(async (ctx) => {
-      for (const userId of skippers) await ctx.db.insert("taps", { frolicId, groupId: ids.groupId, userId, kind: "notToday", onlyIf: [], source: "app", updatedAt: 0 });
-    });
+    for (const userId of skippers) {
+      await t.mutation(internal.memory.events.recordEvent, { eventKey: "skip:" + day + ":" + userId, kind: "skip", groupId: ids.groupId, userId, frolicId, payload: { title: "Boba run", tags: ["boba"], day } });
+    }
     return t.mutation(internal.memory.stats.closeDay, { groupId: ids.groupId, day });
   }
 
@@ -245,6 +253,23 @@ describe("stats and context", () => {
     const c = await t.action(internal.memory.read.getMemoryContext, { groupId, day: "d" });
     expect(searches()).toBe(2);
     expect(c.likedTags).toEqual(["sunset"]);
+  });
+
+  test("a missing key or an outage falls back to the Convex counters and is not cached", async () => {
+    const { t, groupId } = await seed();
+    await t.run((ctx) => ctx.db.insert("memoryTagStats", { groupId, tag: "boba", liked: 0, skipped: 2, updatedAt: 0 }));
+    delete process.env.SUPERMEMORY_API_KEY;
+    const noKey = await t.action(internal.memory.read.getMemoryContext, { groupId, day: "d" });
+    expect(noKey.suppressed).toEqual(["boba"]);
+    expect(noKey.skipped).toEqual([{ tag: "boba", count: 2 }]);
+    process.env.SUPERMEMORY_API_KEY = "test";
+    fake.mode.fail = 503;
+    const outage = await t.action(internal.memory.read.getMemoryContext, { groupId, day: "d" });
+    expect(outage.suppressed).toEqual(["boba"]);
+    expect(await t.run((ctx) => ctx.db.query("memoryContextCache").collect())).toEqual([]);
+    fake.mode.fail = null;
+    await t.action(internal.memory.read.getMemoryContext, { groupId, day: "d" });
+    expect(await t.run((ctx) => ctx.db.query("memoryContextCache").collect())).toHaveLength(1);
   });
 
   test("whyThis cites a real stored night", async () => {
