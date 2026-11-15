@@ -52,6 +52,8 @@ export const whop = {
   createPayment: async (body: Record<string, unknown>, idempotencyKey: string) =>
     (await call("/payments", "POST", { body, idempotencyKey })) as WhopPayment,
   getPayment: async (id: string) => (await call(`/payments/${id}`, "GET", {})) as WhopPayment,
+  listPayments: async (params: Record<string, string>) =>
+    ((await call(`/payments?${new URLSearchParams(params).toString()}`, "GET", {})) as { data?: WhopPayment[] }).data ?? [],
   voidPayment: async (id: string, idempotencyKey: string) =>
     (await call(`/payments/${id}/void`, "POST", { body: {}, idempotencyKey })) as WhopPayment,
   capturePayment: async (id: string, idempotencyKey: string) =>
