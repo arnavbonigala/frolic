@@ -38,16 +38,24 @@ convex/            backend
   convex.config.ts Workflow, Presence and Rate Limiter components
   http.ts          HTTP router, calls one register function per lane
   crons.ts         cron router, calls the plan lane's register function
-  matcher.ts       the subset matcher and the reveal write
-  plans/           daily drop, place candidates, weather, the scorer
-  memory/          Supermemory ingest, privacy mapping, context, taste
-  whop/            payments, holds, the fund, the pay page, webhooks
+  lib/matcher.ts   the subset matcher, the rule the product is
+  taps.ts          the secret tap, and the match inside the same mutation
+  reveal.ts        one revealAt, written once, in the match transaction
+  frolics.ts       Today, hop in, bail and the fade
+  crew.ts          the crew tab, free status and the presence read
+  daily.ts         the day boundary and the memory day close
+  memory/          Supermemory client, privacy mapping, ingest, context, taste
+  e2e/             the secret-gated seed, reset and reveal-log routes
+  whop/            money hooks (stubs today), webhook router, pay page
   keiki/           inbound routes and the outbound hooks the matcher calls
-  web/             the invite and "I'm down" pages
+  web/             the invite and "I'm down" pages (routes land on a branch)
+  plans/           daily drop, place candidates, weather, the scorer (pending)
 ios/               the Xcode project, app, widget and Live Activity targets (pending, branch ios-foundation)
 web/               the web "I'm down" page assets (pending, branch web-im-down)
 e2e/               Revyl flows, the three-phone run, the barrier scripts
-design/            the interactive mock, images, app icon
+design/mock/       the interactive mock, every screen, the copy reference
+design/generated/  painted plan heroes, one per taste tag
+design/icon/       the app icon, light, dark and tinted, painted and vector
 docs/              the brief, the demo script and sponsor sheet, specs
 ```
 
@@ -102,8 +110,6 @@ Linux machines cannot build iOS. The build runs on Revyl's runners, from a Capy 
    revyl workflow run frolic-all --concurrency 5
    ```
 
-   `e2e/lint.sh` wraps that lint and then runs Revyl's own validator when the CLI is signed in, but its last line points at `e2e/lint.mjs` instead of `e2e/tools/lint.mjs`, so call the node command directly until that path is fixed.
-
 5. Put the phones to sleep the moment the run ends. `tools.capy.phone` with `sleep`, or `revyl device stop --all`. Cloud phones bill by the minute.
 
 The three phone run, with its seed, reset, barrier and evidence chain, is `e2e/three-phone-run.md`. Read it before touching those flows: it is the demo's proof and the only place that explains how three phones are released together.
@@ -114,7 +120,8 @@ Every iOS pull request carries a green Revyl build, a walkthrough on a cloud iPh
 
 Features that miss the bar today. Some are cut for time, some are blocked on an account, and each says which.
 
-- **A real Whop balance per group.** The Frolic Fund as designed is a Convex ledger with every credit traced to a `pay_` id. A subaccount per group plus `POST /transfers` would make the fund a real Whop balance. Blocked on identity verification on the Whop company, which also unlocks payouts and claim links.
+- **Any real money at all.** Frolic runs on the Whop sandbox only. The production key is gone from the project, so there is no live charge path, by choice: the sandbox proves the money logic without moving a dollar.
+- **A real Whop balance per group.** The Frolic Fund as designed is a Convex ledger with every credit traced to a `pay_` id. A subaccount per group plus `POST /transfers` would make the fund a real balance. Blocked on identity verification and on production access we deliberately do not have.
 - **The fund paying back whoever fronted the bill.** A claim link to the friend who bought the ice cream. Same verification gate as above.
 - **Saved cards and a hold with no sheet.** A setup intent at onboarding, then off session holds. Needs consent copy and a `requires_action` path that does not exist yet.
 - **Local businesses selling Frolic experiences.** One Berkeley shop as a subaccount, shares charged on it with an application fee. The business model on the last slide, not on the demo path.
