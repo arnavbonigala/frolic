@@ -227,12 +227,12 @@ final class YouModel {
         }
     }
 
-    func deleteAccount(backend: FrolicBackend) async {
+    func deleteAccount(backend: FrolicBackend) async -> Bool {
         accountPhase = .working
         let token = FrolicIdentity.shared.deviceToken
         guard let client = try? backend.requireClient() else {
             accountPhase = .failed
-            return
+            return false
         }
         let args: [String: ConvexEncodable?] = ["deviceToken": token]
         do {
@@ -244,10 +244,13 @@ final class YouModel {
             accountPhase = .idle
             YouPreferences.clearAll()
             FrolicIdentity.shared.signIn(deviceToken: Self.mintToken(), groupId: nil)
+            return true
         } catch is CancellationError {
             accountPhase = .idle
+            return false
         } catch {
             accountPhase = .failed
+            return false
         }
     }
 
@@ -272,6 +275,7 @@ final class YouModel {
         )
         do {
             for try await limits in publisher.values {
+                if savePhase == .saving || savePhase == .failed { continue }
                 apply(limits)
                 hasLoaded = true
                 loadPhase = .ready
@@ -279,7 +283,7 @@ final class YouModel {
         } catch is CancellationError {
             return
         } catch {
-            fail()
+            fail(error)
         }
     }
 
@@ -302,7 +306,7 @@ final class YouModel {
         } catch is CancellationError {
             return
         } catch {
-            fail()
+            fail(error)
         }
     }
 
@@ -403,8 +407,12 @@ final class YouModel {
         }
     }
 
-    private func fail() {
+    private func fail(_ error: Error) {
         guard !hasLoaded else { return }
+        if String(describing: error).contains("UNKNOWN_DEVICE") {
+            loadPhase = .empty
+            return
+        }
         loadPhase = .error("Check your connection and try again.")
     }
 

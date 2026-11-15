@@ -83,12 +83,6 @@ private struct YouContent: View {
         "Plans quietly fit everyone's limits. Nobody has to say \"I can't afford that.\""
     }
 
-    private var calendarNote: String {
-        model.readCalendar
-            ? "Frolic only shares \"free\" or \"busy,\" never what's on your calendar."
-            : "You'll pick when you're free from the pill on Today."
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -122,12 +116,6 @@ private struct YouContent: View {
             } else {
                 YouNote(text: limitsNote, identifier: "you.limitsNote")
             }
-            SectionHeader(title: "Free time")
-            freeTimeGroup
-            YouNote(
-                text: calendarNote,
-                identifier: model.readCalendar ? "you.calendarNote" : "you.calendarOffNote"
-            )
             SectionHeader(title: "What you're into")
                 .accessibilityIdentifier("you.taste")
             tasteSection
@@ -315,25 +303,6 @@ private struct YouContent: View {
                     .accessibilityValue(model.homeBy?.label ?? "Not set")
                     .accessibilityIdentifier("you.homeBy")
                 }
-            }
-        }
-    }
-
-    private var freeTimeGroup: some View {
-        FrolicGroup {
-            YouSettingRow(showsDivider: false) {
-                Toggle(isOn: Binding(
-                    get: { model.readCalendar },
-                    set: { model.setReadCalendar($0) }
-                )) {
-                    Text("Read my calendar")
-                        .frolicFont(.body)
-                        .foregroundStyle(FrolicColor.ink)
-                }
-                .toggleStyle(.switch)
-                .tint(FrolicColor.free)
-                .frame(minHeight: 44)
-                .accessibilityIdentifier("you.calendarSwitch")
             }
         }
     }

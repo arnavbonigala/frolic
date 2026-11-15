@@ -64,8 +64,7 @@ struct YouDeleteSheet: View {
 
     private func delete() {
         Task {
-            await model.deleteAccount(backend: backend)
-            if model.loadPhase == .empty {
+            if await model.deleteAccount(backend: backend) {
                 dismiss()
                 onDeleted()
             }
