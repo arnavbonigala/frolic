@@ -20,6 +20,8 @@ h1{font:800 30px/33px var(--r);letter-spacing:-.3px;margin:0}
 .pk h1{font-size:25px;line-height:29px}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .chip{height:30px;padding:0 11px;border-radius:999px;background:var(--chip);display:inline-flex;align-items:center;font:600 13px system-ui;color:#4F443A}
+.host{margin:10px 2px 0;font:400 13px/18px system-ui;color:var(--t2)}
+.host b{color:var(--ink);font-weight:600}
 .why{margin:10px 2px 0;font:400 13px/18px system-ui;color:var(--t2)}
 .why b{color:var(--ink);font-weight:600}
 .sub{font:400 15px/20px system-ui;color:var(--t2);margin:4px 0 0}
