@@ -8,11 +8,11 @@ struct CrewBloom: View {
     var animates = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var swayed = false
+    @State private var tilt: Double = -5
 
     private var width: CGFloat { radius * 2 + 8 }
     private var height: CGFloat { radius * 2 + stem + 4 }
-    private var sways: Bool { animates && !row.isFolded && !reduceMotion }
+    private var settles: Bool { animates && !reduceMotion }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -21,13 +21,11 @@ struct CrewBloom: View {
                 .position(x: width / 2, y: radius + 4)
         }
         .frame(width: width, height: height)
-        .rotationEffect(.degrees(sways ? (swayed ? 3 : -3) : 0), anchor: .bottom)
-        .saturation(row.isFolded ? 0.25 : 1)
-        .opacity(row.isFolded ? 0.6 : 1)
+        .rotationEffect(.degrees(settles ? tilt : 0), anchor: .bottom)
         .onAppear {
-            guard sways else { return }
-            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
-                swayed = true
+            guard settles else { return }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                tilt = 0
             }
         }
         .accessibilityHidden(true)
@@ -91,9 +89,10 @@ struct CrewBloom: View {
         }
         for layer in 0..<2 {
             let color = layer == 0 ? row.color.deep : row.color.petal
-            let rx = radius * (layer == 0 ? 0.34 : 0.3)
-            let ry = radius * (layer == 0 ? 0.5 : 0.46)
-            let lift = radius * (layer == 0 ? 0.56 : 0.58)
+            let closed: CGFloat = row.isFolded ? 0.78 : 1
+            let rx = radius * (layer == 0 ? 0.34 : 0.3) * closed
+            let ry = radius * (layer == 0 ? 0.5 : 0.46) * closed
+            let lift = radius * (layer == 0 ? 0.56 : 0.58) * closed
             let start = layer == 0 ? 22.5 : 0
             for i in 0..<8 {
                 var petal = context

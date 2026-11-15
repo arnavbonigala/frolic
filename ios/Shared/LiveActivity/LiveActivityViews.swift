@@ -34,7 +34,14 @@ struct ActivityCountdown: View {
     }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
+        VStack(alignment: .trailing, spacing: 0) {
+            if showsUnit {
+                Text(unit)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
             Group {
                 if let target, target > .now, !isStale {
                     LeaveCountdown(leaveAt: target)
@@ -46,12 +53,6 @@ struct ActivityCountdown: View {
             .foregroundStyle(FrolicColor.band)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
-            if showsUnit {
-                Text(unit)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineLimit(1)
-            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -137,8 +138,8 @@ struct LiveActivityLockScreenView: View {
                 }
                 .accessibilityElement(children: .combine)
                 Spacer(minLength: 8)
-                ActivityCountdown(state: state, isStale: isStale)
-                    .frame(maxWidth: 96, alignment: .trailing)
+                ActivityCountdown(state: state, isStale: isStale, numberSize: 34)
+                    .frame(width: 104, alignment: .trailing)
             }
             if state.stage != .arrived || !state.going.isEmpty {
                 HStack(spacing: 10) {
@@ -146,6 +147,7 @@ struct LiveActivityLockScreenView: View {
                     Spacer(minLength: 8)
                     ActivityAction(stage: state.stage)
                 }
+                .frame(minHeight: 44)
             }
         }
         .padding(.horizontal, 16)
