@@ -6,33 +6,34 @@ const ART = (key: string) => `/pay-art/${key}.webp`;
 
 const shell = (title: string, body: string, head = "") => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#FFF8EC">
+<meta name="theme-color" content="#12162A"><meta name="color-scheme" content="dark">
 <title>${esc(title)}</title>
 <style>
-:root{--ink:#23180F;--t2:#6B5F55;--cream:#FFF8EC;--sun:#FF6A2A;--green:#3DAA5C;--line:rgba(35,24,15,.09);--skel:rgba(35,24,15,.06)}
-*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:400 17px/1.4 -apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
-main{max-width:440px;margin:0 auto;padding:24px 20px calc(40px + env(safe-area-inset-bottom))}
-.label{font:700 12px ui-rounded,system-ui;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);margin:0}
-h1{font:800 28px/1.15 ui-rounded,"SF Pro Rounded",system-ui;margin:6px 0 4px}
-h2{font:800 24px/1.2 ui-rounded,"SF Pro Rounded",system-ui;margin:14px 0 6px}
-.sub{color:var(--t2);margin:0 0 18px}
-.card{background:#fff;border-radius:20px;padding:14px 16px;box-shadow:0 1px 0 var(--line)}
-.row{display:flex;justify-content:space-between;align-items:center;min-height:44px;font-weight:600;gap:12px}
+:root{--ink:#F6EBDD;--t2:#CDBFAE;--night:#12162A;--accent:#8EE3A8;--green:#34A160;--line:rgba(246,235,221,.12);--skel:rgba(246,235,221,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--night);color:var(--ink);font:400 17px/1.4 -apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+main{max-width:440px;margin:0 auto;padding:28px 20px calc(40px + env(safe-area-inset-bottom));text-align:center}
+.label{font:700 14px ui-rounded,system-ui;color:var(--accent);margin:0}
+h1{font:800 32px/1.12 "New York",ui-serif,Georgia,serif;margin:6px 0 6px}
+h2{font:800 26px/1.2 "New York",ui-serif,Georgia,serif;margin:14px 0 6px}
+.sub{color:var(--t2);margin:0 0 22px}
+.card{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 2px;text-align:left}
+.row{display:flex;justify-content:space-between;align-items:center;min-height:48px;font-weight:600;gap:12px}
 .row.fund{color:var(--t2);font-weight:500;font-size:15px;min-height:32px}
-.foot{color:var(--t2);font-size:14px;margin:12px 4px 0}
-#email,#payment,#branding{margin-top:12px}
+.foot{color:var(--t2);font-size:15px;margin:14px 4px 0}
+#email,#payment,#branding{margin-top:14px;text-align:left}
 #payment{min-height:96px}
 .skel{height:16px;border-radius:8px;background:var(--skel);margin:12px 0}
 .skel.tall{height:44px}
 @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
 #payment[data-loading="1"] .skel{animation:pulse 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){#payment[data-loading="1"] .skel{animation:none}}
-button{appearance:none;border:0;border-radius:999px;height:54px;width:100%;margin-top:16px;background:#000;color:#fff;font:600 19px system-ui;cursor:pointer}
-button[disabled]{opacity:.35;cursor:default}
-.err{color:#B3261E;font-size:15px;margin:10px 4px 0;min-height:20px}
+button{appearance:none;border:0;border-radius:999px;height:56px;width:100%;margin-top:18px;background:var(--green);color:#fff;font:600 19px ui-rounded,system-ui;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+button[disabled]{opacity:.4;cursor:default}
+.err{color:#FFB4AB;font-size:15px;margin:10px 4px 0;min-height:20px}
 .ok{display:flex;gap:12px;align-items:center}
-.art{display:block;margin:0 auto 6px;width:min(220px,58vw);height:auto}
-.art.small{width:min(168px,48vw)}
+.art{display:block;margin:0 auto 10px;width:min(180px,48vw);height:auto}
+.art.small{width:min(150px,42vw)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (prefers-reduced-motion:no-preference){button{transition:opacity .2s}}
 </style>${head}</head><body><main>${body}</main></body></html>`;
@@ -68,7 +69,9 @@ export function payPage(opts: {
   const figure =
     !hold && opts.fundCents > 0
       ? `<img class="art small" src="${ART("whop-fund-jar")}" width="640" height="554" alt="">`
-      : "";
+      : hold
+        ? `<img class="art small" src="${ART("whop-deposit-back")}" width="640" height="661" alt="">`
+        : "";
   const cfg = JSON.stringify({ token: opts.token, accountId: opts.accountId, amount: opts.amountCents, sandbox: opts.sandbox, done });
   const skeleton = `<div data-loading="1" aria-hidden="true"><div class="skel tall"></div><div class="skel"></div><div class="skel" style="width:62%"></div></div><p class="sr" role="status">Loading card entry.</p>`;
   const recovery = `
@@ -114,7 +117,7 @@ if (params.get("status") === "succeeded") finish();
 if (params.get("status") === "failed" || params.get("status") === "canceled") err.textContent = "That didn't go through. Try again.";
 if (!window.__frolic.live()) throw new Error("offline");
 try {
-  const whop = window.WhopElements(C.sandbox ? { environment: "sandbox" } : {});
+  const whop = window.WhopElements({ ...(C.sandbox ? { environment: "sandbox" } : {}), appearance: { theme: { appearance: "dark" } } });
   const payments = whop.payments.create({ accountId: C.accountId, currency: "usd", amount: C.amount, returnUrl: location.origin + location.pathname });
   payments.create("email").mount("#email");
   document.querySelector("#payment").replaceChildren();
