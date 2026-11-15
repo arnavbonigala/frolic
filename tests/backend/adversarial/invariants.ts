@@ -15,6 +15,10 @@ function expectSame(day: number, actor: string, invariant: string, actual: unkno
 
 const sum = (list: { amountCents: number }[]) => list.reduce((total, row) => total + row.amountCents, 0);
 
+function nightHappened(frolic: { status: string; endsAt?: number }, now: number): boolean {
+  return frolic.status === "done" || (frolic.status === "on" && frolic.endsAt !== undefined && frolic.endsAt <= now);
+}
+
 export async function checkSecrecyBeforeReveal(sim: Sim, frolicId: string, actors: string[]): Promise<void> {
   const day = sim.n;
   const frolic = (await rows(sim, "frolics")).find((row) => row._id === frolicId);
@@ -134,8 +138,7 @@ export async function checkGarden(sim: Sim): Promise<void> {
   const expected = frolics
     .filter((frolic) => {
       const going = seats.filter((row) => row.frolicId === frolic._id && row.status === "going").length;
-      const over = frolic.status === "done" || (frolic.status === "on" && frolic.endsAt !== undefined && frolic.endsAt <= now);
-      return going >= 2 && over;
+      return going >= 2 && nightHappened(frolic, now);
     })
     .map((frolic) => frolic._id as string)
     .sort();
@@ -151,6 +154,8 @@ export async function checkGarden(sim: Sim): Promise<void> {
 export async function checkMembership(sim: Sim): Promise<void> {
   const day = sim.n;
   const seats = await rows(sim, "attendees");
+  const frolics = await rows(sim, "frolics");
+  const now = Date.now();
   const users = await sim.t.run(async (ctx) => await ctx.db.query("users").collect());
   const alive = new Set(users.map((user) => user._id as string));
   const memberships = await sim.t.run(
@@ -158,6 +163,9 @@ export async function checkMembership(sim: Sim): Promise<void> {
   );
   const inside = new Set(memberships.map((row) => row.userId as string));
   for (const seat of seats) {
+    const frolic = frolics.find((row) => row._id === seat.frolicId);
+    const record = frolic !== undefined && nightHappened(frolic, now);
+    if (!alive.has(seat.userId) && record) continue;
     if (!alive.has(seat.userId)) fail(day, "system", "no seat for someone who left", `a seat points at departed user ${seat.userId}`);
     if (!inside.has(seat.userId)) fail(day, "system", "no seat for someone who left", `${seat.userId} holds a seat with no membership`);
   }
@@ -165,7 +173,7 @@ export async function checkMembership(sim: Sim): Promise<void> {
     const view = await today(sim, name);
     if (view.reveal === null) continue;
     const going = seats
-      .filter((row) => row.frolicId === view.frolic?.frolicId && row.status === "going")
+      .filter((row) => row.frolicId === view.frolic?.frolicId && row.status === "going" && alive.has(row.userId))
       .map((row) => row.userId as string)
       .sort();
     expectSame(day, name, "a phone shows exactly who is going", view.reveal.going.map((person) => person.userId as string).sort(), going);
