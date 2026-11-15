@@ -5,6 +5,7 @@ import { createFake } from "../memory/fakeSupermemory";
 import { groupNamespace } from "../memory/mapping";
 import { PLACE_BY_SLUG } from "../places/data";
 import { makeT } from "../tests/setup.helpers";
+import { pickCacheKey } from "../ai/cache";
 import { modelPick } from "./drop";
 import { rankCandidates, type DropInput } from "./engine";
 import { EMPTY_MEMORY, type MemoryContext } from "./memoryContext";
@@ -50,7 +51,7 @@ async function crew(names: string[] = ["Maya", "Dev"], days: string[] = [DAY]) {
     }
     return groupId;
   });
-  return { t, groupId };
+  return { t, groupId, crewGroup: groupId };
 }
 
 const storedPlan = (overrides: Partial<{ placeSlug: string; startsAt: number; source: "model" | "scorer" | "fallback" }> = {}) => ({
@@ -204,6 +205,19 @@ describe("drop workflow", () => {
   });
 });
 
+const openFrolicFor = async (t: ReturnType<typeof makeT>, groupId: Id<"groups">, status: "open" | "on" = "open") =>
+  await t.run(async (ctx) =>
+    await ctx.db.insert("frolics", {
+      groupId,
+      day: DAY,
+      kind: "daily",
+      status,
+      window: { start: NOON, end: NOON + 6 * 60 * 60 * 1000 },
+      durationMinutes: 60,
+      deadline: NOON + 4 * 60 * 60 * 1000,
+    }),
+  );
+
 describe("weather swap", () => {
   const rainy = (day: string) => {
     const sun = solarTimes(day);
@@ -229,6 +243,7 @@ describe("weather swap", () => {
     const outdoor = storedPlan({ placeSlug: "indian-rock", startsAt: localTimeToMs(DAY, 17 * 60) });
     vi.stubGlobal("fetch", vi.fn(async () => rainy(DAY)));
     await t.mutation(internal.plans.drop.writePlan, { groupId, day: DAY, kind: "daily", plan: outdoor });
+    await openFrolicFor(t, groupId);
     const swapped = await t.action(internal.plans.drop.weatherSwapStep, {
       groupId,
       day: DAY,
@@ -243,6 +258,18 @@ describe("weather swap", () => {
     const place = await t.run(async (ctx) => await ctx.db.get("places", rows[0].placeId));
     expect(place?.slug).toBe(swapped!.placeSlug);
     expect(rows[0].weatherCheckedAt).toBeGreaterThanOrEqual(NOON);
+    expect(rows[0].meetingPoint).toEqual(swapped!.meetingPoint);
+    expect(rows[0].durationMinutes).toBe(swapped!.durationMinutes);
+  });
+
+  test("leaves the plan alone once the frolic is on", async () => {
+    const { t, groupId } = await crew();
+    const outdoor = storedPlan({ placeSlug: "indian-rock", startsAt: localTimeToMs(DAY, 17 * 60) });
+    vi.stubGlobal("fetch", vi.fn(async () => rainy(DAY)));
+    await t.mutation(internal.plans.drop.writePlan, { groupId, day: DAY, kind: "daily", plan: outdoor });
+    await openFrolicFor(t, groupId, "on");
+    expect(await t.action(internal.plans.drop.weatherSwapStep, { groupId, day: DAY, kind: "daily", plan: outdoor })).toBeNull();
+    expect((await plans(t, groupId))[0].weatherCheckedAt).toBeUndefined();
   });
 
   test("leaves an indoor plan alone", async () => {
@@ -333,7 +360,7 @@ describe("modelPick", () => {
     const chosen = candidates[2].place.slug;
     process.env.OPENAI_API_KEY = "test-key";
     const fetcher = answer(chosen);
-    const pick = await modelPick(input, fetcher);
+    const pick = await modelPick(input, { cached: null, fetcher: fetcher });
     expect(pick).toEqual({ preferredSlug: chosen, preferredWhy: PICK_WHY });
     const [url, init] = fetcher.mock.calls[0];
     expect(String(url)).toContain("api.openai.com");
@@ -341,23 +368,28 @@ describe("modelPick", () => {
   });
 
   test("refuses a slug that is not on the shortlist", async () => {
-    const { t, groupId } = await crew();
+    const { t, groupId, crewGroup } = await crew();
     const input = await dropInput(t, groupId);
     process.env.OPENAI_API_KEY = "test-key";
-    expect(await modelPick(input, answer("not-a-place"))).toBeNull();
-    expect(await modelPick(input, answer(rankCandidates(input)[0].place.slug, "the best night of the week!"))).toBeNull();
+    expect(await modelPick(input, { cached: null, fetcher: answer("not-a-place") })).toBeNull();
+    expect(
+      await modelPick(input, {
+        cached: null,
+        fetcher: answer(rankCandidates(input)[0].place.slug, "the best night of the week!"),
+      }),
+    ).toBeNull();
   });
 
   test("returns null when the call fails", async () => {
-    const { t, groupId } = await crew();
+    const { t, groupId, crewGroup } = await crew();
     const input = await dropInput(t, groupId);
     process.env.OPENAI_API_KEY = "test-key";
     const down = vi.fn(async () => {
       throw new Error("offline");
     });
-    expect(await modelPick(input, down)).toBeNull();
+    expect(await modelPick(input, { cached: null, fetcher: down })).toBeNull();
     const broken = vi.fn(async () => new Response("no", { status: 500 }));
-    expect(await modelPick(input, broken)).toBeNull();
+    expect(await modelPick(input, { cached: null, fetcher: broken })).toBeNull();
   });
 
   test("pickStep never calls OpenAI when the key is unset", async () => {
@@ -455,5 +487,63 @@ describe("demo beat", () => {
     expect(rows[0].whySource).toBe("memory");
     expect(rows[0].whyMemoryId).toBe("mem_night1");
     expect(fake.calls.some((c) => c.path.endsWith("/search"))).toBe(true);
+  });
+});
+
+describe("ai cache and budget", () => {
+  test("pickCacheKey is stable for the same inputs and moves when the group does", async () => {
+    const { t, groupId } = await crew();
+    const input = await dropInput(t, groupId);
+    expect(pickCacheKey(input)).toBe(pickCacheKey(structuredClone(input)));
+    const moved = structuredClone(input);
+    moved.nowMs = input.nowMs + 60 * 60 * 1000;
+    expect(pickCacheKey(moved)).not.toBe(pickCacheKey(input));
+    const suppressed = structuredClone(input);
+    suppressed.memory = { ...EMPTY_MEMORY, suppressed: ["boba"] };
+    expect(pickCacheKey(suppressed)).not.toBe(pickCacheKey(input));
+  });
+
+  test("a second drop the same day reads the stored pick instead of calling OpenAI", async () => {
+    const { t, groupId } = await crew();
+    const input = await dropInput(t, groupId);
+    const key = pickCacheKey(input);
+    const chosen = rankCandidates(input)[1].place.slug;
+    expect(await t.query(internal.plans.drop.cachedPick, { groupId, day: DAY, key })).toBeNull();
+    await t.mutation(internal.plans.drop.beginRun, { groupId, day: DAY, kind: "daily", workflowId: "wf_1", candidates: [] });
+    await t.mutation(internal.plans.drop.rememberPick, { groupId, day: DAY, kind: "daily", key, slug: chosen, why: PICK_WHY });
+    const cached = await t.query(internal.plans.drop.cachedPick, { groupId, day: DAY, key });
+    expect(cached).toEqual({ slug: chosen, why: PICK_WHY });
+    const fetcher = vi.fn(async () => new Response("{}", { status: 500 }));
+    expect(await modelPick(input, { cached, fetcher })).toEqual({ preferredSlug: chosen, preferredWhy: PICK_WHY });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  test("the per group budget stops model calls once it runs out", async () => {
+    const { t, groupId } = await crew();
+    const results: boolean[] = [];
+    for (let i = 0; i < 22; i++) {
+      results.push(await t.mutation(internal.plans.drop.claimAiBudget, { groupId }));
+    }
+    expect(results.filter((ok) => ok).length).toBe(20);
+    expect(results[21]).toBe(false);
+  });
+
+  test("planRuns records the run, its candidates and its outcome", async () => {
+    const { t, groupId } = await crew();
+    const candidates = rankCandidates(await dropInput(t, groupId)).slice(0, 5).map((c) => c.place.slug);
+    await t.mutation(internal.plans.drop.beginRun, { groupId, day: DAY, kind: "daily", workflowId: "wf_9", candidates: [] });
+    await t.mutation(internal.plans.drop.noteCandidates, { groupId, day: DAY, kind: "daily", candidates });
+    await t.mutation(internal.plans.drop.finishRun, { groupId, day: DAY, kind: "daily", status: "done" });
+    const rows = await t.run(async (ctx) => await ctx.db.query("planRuns").collect());
+    expect(rows).toHaveLength(1);
+    expect(rows[0].workflowId).toBe("wf_9");
+    expect(rows[0].candidates).toEqual(candidates);
+    expect(rows[0].status).toBe("done");
+    expect(rows[0].finishedAt).toBeTypeOf("number");
+    await t.mutation(internal.plans.drop.beginRun, { groupId, day: DAY, kind: "daily", workflowId: "wf_10", candidates: [] });
+    const again = await t.run(async (ctx) => await ctx.db.query("planRuns").collect());
+    expect(again).toHaveLength(1);
+    expect(again[0].status).toBe("running");
+    expect(again[0].workflowId).toBe("wf_10");
   });
 });

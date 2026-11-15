@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as ai_cache from "../ai/cache.js";
 import type * as ai_copy from "../ai/copy.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_pick from "../ai/pick.js";
@@ -88,6 +89,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/cache": typeof ai_cache;
   "ai/copy": typeof ai_copy;
   "ai/openai": typeof ai_openai;
   "ai/pick": typeof ai_pick;

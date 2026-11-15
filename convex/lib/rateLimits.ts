@@ -6,4 +6,6 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   hopIn: { kind: "token bucket", rate: 12, period: MINUTE, capacity: 6 },
   join: { kind: "fixed window", rate: 30, period: HOUR },
   createGroup: { kind: "fixed window", rate: 10, period: HOUR },
+  aiGroup: { kind: "fixed window", rate: 20, period: HOUR },
+  aiGlobal: { kind: "token bucket", rate: 200, period: HOUR, capacity: 40 },
 });
