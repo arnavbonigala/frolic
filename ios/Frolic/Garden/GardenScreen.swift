@@ -72,7 +72,7 @@ struct GardenScreen: View {
 
     private func ready(_ overview: GardenOverview) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            GardenBed(countLine: overview.countLine, sinceLine: overview.sinceLine, yourFlower: overview.youWent)
+            GardenBed(countLine: overview.countLine, sinceLine: overview.sinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { $0.going.first?.color ?? .lilac })
                 .padding(.top, 16)
             Button {
                 showsStory = true

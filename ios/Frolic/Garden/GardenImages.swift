@@ -100,9 +100,13 @@ struct GardenArtwork: View {
 
     var body: some View {
         if let key, UIImage(named: key) != nil {
-            Image(key)
-                .resizable()
-                .scaledToFill()
+            Color.clear
+                .overlay {
+                    Image(key)
+                        .resizable()
+                        .scaledToFill()
+                }
+                .clipped()
         } else {
             drawn
         }

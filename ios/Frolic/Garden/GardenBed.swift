@@ -4,21 +4,22 @@ struct GardenBed: View {
     var countLine: String
     var sinceLine: String
     var yourFlower: Bool
+    var colors: [FlowerColor] = []
 
     @ScaledMetric(relativeTo: .title3) private var countSize: CGFloat = 20
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
 
     init(count: Int, caption: String) {
-        self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false)
+        self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
     }
 
-    init(countLine: String, sinceLine: String, yourFlower: Bool) {
+    init(countLine: String, sinceLine: String, yourFlower: Bool, colors: [FlowerColor]) {
         self.countLine = countLine
         self.sinceLine = sinceLine
         self.yourFlower = yourFlower
+        self.colors = colors
     }
 
-    private let colors: [FlowerColor] = [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato]
     private let stems: [CGFloat] = [30, 52, 40, 64, 36, 58, 44, 70, 32, 50, 42, 60]
 
     var body: some View {
@@ -35,10 +36,7 @@ struct GardenBed: View {
             )
             HStack(alignment: .bottom, spacing: -10) {
                 ForEach(colors.indices, id: \.self) { index in
-                    FlowerView(color: colors[index], radius: 12, stem: stems[index], swayDelay: Double(index) * 0.4)
-                }
-                if yourFlower {
-                    GardenFlower(person: nil, color: .tomato, radius: 20, stem: 74, swayDelay: 1)
+                    FlowerView(color: colors[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
