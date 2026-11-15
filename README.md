@@ -46,16 +46,16 @@ convex/            backend
   daily.ts         the day boundary and the memory day close
   memory/          Supermemory client, privacy mapping, ingest, context, taste
   e2e/             the secret-gated seed, reset and reveal-log routes
-  whop/            money hooks (stubs today), webhook router, pay page
+  whop/            holds, the fund, the split, the signed webhook, the pay page
   keiki/           inbound routes and the outbound hooks the matcher calls
   web/             the invite and "I'm down" pages (routes land on a branch)
   plans/           daily drop, place candidates, weather, the scorer (pending)
 ios/               the Xcode project, app, widget and Live Activity targets (pending, branch ios-foundation)
-web/               the web "I'm down" page assets (pending, branch web-im-down)
+web/               the web "I'm down" page, its build and its screenshots
 e2e/               Revyl flows, the three-phone run, the barrier scripts
 design/mock/       the interactive mock, every screen, the copy reference
-design/generated/  painted plan heroes, one per taste tag
-design/icon/       the app icon, light, dark and tinted, painted and vector
+design/generated/  painted plan heroes, one per taste tag, and the friend portraits
+design/icon/       the app icon, light, dark and tinted, painted and flat
 docs/              the brief, the demo script and sponsor sheet, specs
 ```
 
