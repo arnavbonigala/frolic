@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation } from "./_generated/server";
-import { applyTap } from "./lib/core";
+import { applyTap, removeTap } from "./lib/core";
 import { userFromToken } from "./lib/identity";
 import { tapKind, tapSource, timeWindow } from "./schema";
 
@@ -45,4 +45,19 @@ export const tapAs = internalMutation({
       source: args.source,
     });
   },
+});
+
+export const untap = mutation({
+  args: { deviceToken: v.string(), frolicId: v.id("frolics") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    return await removeTap(ctx, user._id, args.frolicId);
+  },
+});
+
+export const untapAs = internalMutation({
+  args: { userId: v.id("users"), frolicId: v.id("frolics") },
+  returns: v.null(),
+  handler: async (ctx, args) => await removeTap(ctx, args.userId, args.frolicId),
 });

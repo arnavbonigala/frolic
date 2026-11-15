@@ -5,15 +5,15 @@ import { LEAVE_NUDGE_MS, deleteTaps } from "./lib/core";
 import { names, planFacts } from "./lib/hooks";
 
 export const flip = internalMutation({
-  args: { frolicId: v.id("frolics") },
+  args: { frolicId: v.id("frolics"), revealAt: v.number() },
   returns: v.null(),
-  handler: async (ctx, { frolicId }) => {
+  handler: async (ctx, { frolicId, revealAt }) => {
     const frolic = await ctx.db.get("frolics", frolicId);
     const pending = await ctx.db
       .query("reveals")
       .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
       .unique();
-    if (!frolic || !pending || frolic.status !== "open") return null;
+    if (!frolic || !pending || frolic.status !== "open" || pending.revealAt !== revealAt) return null;
     const flippedAt = Date.now();
     const endsAt = pending.startsAt + frolic.durationMinutes * 60 * 1000;
     for (const userId of pending.userIds) {
@@ -44,6 +44,7 @@ export const flip = internalMutation({
       endsAt,
     });
     await ctx.db.delete("reveals", pending._id);
+    await ctx.scheduler.runAfter(0, internal.whop.money.onReveal, { frolicId });
     await ctx.runMutation(internal.keiki.outbound.onReveal, {
       frolicId,
       userIds: pending.userIds,
@@ -111,6 +112,7 @@ export const complete = internalMutation({
       .take(200);
     for (const h of waiting) await ctx.db.patch("hopIns", h._id, { status: "left" });
     await ctx.db.patch("frolics", frolicId, { status: "done" });
+    await ctx.scheduler.runAfter(0, internal.whop.money.onDone, { frolicId });
     return null;
   },
 });

@@ -69,13 +69,19 @@ export const createGroup = mutation({
   },
   returns: v.object({ userId: v.id("users"), groupId: v.id("groups"), inviteCode: v.string() }),
   handler: async (ctx, args) => {
+    const timezone = args.timezone ?? "America/Los_Angeles";
+    try {
+      new Intl.DateTimeFormat("en-CA", { timeZone: timezone });
+    } catch {
+      throw new ConvexError({ code: "BAD_TIMEZONE", message: "Unknown time zone" });
+    }
     const userId = await upsertDeviceUser(ctx, args.deviceToken, args.firstName, "app");
     await rateLimiter.limit(ctx, "createGroup", { key: userId, throws: true });
     const { groupId, inviteCode } = await createGroupFor(
       ctx,
       userId,
       args.groupName,
-      args.timezone ?? "America/Los_Angeles",
+      timezone,
     );
     return { userId, groupId, inviteCode };
   },
@@ -90,7 +96,8 @@ export const joinGroup = mutation({
   },
   returns: v.object({ userId: v.id("users"), groupId: v.id("groups"), frolicId: v.union(v.id("frolics"), v.null()) }),
   handler: async (ctx, args) => {
-    await rateLimiter.limit(ctx, "join", { key: args.inviteCode.toUpperCase(), throws: true });
+    assertDeviceToken(args.deviceToken);
+    await rateLimiter.limit(ctx, "join", { key: await hashToken(args.deviceToken), throws: true });
     const invite = await ctx.db
       .query("invites")
       .withIndex("by_code", (q) => q.eq("code", args.inviteCode.trim().toUpperCase()))
@@ -152,7 +159,7 @@ export const invitePreview = query({
       .query("invites")
       .withIndex("by_code", (q) => q.eq("code", inviteCode.trim().toUpperCase()))
       .unique();
-    if (!invite || invite.revoked) return null;
+    if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < Date.now())) return null;
     const group = await ctx.db.get("groups", invite.groupId);
     const inviter = await ctx.db.get("users", invite.createdBy);
     if (!group || !inviter) return null;

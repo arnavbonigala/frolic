@@ -342,12 +342,19 @@ export default defineSchema({
     status: v.union(
       v.literal("due"),
       v.literal("pending"),
+      v.literal("held"),
+      v.literal("releasing"),
+      v.literal("released"),
       v.literal("paid"),
+      v.literal("refunding"),
       v.literal("refunded"),
       v.literal("forfeited"),
       v.literal("failed"),
       v.literal("waived"),
+      v.literal("needsAttention"),
     ),
+    token: v.optional(v.string()),
+    lastError: v.optional(v.string()),
     whopCheckoutId: v.optional(v.string()),
     whopPaymentId: v.optional(v.string()),
     updatedAt: v.number(),
@@ -355,13 +362,15 @@ export default defineSchema({
     .index("by_frolicId", ["frolicId"])
     .index("by_frolicId_and_userId", ["frolicId", "userId"])
     .index("by_whopPaymentId", ["whopPaymentId"])
-    .index("by_whopCheckoutId", ["whopCheckoutId"]),
+    .index("by_whopCheckoutId", ["whopCheckoutId"])
+    .index("by_token", ["token"]),
 
   fundLedger: defineTable({
     groupId: v.id("groups"),
     frolicId: v.optional(v.id("frolics")),
     userId: v.optional(v.id("users")),
     shareId: v.optional(v.id("shares")),
+    whopPaymentId: v.optional(v.string()),
     entry: v.union(
       v.literal("deposit"),
       v.literal("refund"),
