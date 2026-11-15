@@ -116,23 +116,14 @@ async function rematch(
     .filter((t) => t.kind === "down")
     .sort((a, b) => a.updatedAt - b.updatedAt)
     .map((t) => ({ userId: t.userId, onlyIf: t.onlyIf, window: t.window ?? null }));
-  const matchOf = (subset: typeof downs) =>
-    findMatch({
-      taps: subset,
-      defaultWindow: frolic.window,
-      durationMs: frolic.durationMinutes * 60 * 1000,
-      preferredStart: plan?.startsAt ?? null,
-      now,
-    });
-  let match = matchOf(downs);
-  const cap = frolic.capacity;
-  if (match && cap !== undefined && match.userIds.length > cap) {
-    const members = new Set(match.userIds);
-    const pool = downs.filter((t) => members.has(t.userId));
-    let capped = null;
-    for (let take = cap; take >= 2 && !capped; take--) capped = matchOf(pool.slice(0, take));
-    match = capped;
-  }
+  const match = findMatch({
+    taps: downs,
+    defaultWindow: frolic.window,
+    durationMs: frolic.durationMinutes * 60 * 1000,
+    preferredStart: plan?.startsAt ?? null,
+    now,
+    capacity: frolic.capacity,
+  });
   const pending = await ctx.db
     .query("reveals")
     .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))

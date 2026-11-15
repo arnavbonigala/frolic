@@ -271,6 +271,18 @@ describe("hop in, sit out and refill", () => {
     expect(r.reveal?.me.canHopIn).toBe(false);
   });
 
+  test("capacity seats the tapper whose only if is met", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan", "Sam"], { capacity: 3 });
+    await tap(t, crew, "Maya", { onlyIf: ["Sam"] });
+    await tap(t, crew, "Dev");
+    await tap(t, crew, "Jordan");
+    await tap(t, crew, "Sam");
+    await flipDue(t);
+    const r = await today(t, crew, "Maya");
+    expect(r.reveal?.going.map((p) => p.name).sort()).toEqual(["Dev", "Maya", "Sam"]);
+  });
+
   test("a stale flip for a cancelled reveal does nothing", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);

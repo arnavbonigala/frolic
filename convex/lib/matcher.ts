@@ -12,11 +12,39 @@ export type MatchInput = {
   durationMs: number;
   preferredStart: number | null;
   now: number;
+  capacity?: number;
 };
 
 export type Match = { userIds: string[]; startsAt: number };
 
 export const START_STEP_MS = 5 * 60 * 1000;
+
+function closedSubset(set: MatchTap[], size: number): MatchTap[] | null {
+  const pick: number[] = [];
+  const search = (from: number): MatchTap[] | null => {
+    if (pick.length === size) {
+      const chosen = pick.map((i) => set[i]);
+      const ids = new Set(chosen.map((tap) => tap.userId));
+      return chosen.every((tap) => tap.onlyIf.every((id) => ids.has(id))) ? chosen : null;
+    }
+    for (let i = from; i <= set.length - (size - pick.length); i++) {
+      pick.push(i);
+      const found = search(i + 1);
+      pick.pop();
+      if (found) return found;
+    }
+    return null;
+  };
+  return search(0);
+}
+
+function bestUnderCapacity(set: MatchTap[], capacity: number): MatchTap[] {
+  for (let size = Math.min(capacity, set.length); size >= 2; size--) {
+    const found = closedSubset(set, size);
+    if (found) return found;
+  }
+  return [];
+}
 
 export function findMatch(input: MatchInput): Match | null {
   const byUser = new Map<string, MatchTap>();
@@ -47,6 +75,9 @@ export function findMatch(input: MatchInput): Match | null {
       const next = set.filter((tap) => tap.onlyIf.every((id) => ids.has(id)));
       if (next.length === set.length) break;
       set = next;
+    }
+    if (input.capacity !== undefined && set.length > input.capacity) {
+      set = bestUnderCapacity(set, input.capacity);
     }
     if (set.length < 2) continue;
     const bigger = best === null || set.length > best.userIds.length;
