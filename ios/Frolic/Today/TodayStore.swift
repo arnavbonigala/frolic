@@ -518,11 +518,19 @@ final class TodayStore {
     private func subscribe(groupId: String) {
         guard let client, let token = identity.deviceToken as String? else { return }
         let day = TodayCopy.dayString()
+        let cacheKey = "today.cache.\(groupId).\(day)"
+        if today == nil, let data = AppGroup.defaults.data(forKey: cacheKey), let cached = try? JSONDecoder().decode(TodayView.self, from: data) {
+            today = cached
+            load = .ready
+        }
         tasks.append(Task { [weak self] in
             do {
                 let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
                 for try await view in client.subscribe(to: "frolics:today", with: args, yielding: TodayView.self).values {
                     self?.apply(view)
+                    if let data = try? JSONEncoder().encode(view) {
+                        AppGroup.defaults.set(data, forKey: cacheKey)
+                    }
                 }
             } catch {
                 guard let self else { return }
