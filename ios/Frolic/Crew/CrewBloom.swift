@@ -37,13 +37,7 @@ struct CrewBloom: View {
     private var face: some View {
         ZStack {
             if let urlString = row.photoURL, let url = URL(string: urlString) {
-                AsyncImage(url: url, transaction: Transaction(animation: .easeInOut(duration: 0.2))) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else {
-                        initial
-                    }
-                }
+                PortraitView(id: row.id, url: url, size: radius, tint: row.color)
             } else if let asset = row.photoAsset, UIImage(named: asset) != nil {
                 Image(asset).resizable().scaledToFill()
             } else {

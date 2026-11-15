@@ -314,6 +314,15 @@ struct TodayMeadow: View {
                     .accessibilityElement(children: .contain)
             }
         }
+        .task(id: portraits) {
+            await PortraitCache.shared.warm(portraits)
+        }
+    }
+
+    private var portraits: [PortraitRef] {
+        (people + buds).compactMap { person in
+            TodayMedia.url(person.photoUrl).map { PortraitRef(id: person.id, url: $0) }
+        }
     }
 
     private var content: some View {

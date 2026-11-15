@@ -111,13 +111,7 @@ struct TodayFlower: View {
         if let asset = TodayMedia.portraitAsset(person.photoUrl) {
             Image(asset).resizable().scaledToFill()
         } else if let url = TodayMedia.url(person.photoUrl) {
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    initial(person)
-                }
-            }
+            PortraitView(id: person.id, url: url, size: radius, tint: person.flower)
         } else {
             initial(person)
         }

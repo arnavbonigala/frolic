@@ -125,9 +125,7 @@ struct FlowerView: View {
                 .resizable()
                 .scaledToFill()
         } else if let url = person.avatarURL {
-            CachedPortrait(url: url) {
-                initial(for: person)
-            }
+            PortraitView(id: person.id, url: url, size: radius, tint: person.color)
         } else {
             initial(for: person)
         }

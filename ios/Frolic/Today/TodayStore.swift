@@ -617,6 +617,7 @@ final class TodayStore {
                 for try await view in client.subscribe(to: "crew:crew", with: args, yielding: CrewView.self).values {
                     guard let self else { return }
                     self.crew = view
+                    self.warmPortraits()
                     if let pendingFree = self.pendingFree, view.me?.free?.state == pendingFree.state {
                         self.pendingFree = nil
                     }
@@ -701,6 +702,15 @@ final class TodayStore {
             subscribePayment(frolicId: frolicId)
         }
         scheduleBloom()
+        warmPortraits()
+    }
+
+    private func warmPortraits() {
+        let people = [mePerson] + allFriends + (today?.reveal?.going ?? []) + (today?.myTap?.onlyIf ?? [])
+        let refs = people.compactMap { person in
+            TodayMedia.url(person.photoUrl).map { PortraitRef(id: person.id, url: $0) }
+        }
+        Task { await PortraitCache.shared.warm(refs) }
     }
 
     private func applyFixture(_ fixture: TodayFixture, route: E2ERoute) {

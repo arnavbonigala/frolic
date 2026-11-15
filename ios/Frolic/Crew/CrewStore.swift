@@ -486,6 +486,14 @@ final class CrewStore {
             fundLoaded: fundLoaded
         )
         phase = rows.count <= 1 ? .empty : .ready
+        warmPortraits(rows)
+    }
+
+    private func warmPortraits(_ rows: [CrewRow]) {
+        let refs = rows.compactMap { row in
+            row.photoURL.flatMap(URL.init(string:)).map { PortraitRef(id: row.id, url: $0) }
+        }
+        Task { await PortraitCache.shared.warm(refs) }
     }
 }
 
