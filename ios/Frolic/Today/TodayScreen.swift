@@ -224,6 +224,13 @@ private struct TodayPlanPacket: View {
                 .foregroundStyle(FrolicColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
+            if let line = plan?.line, !line.isEmpty {
+                Text(line)
+                    .todayFont(15, relativeTo: .subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("today.plan.line")
+            }
             ChipRow(chips: TodayCopy.chips(plan: plan, walk: store.walkMinutes))
             if let hostedBy = hostedBy ?? store.drop?.hostedBy {
                 Text("Hosted by \(hostedBy)")
@@ -368,6 +375,7 @@ private struct TodayWaitingView: View {
                 .foregroundStyle(FrolicColor.secondaryText)
                 .padding(.top, 8)
                 .accessibilityIdentifier("today.next")
+            TodayAnsweredSlot(store: store)
             TodayTomorrowRow(store: store)
         }
     }
@@ -413,6 +421,7 @@ private struct TodaySoloView: View {
                     .buttonStyle(.frolicText)
                     .padding(.top, 4)
                     .accessibilityIdentifier("today.takeBack")
+                TodayAnsweredSlot(store: store)
             } else {
                 HStack(spacing: 10) {
                     Button("Send to the group chat") { openShare() }
@@ -462,7 +471,16 @@ private struct TodayOffView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 22)
                 .accessibilityIdentifier("today.off.back")
+            TodayAnsweredSlot(store: store)
         }
+    }
+}
+
+struct TodayAnsweredSlot: View {
+    var store: TodayStore
+
+    var body: some View {
+        EmptyView()
     }
 }
 
