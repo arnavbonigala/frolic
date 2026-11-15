@@ -137,13 +137,13 @@ Status was re-read from the repository at 19:20 UTC on Nov 15 2026, against `mai
 | Keiki | Tier 1 | One friend on the app, one on the lock screen, one only in iMessage, all revealing together | Built on branch `keiki` (PR #9, open): the agent, its tools and the outbound hooks. On `main` the prompt plus six stub hooks that return null, and no agent number. | `keiki/agent.ts`, `keiki/sync.ts`, `keiki/prompt-addendum.md` and `convex/keiki/tools.ts` on that branch; the prompt is `docs/keiki-system-prompt.md` |
 | Supermemory | required | Two skips and boba stops being suggested, and the "Why this" line quotes a memory | The layer is merged on `main` (PR #4): client, ingest with retries, privacy mapping, context read, why-this, taste profile and account deletion. Plan generation calls the live provider through `memoryStep`, and the two-skip beat runs through the real tap path rather than a seed. | 59 memory tests on `main` (26, 11, 10, 7, 5) plus a live proof under `SUPERMEMORY_LIVE=1` per `reports/ARN-6.md`; this thread reran the whole suite at main |
 | Revyl | required | Cloud phones flipping with ours, offsets burned in, the three-phone recorded run | 44 flows, the run plan, the barrier and the `/e2e/*` routes it calls all on `main`. The iOS app is on branch `ios-foundation` (PR #8), 58 files, unbuilt, and it still draws the flat icon and a sample photo. Never run on a device. | `node e2e/tools/lint.mjs e2e/flows` gives 44 files and 0 errors; `convex/e2e/e2e.test.ts` covers the routes' refusals and its 7 tests pass |
-| Capy | required | The pull request trail, and the reports in the Drive | This thread and every lane that opened a PR today, eighteen of them. Replays arrive with the first iOS build. | PRs #1 to #18, `reports/` in the Captain Drive |
+| Capy | required | The pull request trail, and the reports in the Drive | This thread and every lane that opened a PR today. Replays arrive with the first iOS build. | Every pull request the crew merged today, plus `reports/` in the Captain Drive |
 
 ## Convex
 
 **What Frolic uses.** The whole backend, and the part of the demo a judge cannot see working anywhere else.
 
-- A matcher inside one mutation: every subset of tappers of size two or more, filtered by each person's hidden "only if" set and by window overlap. Convex transactions are serializable, so two taps landing in the same instant cannot reveal twice. `convex/lib/matcher.ts` on `main`, with its own suite.
+- A matcher inside one mutation: at each candidate start it keeps the tappers whose windows overlap, prunes to a fixed point by dropping anyone whose "only if" people fell out, then takes the largest valid group of two or more. Convex transactions are serializable, so two taps landing in the same instant cannot reveal twice. `convex/lib/matcher.ts` on `main`, with its own suite.
 - One server timestamp for the reveal: the match writes `revealAt = now + 1.5s`, every phone keeps a small clock offset from the server and fires the flip at exactly that instant. `revealAt` is a field in `convex/schema.ts` and `convex/reveal.ts` writes it; `convex/clock.ts` is the offset the phones read.
 - Reactive queries as the transport. There is no push in this build, and none is needed: the phones are already subscribed, so the match arrives through the same query that drew the plan. The demo beat is exactly this fact.
 - The Workflow component for plan generation, mounted in `convex/convex.config.ts` and not called yet; the drop that will call it is on branch `plans-drop`. The Presence component for who has the app open, and the Rate Limiter for the tap and invite routes, both mounted in the same file.
@@ -222,7 +222,7 @@ There is no production path in the script, and no real money anywhere in it. A p
 
 The lane also reported a live run against the real API, in `reports/ARN-6.md`: two group skips suppressed boba, a why line returned a stored night, a personal limit never appeared in a group search, and deleting a namespace emptied it.
 
-What is still missing for beat 13 is the join. Plan generation is not written yet, so nothing calls `getMemoryContext` or `whyThis` and a plan cannot quote the memory on screen. Until that lands, the beat shows the garden and the quoted memory from the seeded record, and the presenter says the word seeded once (F9).
+What is still missing for beat 13 is the data. Plan generation on `main` calls `getMemoryContext` through `memoryStep` in `convex/plans/drop.ts` and can quote a memory in its why line, but the seed writes no skipped days, so nothing suppresses boba on its own. The beat shows the garden and the quoted memory from the seeded record, and the presenter says the word seeded once (F9).
 
 ## Revyl
 
@@ -253,7 +253,7 @@ What is still missing for beat 13 is the join. Plan generation is not written ye
 
 **Where it lives.** There is no Capy code in this repository, by design. The trail is the artifact: the pull requests, their replays, and `reports/` in the Captain Drive.
 
-**The moment.** At t70 the pull requests on screen, eighteen of them in one afternoon, with the day's reports behind them and the Revyl flows in the repo. The claim is that every screen arrived as a reviewed change with its proof attached, and that the flows which record each one on a real iPhone are written and waiting on the first build.
+**The moment.** At t70 the pull requests on screen, a whole day's worth in one afternoon, with the day's reports behind them and the Revyl flows in the repo. The claim is that every screen arrived as a reviewed change with its proof attached, and that the flows which record each one on a real iPhone are written and waiting on the first build.
 
 **Status.** Every row above is a live pull request today. The trail is public and it is the only sponsor claim in this script that needs no rehearsal.
 

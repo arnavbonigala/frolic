@@ -13,6 +13,7 @@ import {
 } from "./lib";
 import { keikiEnv } from "./env";
 import { fence, noticeToken } from "./notice";
+import { FADED_TEXT } from "../lib/copy";
 
 export const KEIKI_BASE_URL = "https://onkeiki.com";
 export const DEFAULT_AGENT_ID = "44277a5e-b81d-4bb6-92d2-6c9c0eec47b3";
@@ -175,7 +176,7 @@ export const onFaded = internalMutation({
     const drafts = await personal(ctx, members.map((m) => m._id), (user) => ({
       key: "faded:" + frolicId + ":" + user._id,
       kind: "faded",
-      text: "This one drifted off. Nobody knows you said yes.",
+      text: FADED_TEXT,
       notBefore: Date.now(),
     }));
     await enqueue(ctx, frolicId, drafts);
