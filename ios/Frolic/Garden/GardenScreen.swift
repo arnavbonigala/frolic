@@ -25,7 +25,9 @@ struct GardenScreen: View {
                                     }
                                 }
                                 .accessibilityHidden(true)
-                                StoryCaption(text: "\(semester.frolics) frolics · \(semester.places) places · \(semester.friends) friends")
+                                if let caption = GardenCounts.heroCaption(frolics: semester.frolics, places: semester.places, friends: semester.friends) {
+                                    StoryCaption(text: caption)
+                                }
                             }
                         }
                     }

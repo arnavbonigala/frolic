@@ -104,7 +104,7 @@ struct GardenOverview: Codable, Hashable {
         sinceLine.hasPrefix("0 before you, ") ? String(sinceLine.dropFirst("0 before you, ".count)) : sinceLine
     }
 
-    var countLine: String { flowerCount == 1 ? "1 frolic" : "\(flowerCount) frolics" }
+    var countLine: String { Plural.of(flowerCount, "frolic", "frolics") }
 
     var subtitle: String {
         let base = "Every frolic grows a flower. It never wilts."
