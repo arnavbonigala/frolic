@@ -337,7 +337,7 @@ A hook must not delay the transaction it runs in. Sending belongs in a scheduled
 
 Test-only HTTP routes that seed and inspect a demo run from the outside. They are registered in `convex/e2e/routes.ts` and implemented by the internal functions in `convex/e2e/admin.ts`.
 
-Every route is closed unless the deployment sets `E2E_SECRET` to a non-empty value: with no secret the route answers `404` and reveals nothing about itself. With the secret set, `401` unless the `x-e2e-secret` request header equals it exactly. Bad bodies answer `400` with `{ error }`. A run id is 1 to 64 characters of `A-Z`, `a-z`, `0-9`, `_` and `-`.
+Every route is closed unless the deployment sets `E2E_SECRET` to a value of at least 16 characters: with no secret, or one shorter than that, or one equal to a provider key the deployment also holds (`OPENAI_API_KEY`, `WHOP_SANDBOX_API_KEY`, `KEIKI_API_KEY`, `SUPERMEMORY_API_KEY`), every route answers `404` and reveals nothing about itself. With the secret set, `401` unless the `x-e2e-secret` request header equals it, compared in constant time. No other header is a credential, so a real user's device token cannot open a route, and the secret is never read from a query string or a body. Bad bodies answer `400` with `{ error }`. A run id is 1 to 64 characters of `A-Z`, `a-z`, `0-9`, `_` and `-`.
 
 | route | body | returns |
 | --- | --- | --- |

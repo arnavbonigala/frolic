@@ -16,6 +16,7 @@ export function registerAvatarRoutes(http: HttpRouter): void {
         headers: {
           "Content-Type": "image/jpeg",
           "Cache-Control": "public, max-age=31536000, immutable",
+          "X-Content-Type-Options": "nosniff",
         },
       });
     }),

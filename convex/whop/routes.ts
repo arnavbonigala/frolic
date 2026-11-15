@@ -69,10 +69,14 @@ export const confirm = httpAction(async (ctx, req) => {
 
 export const art = httpAction(async (_ctx, req) => {
   const key = new URL(req.url).pathname.slice("/pay-art/".length).replace(/\.webp$/, "");
+  if (!Object.prototype.hasOwnProperty.call(PAY_ART, key)) return new Response("Not found", { status: 404 });
   const bytes = PAY_ART[key];
-  if (!bytes) return new Response("Not found", { status: 404 });
   return new Response(Uint8Array.from(atob(bytes), (c) => c.charCodeAt(0)).buffer as ArrayBuffer, {
-    headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=31536000, immutable" },
+    headers: {
+      "Content-Type": "image/webp",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff",
+    },
   });
 });
 
