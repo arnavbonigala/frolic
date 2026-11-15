@@ -159,6 +159,29 @@ async function reverseCredit(ctx: MutationCtx, share: Doc<"shares">): Promise<vo
   });
 }
 
+async function tellReleased(ctx: MutationCtx, share: Doc<"shares">): Promise<void> {
+  if (share.kind !== "deposit" || !["held", "releasing", "refunding", "forfeited"].includes(share.status)) return;
+  await ctx.scheduler.runAfter(0, internal.keiki.outbound.onMoney, {
+    frolicId: share.frolicId,
+    userId: share.userId,
+    event: "released",
+    amountCents: share.amountCents,
+  });
+}
+
+async function tellNoShow(ctx: MutationCtx, share: Doc<"shares">): Promise<void> {
+  const members = await ctx.db.query("memberships").withIndex("by_groupId", (q) => q.eq("groupId", share.groupId)).take(100);
+  for (const member of members) {
+    if (member.userId === share.userId) continue;
+    await ctx.scheduler.runAfter(0, internal.keiki.outbound.onMoney, {
+      frolicId: share.frolicId,
+      userId: member.userId,
+      event: "noShowCredit",
+      amountCents: share.amountCents,
+    });
+  }
+}
+
 export async function applySignal(
   ctx: MutationCtx,
   share: Doc<"shares">,
@@ -169,6 +192,7 @@ export async function applySignal(
   if (!next) return null;
   await setStatus(ctx, share, next);
   const fresh = (await ctx.db.get("shares", share._id))!;
+  if (next === "released" || next === "refunded") await tellReleased(ctx, share);
   if (next === "held") {
     const attendee = await findAttendee(ctx, share.frolicId, share.userId);
     if ((await checkedIn(ctx, share.frolicId, share.userId)) || attendee?.status !== "going") await beginRelease(ctx, fresh);
@@ -186,6 +210,7 @@ export async function applySignal(
         whopPaymentId: share.whopPaymentId,
         at: Date.now(),
       });
+      await tellNoShow(ctx, share);
     }
     if (await checkedIn(ctx, share.frolicId, share.userId)) await beginRefund(ctx, fresh);
   }
@@ -193,11 +218,11 @@ export async function applySignal(
   return next;
 }
 
-async function callOffMoney(ctx: MutationCtx, frolicId: Id<"frolics">, going: Set<Id<"users">>): Promise<void> {
+async function callOffMoney(ctx: MutationCtx, frolicId: Id<"frolics">, going: Set<Id<"users">> | null): Promise<void> {
   const shares = await ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(200);
   for (const s of shares) {
     if (s.status === "due" || s.status === "failed") await setStatus(ctx, s, "waived");
-    else if (!going.has(s.userId)) continue;
+    else if (going && !going.has(s.userId)) continue;
     else if (s.status === "held") await beginRelease(ctx, s);
     else if (s.status === "paid") await beginRefund(ctx, s);
   }
@@ -208,6 +233,17 @@ async function callOffMoney(ctx: MutationCtx, frolicId: Id<"frolics">, going: Se
     if (frolic) await ctx.db.insert("fundLedger", { groupId: frolic.groupId, frolicId, entry: "adjustment", amountCents: -spent, at: Date.now() });
   }
 }
+
+export const callOff = internalMutation({
+  args: { frolicId: v.id("frolics") },
+  returns: v.null(),
+  handler: async (ctx, { frolicId }) => {
+    const frolic = await ctx.db.get("frolics", frolicId);
+    if (!frolic || frolic.status !== "on" || (frolic.startsAt !== undefined && Date.now() >= frolic.startsAt)) return null;
+    await callOffMoney(ctx, frolicId, null);
+    return null;
+  },
+});
 
 export const onReveal = internalMutation({
   args: { frolicId: v.id("frolics") },
@@ -403,11 +439,12 @@ export const recordCharge = internalMutation({
   handler: async (ctx, args) => {
     const share = await ctx.db.get("shares", args.shareId);
     if (!share) return null;
-    if (share.whopPaymentId && share.whopPaymentId !== args.whopPaymentId) {
+    const reopen = share.status === "pending" || share.status === "failed" || share.status === "due";
+    if (share.whopPaymentId ? share.whopPaymentId !== args.whopPaymentId : !reopen) {
       await ctx.scheduler.runAfter(0, internal.whop.actions.voidOrphan, { shareId: share._id, paymentId: args.whopPaymentId });
       return null;
     }
-    await ctx.db.patch("shares", share._id, { whopPaymentId: args.whopPaymentId, updatedAt: Date.now() });
+    await ctx.db.patch("shares", share._id, { whopPaymentId: args.whopPaymentId, status: share.whopPaymentId ? share.status : "pending", updatedAt: Date.now() });
     await applySignal(ctx, (await ctx.db.get("shares", share._id))!, args.signal);
     return null;
   },
@@ -431,6 +468,7 @@ export const settle = internalMutation({
     const share = await ctx.db.get("shares", shareId);
     if (!share || !ACTIVE.includes(share.status)) return null;
     await setStatus(ctx, share, status, { lastError: message });
+    if (status === "released") await tellReleased(ctx, share);
     if (status === "needsAttention") await reverseCredit(ctx, share);
     return null;
   },

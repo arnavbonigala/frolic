@@ -512,6 +512,7 @@ export default defineSchema({
       v.literal("nudge"),
       v.literal("snap"),
       v.literal("collage"),
+      v.literal("money"),
     ),
     frolicId: v.id("frolics"),
     userId: v.optional(v.id("users")),

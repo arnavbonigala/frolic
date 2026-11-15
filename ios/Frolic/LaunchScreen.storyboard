@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="LSc-vc-001">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <scene sceneID="LSc-sc-001">
+            <objects>
+                <viewController id="LSc-vc-001" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="LSc-vw-001">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" image="launch-meadow" translatesAutoresizingMaskIntoConstraints="NO" id="LSc-im-001">
+                                <rect key="frame" x="0.0" y="-221" width="393" height="1073"/>
+                            </imageView>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchWordmark" translatesAutoresizingMaskIntoConstraints="NO" id="LSc-im-002">
+                                <rect key="frame" x="86.5" y="139" width="220" height="85"/>
+                            </imageView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="LSc-sa-001"/>
+                        <color key="backgroundColor" red="0.81176470588235294" green="0.89803921568627454" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="LSc-im-001" firstAttribute="leading" secondItem="LSc-vw-001" secondAttribute="leading" id="LSc-c-01"/>
+                            <constraint firstAttribute="trailing" secondItem="LSc-im-001" secondAttribute="trailing" id="LSc-c-02"/>
+                            <constraint firstAttribute="bottom" secondItem="LSc-im-001" secondAttribute="bottom" id="LSc-c-03"/>
+                            <constraint firstItem="LSc-im-001" firstAttribute="height" secondItem="LSc-im-001" secondAttribute="width" multiplier="2072:759" id="LSc-c-04"/>
+                            <constraint firstItem="LSc-im-002" firstAttribute="centerX" secondItem="LSc-vw-001" secondAttribute="centerX" id="LSc-c-05"/>
+                            <constraint firstItem="LSc-im-002" firstAttribute="top" secondItem="LSc-sa-001" secondAttribute="top" constant="80" id="LSc-c-06"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="LSc-fr-001" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="0" y="0"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="LaunchWordmark" width="220" height="85"/>
+        <image name="launch-meadow" width="759" height="2072"/>
+    </resources>
+</document>

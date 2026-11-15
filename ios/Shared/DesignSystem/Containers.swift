@@ -99,6 +99,7 @@ struct FrolicCell<Leading: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             leading
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .frolicFont(.bodyEmphasis)

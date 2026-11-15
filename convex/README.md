@@ -133,7 +133,7 @@ Args: `{ deviceToken, groupId, day?, frolicId? }`. Returns:
 
 Pick the frolic with `frolicId` when you have one, else with `day`, else with the newest row for the crew. A `frolicId` from another crew is `NOT_FOUND`. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND`.
 
-`plan.startsAt` is the frolic's matched start once it is `on`, and the plan's own start before that. `cost` is dollars per person, `plan.costLabel` is the display string such as "$8" or "Free", and `plan.payUpFront` says whether the plan needs a chip-in before the reveal.
+`plan.startsAt` is the frolic's matched start once it is `on`, and the plan's own start before that. `plan.heroKey` is the painted plan hero for the plan's place (`plan-sunsets`, `plan-outdoors`, `plan-late-night-food`, `plan-games`, `plan-free-stuff`), which the widget and the Today card use to pick the art. `cost` is dollars per person, `plan.costLabel` is the display string such as "$8" or "Free", and `plan.payUpFront` says whether the plan needs a chip-in before the reveal.
 
 `reveal.me`:
 
