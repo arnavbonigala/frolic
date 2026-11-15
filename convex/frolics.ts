@@ -5,7 +5,7 @@ import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } fr
 import { applyTap, findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOutAndRefill } from "./lib/core";
 import { FREE_ANSWER_MS, openStartedFrolic, startFreeDrop } from "./plans/drop";
 import { localParts } from "./plans/time";
-import { clockTime } from "./keiki/lib";
+import { clockTime, localDay } from "./keiki/lib";
 import { freeLine } from "./keiki/outbound";
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
@@ -165,10 +165,11 @@ export const today = query({
   },
 });
 
-async function newestDay(ctx: QueryCtx, groupId: Id<"groups">): Promise<string | null> {
+async function newestDay(ctx: QueryCtx, groupId: Id<"groups">, timeZone: string): Promise<string | null> {
+  const today = localDay(Date.now(), timeZone);
   const newest = await ctx.db
     .query("frolics")
-    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).lte("day", today))
     .order("desc")
     .first();
   return newest?.day ?? null;
@@ -220,7 +221,7 @@ export async function todayFor(
   }
   const frolic = picked
     ? picked
-    : await dayFrolic(ctx, args.groupId, args.day ?? (await newestDay(ctx, args.groupId)));
+    : await dayFrolic(ctx, args.groupId, args.day ?? (await newestDay(ctx, args.groupId, group.timezone)));
   const base = { groupName: group.name, memberCount: memberships.length };
   const solo = memberships.length <= 1;
   if (!frolic) {

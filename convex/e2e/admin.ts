@@ -539,9 +539,17 @@ export const advance = internalMutation({
     const plan = plans.find((row) => row.placeId === kayaks._id);
     if (!plan) return null;
     const now = Date.now();
+    const today = dayInZone(now, ZONE);
+    const sameDay = await ctx.db
+      .query("frolics")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", group._id).eq("day", today))
+      .take(10);
+    const already = sameDay.find((row) => row.planId === plan._id);
+    if (already) return already._id;
+    for (const row of sameDay) await ctx.db.delete("frolics", row._id);
     const frolicId: Id<"frolics"> = await ctx.runMutation(internal.frolics.open, {
       groupId: group._id,
-      day: plan.day,
+      day: today,
       kind: "daily",
       planId: plan._id,
       window: { start: now, end: now + 8 * HOUR },

@@ -243,13 +243,13 @@ describe("demo scenario", () => {
     })) as { phase: string; reveal: { going: { name: string }[] } | null };
     expect(kayak.phase).toBe("on");
     expect(kayak.reveal!.going.map((p) => p.name).sort()).toEqual(["Dev", "Priya"]);
-    const rock = await t.query(api.frolics.today, {
+    const maya = await t.query(api.frolics.today, {
       deviceToken: body.users.maya.deviceToken,
       groupId: body.groupId,
-      frolicId: body.frolicId,
     });
-    expect(rock.phase).toBe("open");
-    expect(rock.reveal).toBeNull();
+    expect(maya.frolic!.frolicId).toBe(frolicId);
+    expect(maya.frolic!.plan!.title).toBe("Kayaks at the Marina");
+    expect(maya.myTap).toBeNull();
 
     const second = await t.query(api.frolics.today, {
       deviceToken: body.users.maya.deviceToken,
@@ -258,8 +258,8 @@ describe("demo scenario", () => {
     expect(second.frolic!.frolicId).toBe(frolicId);
     expect(second.frolic!.plan?.title).toBe("Kayaks at the Marina");
     expect(second.frolic!.durationMinutes).toBe(90);
-    expect(second.frolic!.day).toBe("2026-11-16");
-    expect(second.frolic!.day > first.frolic!.day).toBe(true);
+    expect(second.frolic!.day).toBe("2026-11-15");
+    expect(second.frolic!.day).toBe(first.frolic!.day);
 
     const third = await post(t, "/e2e/advance", { run: RUN });
     expect(((await third.json()) as { frolicId: string }).frolicId).toBe(frolicId);
