@@ -46,7 +46,7 @@ struct RootView: View {
                 .accessibilityIdentifier("tab.you")
             }
         }
-        .tint(Color(hex: 0x2E8A4E))
+        .tint(Color.accentColor)
         .sensoryFeedback(.selection, trigger: router.tab)
         .accessibilityIdentifier("app.root")
         .task(id: FrolicIdentity.shared.groupId) { await AppPrefetch.shared.start(router: router, backend: backend) }
