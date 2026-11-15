@@ -15,24 +15,28 @@ struct RootView: View {
         return TabView(selection: $router.tab) {
             Tab(value: AppTab.today) {
                 TodayScreen()
+                    .tabArrival()
             } label: {
                 Label(AppTab.today.title, systemImage: AppTab.today.systemImage)
                     .accessibilityIdentifier("tab.today")
             }
             Tab(value: AppTab.crew) {
                 CrewScreen()
+                    .tabArrival()
             } label: {
                 Label(AppTab.crew.title, systemImage: AppTab.crew.systemImage)
                     .accessibilityIdentifier("tab.crew")
             }
             Tab(value: AppTab.garden) {
                 GardenScreen()
+                    .tabArrival()
             } label: {
                 Label(AppTab.garden.title, systemImage: AppTab.garden.systemImage)
                     .accessibilityIdentifier("tab.garden")
             }
             Tab(value: AppTab.you) {
                 YouScreen()
+                    .tabArrival()
             } label: {
                 Label {
                     Text(AppTab.you.title)
@@ -47,6 +51,7 @@ struct RootView: View {
             }
         }
         .tint(Color(hex: 0x2E8A4E))
+        .sensoryFeedback(.selection, trigger: router.tab)
         .accessibilityIdentifier("app.root")
         .task(id: FrolicIdentity.shared.groupId) { await AppPrefetch.shared.start(router: router, backend: backend) }
         .checkInFlowPresenter()

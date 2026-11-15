@@ -158,8 +158,10 @@ private struct CrewContent: View {
         SectionHeader(title: "Today")
         FrolicGroup {
             CrewPersonRowView(row: view.me, showsDivider: false, onTap: { store.showsFreeSheet = true })
-            ForEach(view.rows) { row in
+                .staggeredArrival(0)
+            ForEach(Array(view.rows.enumerated()), id: \.element.id) { index, row in
                 CrewPersonRowView(row: row, showsDivider: true, onTap: { store.friend = row })
+                    .staggeredArrival(index + 1)
             }
         }
 

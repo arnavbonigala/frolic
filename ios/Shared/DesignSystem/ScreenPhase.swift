@@ -140,3 +140,45 @@ struct SproutLoader: View {
         .accessibilityHidden(true)
     }
 }
+
+struct StaggeredArrival: ViewModifier {
+    var index: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var arrived = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(arrived ? 1 : 0)
+            .offset(y: arrived || reduceMotion ? 0 : 10)
+            .onAppear {
+                guard !arrived else { return }
+                let animation: Animation = reduceMotion ? .easeOut(duration: 0.25) : .spring(response: 0.45, dampingFraction: 0.8)
+                withAnimation(animation.delay(Double(min(index, 8)) * 0.05)) { arrived = true }
+            }
+    }
+}
+
+struct TabArrival: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var arrived = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(arrived ? 1 : 0.4)
+            .scaleEffect(arrived || reduceMotion ? 1 : 0.985)
+            .onAppear {
+                withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.35, dampingFraction: 0.85)) { arrived = true }
+            }
+            .onDisappear { arrived = false }
+    }
+}
+
+extension View {
+    func staggeredArrival(_ index: Int) -> some View {
+        modifier(StaggeredArrival(index: index))
+    }
+
+    func tabArrival() -> some View {
+        modifier(TabArrival())
+    }
+}
