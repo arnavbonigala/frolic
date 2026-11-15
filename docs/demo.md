@@ -42,9 +42,9 @@ Ten minutes out, in this order. Every item is a check, not a setup step.
 6. The mock is open at `design/mock/index.html#today:on` in Chrome, and at `#today` in a second tab.
 7. Dev's phone has the lock screen notification for tomorrow's kayaks, with the three action buttons, so beat 9 has something to press. Priya's thread has "down" typed and unsent.
 8. Cloud phones are asleep. Only the three podium phones and Priya's are awake. Phone time is budgeted at $5.40 an hour and three awake phones is the crew limit.
-9. Jordan's card is already on file from a rehearsal payment, so his hold at beat 7 takes one tap rather than a card entry. If the card is not saved, place his hold from his pay link before the run and say so, because a capture needs a hold that exists.
+9. Jordan types the same test card from his own pay link during beat 7, so budget eight seconds for him as well. If the room will not wait for two entries, place Jordan's hold from his pay link before the run and say so, because a capture needs a hold that exists.
 10. If the room is not the venue, Dev's check-in is the manual "I'm here" button, which calls the same mutation the geofence calls. Do not claim the geofence fired.
-11. Say which Whop mode the run is in, sandbox or production, and check the key on the deployment matches it. A sandbox key against the production base refuses every call, and the failure looks like a broken pay page.
+11. Say which Whop mode the run is in, sandbox or production, and check the key on the deployment matches it. A key that does not match the base refuses every call, and the failure looks like a broken pay page.
 
 ## Run of show
 
@@ -58,14 +58,14 @@ Times are seconds from the first word. Line is what the room hears. Fallback key
 | 4 | 18 | Jordan's phone is unchanged: an open plan, free flowers, no count. Neither bud shows who is in. | Arnav holds one hand up, everyone waits | Neither phone can read the other's answer. The server is the only thing that knows. | F3 |
 | 5 | 24 | Both phones flip to "It's on." in the same frame, confetti, haptic. Jordan's phone gets "Jordan, it's happening". | Jordan hops in with one tap | One server timestamp, both phones, same frame. | F4 |
 | 6 | 28 | Overlay: the two cloud iPhone flips, frozen, with "Maya +0.31 s, Dev +0.34 s from one server release" burned in | Operator drops the overlay for four seconds, then clears it | Two cloud iPhones in two places in Berkeley, flipped by the same release. | F5 |
-| 7 | 32 | Whop pane: "Hold $3 to lock it in" on Maya's phone, then the pay page with the test card on screen. Jordan pays his hold from the pay page on his hop-in. | Maya pays | Whop puts a three dollar hold on her card. It comes back when she arrives. | F6 |
+| 7 | 30 | Whop pane: "Hold $3 to lock it in" on Maya's phone, then the pay page with the test card on screen. Jordan pays his hold from the pay page on his hop-in. | Maya pays | Whop puts a three dollar hold on her card. It comes back when she arrives. | F6 |
 | 8 | 38 | Dev's phone: "You made it. Your $3 is back." The Whop pane flips that payment to Voided | Dev taps "I'm here" on his phone, the same mutation the geofence calls | Dev checked in. Whop released it. | F6 |
 | 9 | 42 | Jordan's hold moves to Captured. Crew tab: the Frolic Fund ticks from $0 to $3, "toward the next one". Tomorrow's kayaks card now reads "Frolic Fund covers $3, your share $7". | Jordan's phone is face down in his pocket | Jordan didn't show, so his three dollars is the crew's Frolic Fund, and it comes off tomorrow's kayaks before the split. | F6 |
 | 10 | 46 | Tomorrow's kayaks on three surfaces: Maya's app, Dev's lock screen notification with its three buttons, Priya's iMessage thread. Priya's "down" is typed and unsent. | Priya holds her phone up | Priya has never installed Frolic. She's texting our Keiki agent. | F8 |
 | 11 | 50 | Maya taps "I'm down". Dev taps "I'm down" on the lock screen notification. Priya sends "down". | Three taps in four seconds, nobody narrating | Three yeses, three surfaces. | F8 |
-| 12 | 54 | All three reveal in the same second. The iMessage thread gets "It's on. Kayaks at the marina. Meet at 10:45." | Nobody touches anything | Same reveal, same second, in a text thread. | F8 |
+| 12 | 54 | All three reveal in the same second. The iMessage thread gets "It's on. Kayaks at the Marina. Meet Maya and Dev at the boat ramp at 10:45." | Nobody touches anything | Same reveal, same second, in a text thread. | F8 |
 | 13 | 58 | Garden pane: two skipped days for boba, then today's plan on the pier. "Why this" cites the skip and the last sunset | Arnav steps back so the screen is the only thing moving | We skipped boba twice. It stopped suggesting boba, and it says why. | F9 |
-| 14 | 70 | GitHub pull requests, each with a Revyl replay link. Then the Captain's Drive, the crew's reports for today | Operator scrolls slowly once | Every screen here arrived as a pull request with a recording of it on a real iPhone. Capy agents wrote them today. | F10 |
+| 14 | 70 | GitHub pull requests, each with a Revyl replay link. Then the Captain's Drive, the crew's reports for today | Operator scrolls slowly once | Every screen here arrived as a pull request today, and the flows that test them on real iPhones are in the repo. | F10 |
 | 15 | 82 | Back to the three phones, all on "It's on.", with the fund visible on Crew | Arnav at the podium | Frolic. Your friend group's plans, actually happening. | none |
 
 The lines total 182 words, about 66 seconds of speech, which leaves 22 seconds of deliberate silence for the taps, the flip and the pay page. Do not fill that silence. If the room is running long, cut the Supermemory beat and its line, and the run lands at 78 seconds with every other sponsor still represented.
@@ -77,10 +77,11 @@ Read this before promising the run to anyone. Each item is a beat that has no pa
 1. **Tomorrow's kayaks frolic in the seed.** The seed contract in `e2e/three-phone-run.md` creates one open plan for today. The Keiki beat needs a second frolic, tomorrow, open, with its own reveal. Ask the backend lane for it, or run the seed twice with a different day.
 2. **The lock screen notification for tomorrow's plan.** Dev's half of beat 10 presses a real notification action. That needs the notification category the e2e README lists as blocked on the iOS lane. Without it, Dev taps in the app and the beat loses one surface, so cut to two surfaces and say two.
 3. **A reachable pay page.** Beats 7 to 9 need `GET /pay/<token>` live and one hidden Frolic product with a hold variant. Nothing of that is built.
-4. **The three-phone recording.** Beat 6 is the only beat with no substitute. It needs an iOS build on `main`, the three `/e2e/*` routes, and a Revyl run. If it is 5:30 and there is no recording, the Revyl moment is the replay links at beat 12 and the demo says so.
+4. **The three-phone recording.** Beat 6 is the only beat with no substitute. It needs an iOS build on `main`, the three `/e2e/*` routes, and a Revyl run. If it is 5:30 and there is no recording, the Revyl moment is the flow count and the run plan at beat 14, and the demo says so.
 5. **A live Supermemory read in plan generation.** The memory layer is tested, but no plan calls it yet. Until plan generation reads `getMemoryContext`, beat 13 shows the garden and the quoted memory from a seeded record, which is honest if the presenter says "seeded" once.
 6. **A no-show on cue.** Capture runs 45 minutes after the start, so beat 9 needs a seeded frolic whose start has already passed, and the sweep run once from the dashboard while Jordan's phone is face down. If the sweep is not the demo's to run, the fund tick is a screenshot and the presenter says so.
-7. **A web yes that matches an app yes.** The page and its routes are built and 13 of its 18 tests pass. The five that fail are the five that need the tap mutation, which the matcher lane has not written: `Could not find module for: "taps"`. The QR code in the after-demo section only works once that lands.
+7. **Hold sheet copy and accessibility ids.** The mock has no hold sheet, so beat 7's "Hold $3 to lock it in" and its card entry exist only as a spec proposal. The iOS lane needs to add the ids and labels, or the beat runs with the presenter saying the words are new.
+8. **A web yes that matches an app yes.** The page and its routes are built and 13 of its 18 tests pass. The five that fail are the five that need the tap mutation, which the matcher lane has not written: `Could not find module for: "taps"`. The QR code in the after-demo section only works once that lands.
 
 ## The taps
 
@@ -104,9 +105,9 @@ Each key names the failure, the recovery, and the exact words. Never say "let me
 
 **F4, the reveal does not flip.** Phones stay on the bud for more than three seconds after Dev's tap. Recovery: play the recorded flip overlay from beat 6 and say "That is the same seed, recorded ten minutes ago, with one server release driving both phones." Continue at beat 7 with the recordings still on screen. The demo survives; the live claim does not, so do not say "same frame" about the room.
 
-**F5, no cloud recording.** Recovery: drop the overlay and go straight to the Whop pane. The two phone panes already showed the flip. Say nothing about Revyl here; Revyl's moment moves to beat 14 with the replays.
+**F5, no cloud recording.** Recovery: drop the overlay and go straight to the Whop pane. The two phone panes already showed the flip. Say nothing about Revyl here; Revyl's moment moves to beat 14, where the flow count and the run plan are the proof instead.
 
-**F6, Whop jams.** Either the pay page does not load or the dashboard does not move. Recovery: switch the projector to the Whop dashboard on the rehearsal's payments and narrate the state machine while pointing: "Hold, arrive, void. No show, capture, fund." Then say "This ran on the sandbox an hour ago and the recording is on the pull request." Never type a card number on stage.
+**F6, Whop jams.** Either the pay page does not load or the dashboard does not move. Recovery: switch the projector to the Whop dashboard on the rehearsal's payments and narrate the state machine while pointing: "Hold, arrive, void. No show, capture, fund." Then say "The money side is a spec and a set of hooks today, and the state machine is the same one the sandbox will run." Never type a card number on stage.
 
 **F7, the dashboard is blank.** Recovery: it is one tab. Switch to the `frolics` table and the reveal timestamp instead of `taps`. If the whole backend is unreachable, the phones are also dead, which means F4.
 
@@ -130,31 +131,31 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 | Sponsor | Tier | Demo beat | Status today | Evidence |
 | - | - | - | - | - |
-| Convex | required | Both taps in the dashboard while every phone shows a private bud, then both flip from one server timestamp | 23 tables, Workflow, Presence and Rate Limiter mounted, and the router wiring, on `schema-matcher` (PR #1, draft). The matcher and the reveal are not written. Two suites already test them. | `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts` on that branch, read by this thread. `convex/qa/matcher/` (PR #7) and `tests/web.test.ts` (PR #5) bind to the functions that do not exist yet |
-| Whop | Tier 1 | The $3 hold at the reveal, released by arrival, the no-show feeding the Frolic Fund, the paid plan split with the fund first | Spec only (PR #3, draft). Nothing built. | `docs/specs/whop.md` on the spec branch |
-| Keiki | Tier 1 | One friend on the app, one on the lock screen, one only in iMessage, all revealing together | Agent prompt on `main`. Routes and agent number pending. | `docs/keiki-system-prompt.md` |
-| Supermemory | required | Two skips and boba stops being suggested, and the "why this" line quotes a memory | Built and proven against the real API on branch `memory` (PR #4, open). The plan path does not call it yet. | 42 tests plus a live proof under `SUPERMEMORY_LIVE=1`, per `reports/ARN-6.md`; this thread reran the 42 and the typecheck |
-| Revyl | required | Cloud phones flipping with ours, offsets burned in, the three-phone recorded run | 44 flows and the run plan on `e2e/revyl-harness` (PR #2, draft). Never run: no build, no login. | `e2e/` lint at 0 errors, 44 files |
-| Capy | required | The pull request trail with replays, and the reports in the Drive | This thread, and every lane that opened a PR today | PRs #1, #2, #3, `reports/` in the Captain Drive |
+| Convex | required | Both taps in the dashboard while every phone shows a private bud, then both flip from one server timestamp | The matcher, the tap, the reveal, the daily drop and the privacy layer on `main`, 33 tables, Workflow, Presence and Rate Limiter mounted. | `convex/lib/matcher.ts`, `convex/taps.ts`, `convex/reveal.ts` on `main`; `npx vitest run` on `main` gives 59 tests in 4 files, run by this thread Nov 15 19:00 |
+| Whop | Tier 1 | The $3 hold at the reveal, released by arrival, the no-show feeding the Frolic Fund, the paid plan split with the fund first | Schema, the fund ledger columns and the webhook router on `main`. Every money function is still a stub that returns null, and there is no pay page. | `convex/whop/money.ts` and `convex/whop/routes.ts` on `main`; the state machine is `docs/specs/whop.md` |
+| Keiki | Tier 1 | One friend on the app, one on the lock screen, one only in iMessage, all revealing together | The agent prompt on `main`. `convex/keiki/outbound.ts` is four stubs that return null, and there is no agent number. | `docs/keiki-system-prompt.md`, `convex/keiki/outbound.ts` |
+| Supermemory | required | Two skips and boba stops being suggested, and the "Why this" line quotes a memory | The ingest hooks on `main`. The layer itself, the client, the context read, why-this and the taste profile, is on branch `memory` (PR #4). The plan path does not call it yet. | 42 tests plus a live proof under `SUPERMEMORY_LIVE=1`, per `reports/ARN-6.md`; this thread reran the 42 and the typecheck |
+| Revyl | required | Cloud phones flipping with ours, offsets burned in, the three-phone recorded run | 44 flows and the run plan on `main`. Never run on a device: there is no iOS build and no Revyl key on a crew machine. | `node e2e/tools/lint.mjs e2e/flows` gives 44 files and 0 errors, run by this thread |
+| Capy | required | The pull request trail, and the reports in the Drive | This thread and every lane that opened a PR today, twelve of them. Replays arrive with the first iOS build. | PRs #1 to #12, `reports/` in the Captain Drive |
 
 ## Convex
 
 **What Frolic uses.** The whole backend, and the part of the demo a judge cannot see working anywhere else.
 
-- A matcher inside one mutation: every subset of tappers of size two or more, filtered by each person's hidden "only if" set and by window overlap. Convex transactions are serializable, so two taps landing in the same instant cannot reveal twice. `convex/matcher.ts`, pending.
-- One server timestamp for the reveal: the match writes `revealAt = now + 1.5s`, every phone keeps a small clock offset from the server and fires the flip at exactly that instant. `revealAt` is a field in `convex/schema.ts`, the offset query is pending.
+- A matcher inside one mutation: every subset of tappers of size two or more, filtered by each person's hidden "only if" set and by window overlap. Convex transactions are serializable, so two taps landing in the same instant cannot reveal twice. `convex/lib/matcher.ts` on `main`, with its own suite.
+- One server timestamp for the reveal: the match writes `revealAt = now + 1.5s`, every phone keeps a small clock offset from the server and fires the flip at exactly that instant. `revealAt` is a field in `convex/schema.ts` and `convex/reveal.ts` writes it; `convex/clock.ts` is the offset the phones read.
 - Reactive queries as the transport. There is no push in this build, and none is needed: the phones are already subscribed, so the match arrives through the same query that drew the plan. The demo beat is exactly this fact.
 - The Workflow component for plan generation, mounted in `convex/convex.config.ts`, called from `convex/plans/`. The Presence component for who has the app open, and the Rate Limiter for the tap and invite routes, both mounted in the same file.
 - Scheduler and crons for the daily drop and the fade: `convex/crons.ts` calls `registerPlanCrons` in `convex/plans/crons.ts`.
 - File storage for the group snap, one `_storage` id per shot in `convex/schema.ts` and the collage row beside it.
 - HTTP actions for the web "I'm down" page, the Whop webhook and the Keiki routes: `convex/http.ts` registers `convex/web/routes.ts`, `convex/whop/routes.ts` and `convex/keiki/routes.ts`. The router is the schema lane's file; each lane fills its own. The web page is written (PR #5): one route serves the seed packet card, a first-name field and a secret yes, and the page flips live over its own subscription when the match lands.
-- Tests everywhere: vitest and convex-test, one suite per function, with the matcher's race and privacy cases written as tests rather than claims.
+- Tests everywhere: vitest and convex-test, one suite per function. On `main` that is 59 tests in 4 files, and the two that matter on stage are the matcher's race cases, two taps in the same instant revealing exactly once, and the secrecy suite, which fails if any client query can read a tap.
 
-**Where it lives.** `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts`, `convex/matcher.ts`, `convex/reveal.ts`, `convex/taps.ts`, `convex/frolics.ts`, `convex/plans/`, `convex/memory/`, `convex/whop/`, `convex/keiki/`, `convex/web/`.
+**Where it lives.** `convex/schema.ts` (33 tables), `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts`, `convex/lib/matcher.ts`, `convex/taps.ts`, `convex/reveal.ts`, `convex/frolics.ts`, `convex/crew.ts`, `convex/daily.ts`, `convex/clock.ts`, `convex/checkins.ts`, `convex/etas.ts`, `convex/snaps.ts`, `convex/limits.ts`, `convex/users.ts`, `convex/plans/`, `convex/memory/`, `convex/whop/`, `convex/keiki/`, `convex/web/`.
 
 **The moment.** At t12 both taps are rows in the dashboard while every phone shows a private bud with no count, and at t24 both phones flip from one server timestamp. A judge can check the timestamps themselves. Nothing else in this stack can make two phones agree to a millisecond while the server holds the secret.
 
-**If it is not ready.** The mock plus the recorded flip. The dashboard is still worth showing, because the reveal timestamps are in `frolics` and a judge can see one row per frolic.
+**If it is not ready.** The backend is ready, so this beat only fails if a phone is. Then the mock plus the recorded flip, and the dashboard is still worth showing, because the reveal timestamps are in `frolics` and a judge can see one row per frolic.
 
 ## Whop
 
@@ -169,18 +170,20 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 - A real ledger on our side, `shares` and `fundLedger` in `convex/schema.ts`, where every fund credit names the `pay_` id that funded it, so a dollar on the Crew tab traces back to a real payment.
 - Only new hidden products in the Whop company, created by one internal action. Nothing that already exists is touched.
 
-**Where it lives.** `convex/whop/` (payments, links, the state machine, the fund, the pay page), `convex/whop/routes.ts` for the webhook, `convex/schema.ts` for `shares`, `fundLedger`, `whopPlans` and `webhookEvents`.
+**Where it lives.** `convex/whop/money.ts` holds the hooks, `onReveal`, `onJoin`, `onBail`, `onArrive` and `onDone`, all stubs on `main`. The build adds `convex/whop/` for payments, links, the state machine and the pay page, and fills `convex/whop/routes.ts` for the webhook. The tables are already in `convex/schema.ts`: `shares`, `fundLedger`, `whopPlans` and `webhookEvents`.
+
+**The hold copy is a proposal.** "Hold $3 to lock it in" is the spec's wording and appears in no mock screen, because the hold sheet is a surface the mock does not have. The identifiers contract's only pay label is `chip.sheet.pay`, "Pay with Apple Pay", which the sandbox cannot honour. The iOS lane has to add hold-sheet ids and a card-entry label before beat 7 has copy to read, and until it does the beat runs with the spec's wording on screen and the presenter says it is new.
 
 **The moment.** At t32 a hold is placed the second the plan is on, at t38 the check-in releases it, at t42 the friend who never came funds tomorrow's plan, and the fund comes off tomorrow's bill before it splits. Money that commits a friend and is released by an arrival is Whop's money logic running on Frolic's location signal. A pay button cannot express it.
 
 The hold amount is still a decision. The spec proposes $3, and the demo works the same at $1, so the number follows Arnav's call rather than the other way round.
 
-**Which Whop mode the demo runs in.** The crew now has both keys: `WHOP_SANDBOX_API_KEY` with `WHOP_API_BASE` pointed at the sandbox, and the production key beside it, and the crew rule is to use the sandbox for testing and the demo. That is the default the script assumes, and it has two consequences worth saying out loud.
+**Which Whop mode the demo runs in.** Sandbox, and only sandbox: the crew rule is `WHOP_SANDBOX_API_KEY` with `WHOP_API_BASE` pointed at the sandbox, and the production key is being removed. The spec switches modes with `WHOP_ENV=sandbox`. Two consequences are worth saying out loud.
 
-- The sandbox has no Apple Pay, so the pay page takes a card. `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` declines, and `5385 3083 6013 5181` forces 3D Secure with Whop's documented test code, which is in the spec. Budget about eight seconds for the entry, which is why beat 7 starts at t32 and not later.
+- The sandbox has no Apple Pay, so the pay page takes a card. `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` declines, and `5385 3083 6013 5181` forces 3D Secure with Whop's documented test code, which is in the spec. Budget about eight seconds for the entry, which is why beat 7 starts at t30 and beat 8 at t38.
 - Nothing moves real money, including a captured no-show. The fund tick at beat 9 is a captured test payment, which is honest and also means nobody has to refund anything afterwards.
 
-If the demo runs on production instead, three things change: the hold is real, the pay page can show Apple Pay through Whop Elements with Face ID, and the one captured no-show is a real charge that someone refunds after the run. A voided hold costs nothing, and a capture costs the amount plus 2.7 percent, which is why the hold stays small.
+There is no production path in the script. The production key is on its way out and the production base was only ever probed for facts, so a presenter who promises a real card charge on stage would be promising something the crew is not allowed to do.
 
 **If it is not ready.** If no hidden Frolic product and no hold variant exist, the beat cannot run at all, because a hold needs a variant to authorize against. Then the dashboard and the state machine are narrated over the rehearsal's payments, with the spec's state diagram on screen. Do not mime a payment.
 
@@ -195,7 +198,7 @@ If the demo runs on production instead, three things change: the hold is real, t
 
 **Where it lives.** `convex/keiki/routes.ts` (inbound), `convex/keiki/outbound.ts` (the drop, reveal, leave nudge and snap window hooks the matcher calls), the agent prompt at `docs/keiki-system-prompt.md`, and the agent itself in Keiki's own console.
 
-**The moment.** At t46 Priya says yes in a text thread, and at t54 the app, the lock screen and the iMessage thread all reveal in the same second. Three surfaces, one person who never installed anything.
+**The moment.** At t50 Priya says yes in a text thread, and at t54 the app, the lock screen and the iMessage thread all reveal in the same second. Three surfaces, one person who never installed anything.
 
 **If it is not ready.** The recorded thread, plus the app and lock screen halves live. Say which one is a recording.
 
@@ -247,7 +250,7 @@ What is still missing for beat 13 is the join: no plan generation calls `getMemo
 
 **Where it lives.** There is no Capy code in this repository, by design. The trail is the artifact: the pull requests, their replays, and `reports/` in the Captain Drive.
 
-**The moment.** At t70 the pull requests on screen, each with a recording, and the day's reports behind them. The claim is that a person watched every one of these run on a real phone before it merged.
+**The moment.** At t70 the pull requests on screen, twelve of them in one afternoon, with the day's reports behind them and the Revyl flows in the repo. The claim is that every screen arrived as a reviewed change with its proof attached, and that the flows which record each one on a real iPhone are written and waiting on the first build.
 
 **Status.** Every row above is a live pull request today. The trail is public and it is the only sponsor claim in this script that needs no rehearsal.
 

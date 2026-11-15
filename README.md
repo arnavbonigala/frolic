@@ -44,8 +44,8 @@ convex/            backend
   whop/            payments, holds, the fund, the pay page, webhooks
   keiki/           inbound routes and the outbound hooks the matcher calls
   web/             the invite and "I'm down" pages
-ios/               the Xcode project, app, widget and Live Activity targets
-web/               the web "I'm down" page assets
+ios/               the Xcode project, app, widget and Live Activity targets (pending, branch ios-foundation)
+web/               the web "I'm down" page assets (pending, branch web-im-down)
 e2e/               Revyl flows, the three-phone run, the barrier scripts
 design/            the interactive mock, images, app icon
 docs/              the brief, the demo script and sponsor sheet, specs
@@ -78,12 +78,11 @@ When working in `convex/`, read `convex/_generated/ai/guidelines.md` and `.agent
 Linux machines cannot build iOS. The build runs on Revyl's runners, from a Capy thread, and the run happens on a cloud iPhone 17 Pro Max, which is the device in Revyl's list closest to the 17 Pro.
 
 1. Build from the thread with `tools.mobile.build`. It creates a build named `frolic-ios`, which is the name every flow in `e2e/` resolves to.
-2. Install and drive it on a cloud iPhone, either with `tools.capy.phone` or from `e2e/`:
+2. Install and drive it on a cloud iPhone, either with `tools.capy.phone` (live screen only) or with the Revyl CLI, which needs a key rather than a browser login:
 
    ```bash
-   cd e2e
-   revyl auth login
-   revyl init -y
+   export REVYL_API_KEY=...
+   cd e2e && revyl init -y
    revyl test create --from-file flows/05-today-open.yaml
    revyl test run frolic-today-open
    ```
@@ -97,11 +96,13 @@ Linux machines cannot build iOS. The build runs on Revyl's runners, from a Capy 
 4. Run everything. The app flows go in one workflow; the three phone flows are their own, because they share one seeded run and block on a barrier:
 
    ```bash
-   ./e2e/lint.sh
+   node e2e/tools/lint.mjs e2e/flows
    revyl workflow create frolic-all
    revyl workflow add-tests frolic-all $(ls flows/[0-9]*.yaml | xargs -n1 basename | sed 's/.yaml//')
    revyl workflow run frolic-all --concurrency 5
    ```
+
+   `e2e/lint.sh` wraps that lint and then runs Revyl's own validator when the CLI is signed in, but its last line points at `e2e/lint.mjs` instead of `e2e/tools/lint.mjs`, so call the node command directly until that path is fixed.
 
 5. Put the phones to sleep the moment the run ends. `tools.capy.phone` with `sleep`, or `revyl device stop --all`. Cloud phones bill by the minute.
 
