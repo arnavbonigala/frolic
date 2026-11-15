@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
-const allowlistPath = join(root, "convex/tests/depth/uncovered-allowlist.ts");
+const allowlistPath = join(root, "tests/backend/depth/uncovered-allowlist.ts");
 const REGISTRATION = /export const (\w+) = (query|mutation|action|internalQuery|internalMutation|internalAction)\(/g;
 const SKIP_OPEN = "test.skip(";
 
@@ -78,7 +78,7 @@ if (mdIndex !== -1 && process.argv[mdIndex + 1]) {
   const lines = [
     "## Functions no test calls",
     "",
-    "Regenerate with `node scripts/depth-coverage.mjs --write --md <file>`. The list is the checked-in allowlist in `convex/tests/depth/uncovered-allowlist.ts`; it may only grow by regenerating both files on purpose.",
+    "Regenerate with `node scripts/depth-coverage.mjs --write --md <file>`. The list is the checked-in allowlist in `tests/backend/depth/uncovered-allowlist.ts`; it may only grow by regenerating both files on purpose.",
     "",
     uncovered.length === 0 ? "None. Every registered function is called by a test." : uncovered.map((name) => `- \`${name}\``).join("\n"),
     "",
