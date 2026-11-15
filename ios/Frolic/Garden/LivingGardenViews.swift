@@ -5,11 +5,12 @@ struct GardenHealthRow: View {
     var onFree: () -> Void
 
     var body: some View {
-        if let line = health.line, !line.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
+        if let line = health.line, !line.isEmpty, health.state.needsWater {
+            VStack(spacing: 10) {
                 Text(line)
                     .frolicFont(.subheadline)
                     .foregroundStyle(FrolicColor.secondaryText)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if health.state.needsWater, health.cta != nil {
                     Button("I'm free", action: onFree)
@@ -17,7 +18,8 @@ struct GardenHealthRow: View {
                         .accessibilityIdentifier("garden.health.free")
                 }
             }
-            .padding(.top, 12)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("garden.health")
         }

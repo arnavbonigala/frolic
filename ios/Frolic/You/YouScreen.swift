@@ -26,13 +26,25 @@ struct YouScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                content
+            VStack(spacing: 0) {
+                StoryHero(asset: "plan-free-stuff", height: 270) {
+                    YouFlowerHead(
+                        name: model.profile?.name ?? "You",
+                        color: model.myColor,
+                        photoURL: model.profile?.photoUrl,
+                        radius: 50
+                    )
+                    .accessibilityHidden(true)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    content
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 140)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 24)
-            .padding(.bottom, 140)
         }
+        .scrollIndicators(.hidden)
+        .ignoresSafeArea(edges: .top)
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
         .background(SkyBackground())
         .accessibilityIdentifier("you.screen")
@@ -102,10 +114,6 @@ private struct YouContent: View {
         model.travel.map { "\(Int($0)) min by foot or BART" } ?? "Choose"
     }
 
-    private var limitsNote: String {
-        "Plans fit everyone's limits. Nobody sees yours."
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -118,7 +126,7 @@ private struct YouContent: View {
                 .padding(.top, 18)
                 .accessibilityIdentifier("state.offline")
             }
-            SectionHeader(title: "Only you see these", systemImage: "lock.fill")
+            SectionHeader(title: "Your limits", systemImage: "lock.fill")
                 .accessibilityIdentifier("you.privateHeader")
             limitsGroup
             if model.savePhase == .failed {
@@ -134,8 +142,6 @@ private struct YouContent: View {
                 .buttonStyle(.plain)
                 .padding(.top, 12)
                 .accessibilityIdentifier("you.limits.error")
-            } else {
-                YouNote(text: limitsNote, identifier: "you.limitsNote")
             }
             SectionHeader(title: "What you're into")
                 .accessibilityIdentifier("you.taste")
@@ -165,13 +171,7 @@ private struct YouContent: View {
     }
 
     private var header: some View {
-        VStack(spacing: 10) {
-            YouFlowerHead(
-                name: model.profile?.name ?? "You",
-                color: model.myColor,
-                photoURL: model.profile?.photoUrl,
-                radius: 46
-            )
+        VStack(spacing: 8) {
             Text(model.profile?.name ?? "You")
                 .font(.system(size: nameSize + 6, weight: .heavy, design: .serif))
                 .foregroundStyle(FrolicColor.ink)
@@ -186,7 +186,6 @@ private struct YouContent: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 12)
     }
 
     private var hasWent: Bool {

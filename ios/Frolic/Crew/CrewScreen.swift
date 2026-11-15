@@ -15,10 +15,28 @@ struct CrewScreen: View {
     var body: some View {
         @Bindable var store = store
         return ScrollView {
+            VStack(spacing: 0) {
+            StoryHero(asset: store.view?.todayTitle.flatMap(PlanPainted.hero(for:)) ?? "plan-games", height: 290) {
+                if let view = store.view {
+                    VStack(spacing: 10) {
+                        HStack(alignment: .bottom, spacing: 0) {
+                            ForEach(Array(([view.me] + view.friendRows).prefix(6).enumerated()), id: \.offset) { index, row in
+                                CrewBloom(row: row, radius: 24, stem: [30, 46, 36, 52, 40, 34][index % 6])
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .accessibilityHidden(true)
+                        let free = ([view.me] + view.friendRows).filter(\.isFree).count
+                        StoryCaption(text: free == 0 ? "Nobody's free yet" : "\(free) of \(view.friendRows.count + 1) free today")
+                    }
+                }
+            }
             VStack(alignment: .leading, spacing: 0) {
                 CrewSwitcherTitle(
                     title: store.view?.groupName ?? "Crew",
-                    subtitle: store.view?.subtitle
+                    subtitle: store.view?.subtitle,
+                    centered: true
                 )
                 PhasedContent(
                     phase: shown,
@@ -39,9 +57,12 @@ struct CrewScreen: View {
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 24)
+            .padding(.top, 2)
             .padding(.bottom, 120)
+            }
         }
+        .scrollIndicators(.hidden)
+        .ignoresSafeArea(edges: .top)
         .background(SkyBackground())
         .accessibilityIdentifier("crew.screen")
         .accessibilityElement(children: .contain)
@@ -141,13 +162,6 @@ private struct CrewContent: View {
                 CrewPersonRowView(row: row, showsDivider: true, onTap: { store.friend = row })
             }
         }
-        Text("Nobody sees exactly where you are.")
-            .frolicFont(.footnote)
-            .foregroundStyle(FrolicColor.secondaryText)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .accessibilityIdentifier("crew.distance.note")
 
         if let comingUp = view.comingUp {
             SectionHeader(title: "Coming up")

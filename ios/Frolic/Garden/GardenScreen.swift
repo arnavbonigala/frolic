@@ -14,19 +14,37 @@ struct GardenScreen: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    ScreenTitle(
-                        title: "Garden",
-                        subtitle: nil,
-                        identifier: "garden"
-                    )
-                    content
+                VStack(spacing: 0) {
+                    StoryHero(asset: store.overview?.memories.first.flatMap { PlanPainted.hero(for: $0.title) } ?? "plan-outdoors", height: 290) {
+                        if shown == .ready, let overview = store.overview {
+                            let semester = overview.semester(me: store.myUserId)
+                            VStack(spacing: 10) {
+                                HStack(alignment: .bottom, spacing: -8) {
+                                    ForEach(Array(overview.memories.prefix(12).enumerated()), id: \.offset) { index, row in
+                                        FlowerView(color: row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac, radius: 15, stem: [34, 52, 42, 60, 38, 48][index % 6], swayDelay: Double(index) * 0.4)
+                                    }
+                                }
+                                .accessibilityHidden(true)
+                                StoryCaption(text: "\(semester.frolics) frolics · \(semester.places) places · \(semester.friends) friends")
+                            }
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Garden")
+                            .font(.system(.largeTitle, design: .serif, weight: .heavy))
+                            .foregroundStyle(FrolicColor.ink)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier("garden.title")
+                        content
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 2)
+                    .padding(.bottom, 120)
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 40)
-                .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
+            .ignoresSafeArea(edges: .top)
             .background(SkyBackground())
             .navigationDestination(for: GardenMemoryRow.self) { row in
                 MemoryDetailScreen(row: row, store: store, toast: $toast)
@@ -77,15 +95,10 @@ struct GardenScreen: View {
 
     private func ready(_ overview: GardenOverview) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            GardenSemesterLine(frolics: overview.semester(me: store.myUserId).frolics, places: overview.semester(me: store.myUserId).places, friends: overview.semester(me: store.myUserId).friends)
-                .padding(.top, 16)
             if let card = store.onThisDay {
                 GardenOnThisDayCard(card: card)
                     .padding(.top, 16)
             }
-            GardenBed(countLine: "", sinceLine: "", yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { row in row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
-                .padding(.horizontal, -18)
-                .padding(.top, 8)
             if let health = overview.health {
                 GardenHealthRow(health: health) {
                     NotificationCenter.default.post(name: .gardenImFree, object: nil)

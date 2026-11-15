@@ -462,7 +462,7 @@ private struct TodayWaitingView: View {
                 store: store,
                 showsWhy: false,
                 friends: store.freeFriends,
-                friendsLine: onlyIf.isEmpty ? "Your bud is planted. Waiting for a friend." : "Your bud is planted. Waiting for " + TodayCopy.names(onlyIf) + ".",
+                friendsLine: onlyIf.isEmpty ? "Waiting for a friend" : "Waiting for " + TodayCopy.names(onlyIf),
                 onFriends: { router.tab = .crew },
                 buds: [store.mePerson]
             )
@@ -506,7 +506,7 @@ private struct TodaySoloView: View {
             )
             .accessibilityIdentifier("today.meadow")
             TodayCaption(
-                text: waiting ? "Waiting for a friend" : "Your crew grows from here. Today's plan is still yours.",
+                text: waiting ? "Waiting for a friend" : "Just you today",
                 identifier: waiting ? "today.caption.waiting" : "today.freeRow",
                 showsDots: waiting
             )
@@ -568,9 +568,6 @@ private struct TodayOffView: View {
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.off.title")
-                Text("Nobody gets told.")
-                    .todayFont(17, relativeTo: .body)
-                    .foregroundStyle(FrolicColor.secondaryText)
             }
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -838,7 +835,7 @@ private struct TodayFadedView: View {
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.faded.title")
-                Text("This one drifted off. Nobody knows you said yes.")
+                Text("This one drifted off.")
                     .todayFont(17, relativeTo: .body)
                     .foregroundStyle(FrolicColor.secondaryText)
                     .accessibilityIdentifier("today.faded.body")
@@ -899,20 +896,16 @@ private struct TodayNoPlanStart: View {
                     .padding(.horizontal, 22)
                 TodayPainting(name: "state-waiting", height: 170)
                     .padding(.top, 18)
-                Text("Your crew sees a plan, not who started it.")
-                    .todayFont(13, relativeTo: .footnote)
-                    .foregroundStyle(FrolicColor.secondaryText)
-                    .padding(.top, 10)
             }
         } else if (store.today?.memberCount ?? 2) <= 1 {
             TodayStoryPage(
                 hero: "plan-outdoors",
                 people: [store.mePerson],
                 ghosts: 3,
-                caption: "Room for your people",
+                caption: nil,
                 kicker: store.today?.groupName ?? "Your crew",
                 title: "It's just you so far",
-                line: "Plans start once a friend joins. Send them your link."
+                line: nil
             ) {
                 TodayInviteButton(crewName: store.today?.groupName ?? "my crew")
             }
@@ -936,9 +929,6 @@ private struct TodayNoPlanStart: View {
                     StoryPrimaryButton(title: "I'm free now", systemImage: "hand.wave.fill") { store.sheet = .imFree }
                         .disabled(!online)
                         .accessibilityIdentifier("today.imFree")
-                    Text("Your crew sees a plan, not who asked.")
-                        .todayFont(13, relativeTo: .footnote)
-                        .foregroundStyle(StoryColor.faint)
                 }
             }
             .accessibilityIdentifier("state.empty")

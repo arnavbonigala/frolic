@@ -157,12 +157,6 @@ struct CrewFriendSheet: View {
                 .accessibilityIdentifier("crew.friend.together")
             }
             .padding(.top, 12)
-            Text("You'll never see whether \(row.name) said yes or no to a plan. That's the point.")
-                .frolicFont(.footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 14)
-                .accessibilityIdentifier("crew.friend.noAnswer")
         }
     }
 }

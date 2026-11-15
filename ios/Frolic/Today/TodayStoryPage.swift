@@ -157,3 +157,42 @@ struct TodayInviteButton: View {
         .task(id: FrolicIdentity.shared.groupId) { await link.load(backend: backend) }
     }
 }
+
+struct StoryHero<Overlay: View>: View {
+    var asset: String?
+    var remote: String?
+    var height: CGFloat = 300
+    @ViewBuilder var overlay: Overlay
+
+    var body: some View {
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .overlay { TodayHeroImage(asset: asset, remote: remote, description: nil) }
+            .clipped()
+            .mask(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 110)
+                }
+                .frame(height: height)
+            }
+            .overlay(alignment: .bottom) { overlay.padding(.bottom, 26) }
+            .accessibilityElement(children: .contain)
+    }
+}
+
+struct StoryCaption: View {
+    var text: String
+
+    var body: some View {
+        Text(text)
+            .todayFont(15, .semibold, rounded: true, relativeTo: .footnote)
+            .foregroundStyle(StoryColor.ink)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .glassEffect(.regular, in: .capsule)
+    }
+}

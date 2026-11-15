@@ -107,11 +107,12 @@ struct CrewSwitchMenu<Label: View>: View {
 struct CrewSwitcherTitle: View {
     var title: String
     var subtitle: String?
+    var centered = false
     @Environment(FrolicBackend.self) private var backend
     @State private var model = CrewSwitcherModel()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: centered ? .center : .leading, spacing: 8) {
             CrewSwitchMenu(model: model) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(title)
@@ -131,10 +132,11 @@ struct CrewSwitcherTitle: View {
                 Text(subtitle)
                     .frolicFont(.subheadline)
                     .foregroundStyle(FrolicColor.secondaryText)
+                    .multilineTextAlignment(centered ? .center : .leading)
                     .accessibilityIdentifier("crew.subtitle")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
         .task { model.start(backend: backend) }
     }
 }

@@ -19,8 +19,6 @@ test:
       step_description: "Tap the \"Free till 8\" pill, select \"Not today\" and tap Done"
     - type: "validation"
       step_description: "The headline \"Taking the day off\" is visible"
-    - type: "validation"
-      step_description: "The text \"Nobody gets told.\" is visible under the headline"
     - type: "instructions"
       step_description: "Tap \"I'm free after all\""
     - type: "validation"
