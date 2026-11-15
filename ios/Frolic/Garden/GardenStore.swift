@@ -100,7 +100,6 @@ final class GardenStore {
     }
 
     private static func message(for error: Error) -> String {
-        let text = error.localizedDescription
-        return text.isEmpty || text.count > 160 ? "Check your connection and try again." : text
+        "Check your connection and try again."
     }
 }
