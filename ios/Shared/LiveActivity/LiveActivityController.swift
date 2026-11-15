@@ -68,11 +68,11 @@ enum LiveActivityController {
     }
 
     static func markOnMyWay(minutes: Int, now: Date = .now) async {
-        guard let activity = current else { return }
+        guard let activity = current, LockScreenStore.snapshot?.frolicId == activity.attributes.frolicId || activity.attributes.frolicId == "demo" else { return }
         var state = activity.content.state
         state.stage = .onTheWay
         state.arriveAt = now.addingTimeInterval(Double(minutes) * 60)
-        if let snapshot = LockScreenStore.snapshot {
+        if let snapshot = LockScreenStore.snapshot?.revealGated(at: now), snapshot.phase == .on {
             state.status = status(for: .onTheWay, snapshot: snapshot, etas: [])
         }
         await activity.update(ActivityContent(state: state, staleDate: staleDate(for: state)))
@@ -83,7 +83,7 @@ enum LiveActivityController {
         var state = activity.content.state
         state.stage = .arrived
         state.arriveAt = nil
-        if let snapshot = LockScreenStore.snapshot {
+        if let snapshot = LockScreenStore.snapshot?.revealGated(at: .now), snapshot.phase == .on {
             state.status = status(for: .arrived, snapshot: snapshot, etas: [])
         }
         let end = LockScreenStore.snapshot?.endsAt ?? .now.addingTimeInterval(2 * 3600)

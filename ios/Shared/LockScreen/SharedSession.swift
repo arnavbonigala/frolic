@@ -12,11 +12,14 @@ enum SharedSession {
     }
 
     static var deviceToken: String? {
-        FrolicIdentity.validToken(defaults.string(forKey: FrolicIdentity.tokenDefaultsKey))
+        guard let raw = defaults.string(forKey: "frolic.deviceToken")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              (32...256).contains(raw.count)
+        else { return nil }
+        return raw
     }
 
     static var groupId: String? {
-        defaults.string(forKey: FrolicIdentity.groupDefaultsKey).flatMap { $0.isEmpty ? nil : $0 }
+        defaults.string(forKey: "frolic.groupId").flatMap { $0.isEmpty ? nil : $0 }
     }
 
     static var deploymentURL: String? {

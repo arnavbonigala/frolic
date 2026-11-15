@@ -99,7 +99,8 @@ struct GoingFaces: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(going.isEmpty ? "" : "Going: \(LockScreenCopy.list(going.map(\.name)))")
+        .accessibilityLabel("Going: \(LockScreenCopy.list(going.map(\.name)))")
+        .accessibilityHidden(going.isEmpty)
     }
 }
 

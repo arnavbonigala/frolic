@@ -127,13 +127,15 @@ struct FlowerRow: View {
     var people: [LockScreenPerson]
     var radius: CGFloat = 10
     var limit = 4
+    var label: String?
 
     var body: some View {
         HStack(spacing: -radius * 0.45) {
             ForEach(people.prefix(limit)) { WidgetFlower(person: $0, radius: radius) }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(people.isEmpty ? "" : LockScreenCopy.freeLine(people.map(\.name)))
+        .accessibilityLabel(label ?? LockScreenCopy.freeLine(people.map(\.name)))
+        .accessibilityHidden(people.isEmpty)
     }
 }
 
@@ -233,7 +235,7 @@ struct SmallTodayView: View {
             WidgetMessage(illustration: "state-waiting", title: LockScreenCopy.planted, line: s.onlyIf.isEmpty ? LockScreenCopy.hush : LockScreenCopy.onlyIfLine(s.onlyIf), compact: true)
         case .on(let s):
             VStack(alignment: .leading, spacing: 4) {
-                FlowerRow(people: s.going, radius: 12)
+                FlowerRow(people: s.going, radius: 12, label: "Going: " + LockScreenCopy.list(s.going.map(\.name)))
                 Spacer(minLength: 0)
                 Text(LockScreenCopy.itsOn)
                     .widgetFont(26, .heavy, rounded: true, relativeTo: .title)
@@ -256,7 +258,7 @@ struct SmallTodayView: View {
             .accessibilityElement(children: .combine)
         case .hopIn(let s):
             VStack(alignment: .leading, spacing: 6) {
-                FlowerRow(people: s.going, radius: 11)
+                FlowerRow(people: s.going, radius: 11, label: "Going: " + LockScreenCopy.list(s.going.map(\.name)))
                 Text(s.hopInWaiting ? "You're next if a spot opens." : LockScreenCopy.hopInLine(going: s.going.map(\.name), place: s.placeName))
                     .widgetFont(13, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(FrolicColor.ink)
@@ -338,7 +340,7 @@ struct MediumTodayView: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.7)
                     Spacer(minLength: 0)
-                    FlowerRow(people: s.going, radius: 10, limit: 6)
+                    FlowerRow(people: s.going, radius: 10, limit: 6, label: "Going: " + LockScreenCopy.list(s.going.map(\.name)))
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -350,7 +352,7 @@ struct MediumTodayView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 6) {
-                    FlowerRow(people: s.going, radius: 11, limit: 5)
+                    FlowerRow(people: s.going, radius: 11, limit: 5, label: "Going: " + LockScreenCopy.list(s.going.map(\.name)))
                     Text(s.hopInWaiting ? "You're next if a spot opens." : LockScreenCopy.hopInLine(going: s.going.map(\.name), place: s.placeName))
                         .widgetFont(15, .semibold, relativeTo: .subheadline)
                         .foregroundStyle(FrolicColor.ink)

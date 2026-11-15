@@ -87,7 +87,7 @@ struct TodayWidget: Widget {
             TodayWidgetView(entry: entry)
         }
         .configurationDisplayName("Today")
-        .description("Today's plan, who's free, and your I'm down.")
+        .description("Today's plan and who's free. Say I'm down from here.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }

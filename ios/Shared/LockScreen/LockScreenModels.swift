@@ -152,7 +152,7 @@ struct LockScreenSnapshot: Codable, Equatable {
     }
 
     func revealGated(at date: Date) -> LockScreenSnapshot {
-        guard isRevealed, let revealAt, date < revealAt else { return self }
+        guard isRevealed, revealAt.map({ date < $0 }) ?? true else { return self }
         var hidden = self
         hidden.phase = tappedDown ? .waiting : .open
         hidden.going = []
