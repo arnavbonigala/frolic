@@ -20,6 +20,7 @@ const TOOLS = [
   "remember",
   "pause",
   "im_free",
+  "answer_pick",
 ];
 
 type Row = { tool: string; anonymous: number; authenticated: number; shaped: boolean; verdict: string };

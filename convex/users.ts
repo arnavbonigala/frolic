@@ -365,7 +365,7 @@ async function purgeRows(ctx: MutationCtx, user: Doc<"users">): Promise<boolean>
     for (const frolic of frolics) await purgeFrolic(ctx, frolic._id, userId);
     await ctx.db.delete("memberships", membership._id);
   }
-  for (const table of ["taps", "attendees", "limits", "keikiLinks"] as const) {
+  for (const table of ["taps", "attendees", "limits", "keikiLinks", "dailyPickAnswers"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_userId", (q) => q.eq("userId", userId))

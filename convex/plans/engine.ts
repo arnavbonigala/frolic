@@ -1,4 +1,4 @@
-import { BERKELEY_PLACES, heroKeyFor, type HeroKey, type Place, type PlaceTag, type WeekHours } from "../places/data";
+import { BERKELEY_PLACES, PLACE_BY_SLUG, heroKeyFor, type HeroKey, type Place, type PlaceTag, type TimeOfDay, type WeekHours } from "../places/data";
 import type { MemoryContext } from "./memoryContext";
 import { addDays, clockLabel, dateLabel, daysBetween, localParts, localTimeToMs, solarTimes } from "./time";
 import { conditionLabel, hourAt, isClear, isRainy, type DayWeather, type HourWeather } from "./weather";
@@ -246,6 +246,26 @@ export function freeEarliestStart(nowMs: number, maxTripMinutes: number): number
   return Math.ceil((nowMs + lead * MINUTE) / SLOT) * SLOT;
 }
 
+const OUTSIDE_TAGS: PlaceTag[] = ["outdoors", "nature", "hiking"];
+const darkOnlyOutside = (p: Place) => !p.drop && !p.indoor && !p.bestTimes.includes("late_night") && p.tags.some((t) => OUTSIDE_TAGS.includes(t));
+
+export function timeOfDay(startMs: number, sunsetMs: number): TimeOfDay {
+  const m = localParts(startMs).minutes;
+  if (m >= 21 * 60 || m < 4 * 60) return "late";
+  if (startMs >= sunsetMs + 20 * MINUTE) return "evening";
+  if (m < 11 * 60) return "morning";
+  if (startMs >= sunsetMs - 90 * MINUTE) return "golden";
+  return "day";
+}
+
+function closeMinute(place: Place, startMs: number): number | null {
+  const { weekday, minutes: m } = localParts(startMs);
+  const today = place.hours[weekday].find(([o, c]) => o <= m && m < c);
+  if (today) return today[1];
+  const spill = place.hours[(weekday + 6) % 7].find(([, c]) => c > 1440 && m + 1440 < c);
+  return spill ? spill[1] - 1440 : null;
+}
+
 function bestSlot(place: Place, trips: Record<string, Trip>, ctx: Ctx) {
   const { input } = ctx;
   const dur = place.durationMin * MINUTE;
@@ -264,6 +284,7 @@ function bestSlot(place: Place, trips: Record<string, Trip>, ctx: Ctx) {
     const e = s + dur;
     if (!isOpenFor(place, s, place.durationMin)) continue;
     if (place.needsDaylight && (s < ctx.sunriseMs || e > ctx.sunsetMs + 20 * MINUTE)) continue;
+    if (darkOnlyOutside(place) && (s < ctx.sunriseMs || e > ctx.sunsetMs + 30 * MINUTE)) continue;
     const homeOk = input.attendees.every((a) => a.limits.homeBy === null || (e - ctx.dayStartMs) / MINUTE + trips[a.userId].minutes <= a.limits.homeBy);
     if (!homeOk) continue;
     const count = input.attendees.filter((a) => a.window.start <= s && e <= a.window.end).length;
@@ -283,7 +304,7 @@ function scoreCandidate(c: Omit<Candidate, "dryScore" | "score">, ctx: Ctx): { d
   s += timeFit(p, c.startMs, ctx.sunsetMs, c.rainy);
   s += c.freeCount * 5;
   s -= Math.max(0, c.maxTrip.minutes - 12) * 1.5 + c.maxTrip.minutes * 0.3;
-  if (c.golden) s += 15;
+  if (c.golden) s += (ctx.weights.get("sunsets") ?? 0) + (ctx.weights.get("views") ?? 0) > 0 || ctx.weights.size === 0 ? 15 : 5;
   if (c.comeback) s += 45;
   if (p.drop && taste > 0) s += DROP_BOOST;
   if (ctx.input.memory.pastNights.some((n) => n.placeId === p.slug)) s += 10;
@@ -291,6 +312,11 @@ function scoreCandidate(c: Omit<Candidate, "dryScore" | "score">, ctx: Ctx): { d
     if (h.placeSlug !== p.slug) continue;
     const ago = daysBetween(h.day, ctx.input.day);
     if (ago >= 0 && ago < 14) s -= (14 - ago) * 2.5;
+    if (ago >= 0 && ago <= 3) s -= 80;
+  }
+  for (const h of ctx.input.history) {
+    const ago = daysBetween(h.day, ctx.input.day);
+    if (ago >= 0 && ago <= 3 && PLACE_BY_SLUG.get(h.placeSlug)?.tags[0] === p.tags[0]) s -= (4 - ago) * 6;
   }
   if (ctx.blocked.onceSlugs.has(p.slug) || p.tags.some((t) => ctx.blocked.onceTags.has(t))) s -= 12;
   s -= p.costPerPersonCents / 400;
@@ -384,7 +410,9 @@ export function rankCandidates(
     const rainy = isRainy(hour);
     const maxTrip = Object.values(trips).reduce((m, t) => (t.minutes > m.minutes ? t : m));
     const golden =
-      !rainy && (input.weather === null || isClear(hour)) && p_golden(place) && Math.abs(slot.startMs + place.durationMin * MINUTE - ctx.sunsetMs) <= 75 * MINUTE;
+      !rainy && (input.weather === null || isClear(hour)) && p_golden(place) &&
+      slot.startMs <= ctx.sunsetMs &&
+      slot.startMs + place.durationMin * MINUTE >= ctx.sunsetMs - 15 * MINUTE;
     const base = {
       place,
       startMs: slot.startMs,
@@ -423,13 +451,26 @@ function costPhrase(p: Place): string {
   return "it fits everyone's budget";
 }
 
-function weatherPhrase(c: Candidate, swap: boolean): string {
+function weatherPhrase(c: Candidate, swap: boolean): string | null {
   if (swap) return "it's dry inside while it rains";
   if (c.golden) return "the sky's clear until dark";
   if (c.hour && !c.rainy && c.hour.tempF >= 58 && !c.place.indoor) return "it's " + c.hour.tempF + "\u00b0 out";
-  if (c.place.indoor) return "it's warm inside";
-  if (c.freeCount >= 2) return (c.freeCount === 2 ? "two" : c.freeCount === 3 ? "three" : String(c.freeCount)) + " of you are free then";
-  return "it's open when you're free";
+  if (c.place.indoor && c.hour && c.hour.tempF < 52) return "it's warm inside";
+  if (c.freeCount >= 3) return (c.freeCount === 3 ? "three" : String(c.freeCount)) + " of you are free then";
+  return null;
+}
+
+function tasteWhy(lead: string, tag: PlaceTag, c: Candidate, swap: boolean): string {
+  const parts = [tag === "free" ? null : costPhrase(c.place), weatherPhrase(c, swap)].filter((x): x is string => !!x);
+  const head = lead + TAG_LABEL[tag];
+  if (parts.length === 0) return head + ".";
+  if (parts.length === 1) return head + " and " + parts[0] + ".";
+  return head + ", " + parts[0] + ", and " + parts[1] + ".";
+}
+
+function pickTag(p: Place, tags: PlaceTag[]): PlaceTag | undefined {
+  const own = tags.filter((t) => p.tags.includes(t));
+  return own.find((t) => t !== "free") ?? own[0];
 }
 
 export function memoryWhy(text: string): string {
@@ -458,15 +499,11 @@ function writeWhy(c: Candidate, ctx: Ctx, swap: boolean): { why: string; whySour
     const why = "you loved it here" + when + ": \u201c" + trimQuote(night.text, 70) + ".\u201d";
     if (copyOk(why)) return { why, whySource: "memory", whyMemoryId: night.id, memory: night.text };
   }
-  const liked = ctx.input.memory.likedTags.find((raw) => normalizeTag(raw).some((t) => p.tags.includes(t)));
-  if (liked) {
-    const tag = normalizeTag(liked).find((t) => p.tags.includes(t))!;
-    return { why: "you keep picking " + TAG_LABEL[tag] + ", " + costPhrase(p) + ", and " + weatherPhrase(c, swap) + ".", whySource: "memory", whyMemoryId: null, memory: null };
-  }
-  const tasteTag = [...ctx.weights.entries()].filter(([t]) => p.tags.includes(t)).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0];
-  if (tasteTag) {
-    return { why: "you're into " + TAG_LABEL[tasteTag] + ", " + costPhrase(p) + ", and " + weatherPhrase(c, swap) + ".", whySource: "template", whyMemoryId: null, memory: null };
-  }
+  const likedTag = pickTag(p, ctx.input.memory.likedTags.flatMap(normalizeTag));
+  if (likedTag) return { why: tasteWhy("you keep picking ", likedTag, c, swap), whySource: "memory", whyMemoryId: null, memory: null };
+  const ranked = [...ctx.weights.entries()].sort((a, b) => b[1] - a[1] || p.tags.indexOf(a[0]) - p.tags.indexOf(b[0])).map(([t]) => t);
+  const tasteTag = pickTag(p, ranked);
+  if (tasteTag) return { why: tasteWhy("you're into ", tasteTag, c, swap), whySource: "template", whyMemoryId: null, memory: null };
   if (swap) return { why: "rain's coming, so this one keeps everyone dry, and " + costPhrase(p) + ".", whySource: "template", whyMemoryId: null, memory: null };
   return { why: p.fallbackWhy, whySource: "template", whyMemoryId: null, memory: null };
 }
@@ -494,11 +531,30 @@ function placeLine(c: Candidate): string {
 function writeLine(c: Candidate, ctx: Ctx, swap: boolean): string {
   const sunset = clockLabel(ctx.sunsetMs);
   const golden = clockLabel(ctx.sunsetMs - 30 * MINUTE);
-  if (swap) return "Rain around " + clockLabel(c.startMs) + ", so it's indoors. " + placeLine(c);
-  const lead = c.hour ? conditionLabel(c.hour) + " and " + c.hour.tempF + "\u00b0. " : "";
-  if (c.golden) return lead + "Golden hour starts at " + golden + ".";
-  if (sunsetRelevant(c, ctx.sunsetMs)) return lead + "Sunset at " + sunset + ".";
-  return lead + placeLine(c);
+  const hook = c.place.drop ? "" : cap(c.place.tip) + ".";
+  const close = closeMinute(c.place, c.startMs);
+  const hours = c.place.indoor && close !== null ? "Open until " + clockLabel(ctx.dayStartMs + close * MINUTE) + "." : "";
+  const lead = c.hour ? conditionLabel(c.hour) + " and " + c.hour.tempF + "\u00b0." + (!c.place.indoor && c.hour.tempF < 50 ? " Bring a layer." : "") : "";
+  const parts = swap
+    ? ["Rain around " + clockLabel(c.startMs) + ", so it's indoors.", hours || placeLine(c), hook]
+    : c.golden
+      ? [lead, "Golden hour starts at " + golden + ".", hook]
+      : sunsetRelevant(c, ctx.sunsetMs) && c.startMs < ctx.sunsetMs
+        ? [lead, "Sunset at " + sunset + ".", hook]
+        : [lead, hours, hook];
+  let line = "";
+  for (const part of parts.filter(Boolean)) if (copyOk(line ? line + " " + part : part)) line = line ? line + " " + part : part;
+  return line || placeLine(c);
+}
+
+function writeTitle(c: Candidate, ctx: Ctx): string {
+  const p = c.place;
+  if (p.drop) return p.title;
+  const when = timeOfDay(c.startMs, ctx.sunsetMs);
+  const base = p.titles?.[when] ?? (when === "golden" || !/sunset|golden hour|dusk/i.test(p.title) ? p.title : p.titles?.day ?? p.title);
+  const close = closeMinute(p, c.startMs);
+  const tight = close !== null && close < 26 * 60 && close * MINUTE + ctx.dayStartMs - c.endMs <= 30 * MINUTE;
+  return tight && (when === "evening" || when === "late") && copyOk(base + " before close") ? base + " before close" : base;
 }
 
 function writeChips(c: Candidate, ctx: Ctx, swap: boolean): string[] {
@@ -521,7 +577,7 @@ function toPlan(c: Candidate, ctx: Ctx, candidates: Candidate[], source: Plan["s
   return {
     placeSlug: p.slug,
     heroKey: heroKeyFor(p),
-    title: p.title,
+    title: writeTitle(c, ctx),
     line: writeLine(c, ctx, swap),
     why: w.why,
     whySource: w.whySource,

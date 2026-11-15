@@ -24,6 +24,7 @@ export const TOOL_NAMES = [
   "pause",
   "link_group_chat",
   "im_free",
+  "answer_pick",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -41,6 +42,7 @@ const WRITES: ReadonlySet<ToolName> = new Set([
   "pause",
   "link_group_chat",
   "im_free",
+  "answer_pick",
 ]);
 
 const DM_ONLY: ReadonlySet<ToolName> = new Set(TOOL_NAMES.filter((t) => t !== "get_today" && t !== "link_group_chat"));
@@ -193,6 +195,8 @@ async function run(ctx: ActionCtx, tool: ToolName, call: Call): Promise<unknown>
       const minutes = num(input, "for_minutes", false) ?? 120;
       return await ctx.runMutation(internal.keiki.tools.imFree, { phone: phoneOf(call), forMinutes: minutes });
     }
+    case "answer_pick":
+      return await ctx.runMutation(internal.keiki.tools.answerPick, { phone: phoneOf(call), option: str(input, "option", 100)! });
     case "remember":
       return await ctx.runMutation(internal.keiki.tools.remember, { phone: phoneOf(call), text: str(input, "text", 500)!, now });
     case "pause": {
