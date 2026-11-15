@@ -8,6 +8,7 @@ final class CheckInFlowCoordinator {
 
     var frolicId: String?
     var isPresented = false
+    var plantedFrolicId: String?
 
     func open(frolicId: String? = nil) {
         self.frolicId = frolicId
@@ -57,7 +58,7 @@ struct CheckInFlowScreen: View {
                     onSnapped: { store.noteSnapTaken($0) }
                 )
             case .collage:
-                SnapCollage(store: store, onPlant: onClose, onAgain: {
+                SnapCollage(store: store, onPlant: plant, onAgain: {
                     snapModel.reset()
                     store.step = .snap
                 })
@@ -85,10 +86,8 @@ struct CheckInFlowScreen: View {
             watcher.begin(place: store.place, simulation: location)
             Task { await store.refreshRoute() }
         }
-        .onChange(of: watcher.arrived) { _, arrived in
-            guard arrived, store.phase == .ready, !store.checkedIn else { return }
-            store.checkIn(method: "geofence")
-        }
+        .onChange(of: watcher.arrived) { _, _ in checkInIfArrived() }
+        .onChange(of: store.phase) { _, _ in checkInIfArrived() }
         .onChange(of: watcher.currentCoordinate?.latitude) { _, _ in
             Task { await store.refreshRoute() }
         }
@@ -103,6 +102,17 @@ struct CheckInFlowScreen: View {
 
     private func retry() {
         Task { await store.load(backend: backend) }
+    }
+
+    private func checkInIfArrived() {
+        guard watcher.arrived, store.phase == .ready, !store.checkedIn else { return }
+        store.checkIn(method: "geofence")
+    }
+
+    private func plant() {
+        CheckInFlowCoordinator.shared.plantedFrolicId = store.frolicId
+        router.tab = .garden
+        onClose()
     }
 
     private func prepare() async {

@@ -33,6 +33,7 @@ struct GardenScreen: View {
             }
         }
         .accessibilityIdentifier("garden.screen")
+        .landsOnPlantedMemory(path: $path, memories: store.overview?.memories)
         .gardenToast($toast)
         .sheet(isPresented: $showsStory) {
             if let overview = store.overview {

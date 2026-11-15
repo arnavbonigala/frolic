@@ -48,9 +48,10 @@ final class CheckInStore {
 
     var title: String { plan?.title ?? "" }
     var heroKey: String { plan?.heroKey ?? "plan-sunsets" }
+    var startsAt: Double? { plan?.startsAt ?? reveal?.startsAt }
     var kicker: String {
-        guard let reveal else { return "It's on" }
-        return "It's on · \(CheckInClock.time(reveal.startsAt))"
+        guard let startsAt else { return "It's on" }
+        return "It's on · \(CheckInClock.time(startsAt))"
     }
     var placeName: String {
         let raw = place?.name ?? ""
@@ -64,7 +65,28 @@ final class CheckInStore {
         others.isEmpty ? "Shared only until you arrive." : "Shared only with \(otherNames), and only until you arrive."
     }
 
-    var lockTitle: String { "\(placeName) at \(CheckInClock.time(reveal?.startsAt ?? 0))" }
+    var lockTitle: String { "\(placeName) at \(CheckInClock.time(startsAt ?? 0))" }
+
+    var othersHere: [WirePerson] { others.filter { eta(for: $0).map(isHere) ?? false } }
+    var othersOnTheWay: [WirePerson] { others.filter { !(eta(for: $0).map(isHere) ?? false) } }
+
+    var arrivedLine: String {
+        let names = othersHere.map(\.name)
+        switch names.count {
+        case 0: return "You're the first one here."
+        case 1: return "\(names[0])'s here too."
+        default: return "\(FrolicNames.list(names)) are here too."
+        }
+    }
+
+    var gatheredTitle: String {
+        let names = othersOnTheWay.map(\.name)
+        switch names.count {
+        case 0: return "You're all here"
+        case 1: return "\(names[0])'s still on the way"
+        default: return "\(FrolicNames.list(names)) are still on the way"
+        }
+    }
 
     var lockLine: String {
         let lines = others.prefix(2).compactMap { person -> String? in
@@ -76,7 +98,7 @@ final class CheckInStore {
     }
 
     var leaveBy: String? {
-        guard let startsAt = reveal?.startsAt, let myMinutes, !checkedIn else { return nil }
+        guard let startsAt, let myMinutes, !checkedIn else { return nil }
         let leave = startsAt - Double(myMinutes) * 60000
         guard leave > Date().timeIntervalSince1970 * 1000 + clockOffset else { return nil }
         return "Leave by \(CheckInClock.time(leave))"
@@ -90,7 +112,7 @@ final class CheckInStore {
         etas.first { $0.userId == person.userId }
     }
 
-    private func isHere(_ row: WireEta) -> Bool {
+    func isHere(_ row: WireEta) -> Bool {
         !row.onTheWay || row.minutes <= 0
     }
 
@@ -181,7 +203,7 @@ final class CheckInStore {
             .subscribe(to: "etas:forFrolic", with: args, yielding: [WireEta].self)
             .receive(on: DispatchQueue.main)
             .sink(receiveCompletion: { _ in }, receiveValue: { [weak self] rows in
-                MainActor.assumeIsolated { self?.etas = rows }
+                MainActor.assumeIsolated { self?.applyEtas(rows) }
             })
         moneyCancellable = client
             .subscribe(to: "whop/pay:myPayment", with: args, yielding: WireMoney.self)
@@ -195,6 +217,12 @@ final class CheckInStore {
             .sink(receiveCompletion: { _ in }, receiveValue: { [weak self] rows in
                 MainActor.assumeIsolated { self?.snaps = rows }
             })
+    }
+
+    private func applyEtas(_ rows: [WireEta]) {
+        etas = rows
+        guard !checkedIn, let mine = rows.first(where: { $0.userId == myUserId }), isHere(mine) else { return }
+        checkIn(method: "geofence")
     }
 
     private func apply(_ value: WireToday) {
@@ -238,7 +266,7 @@ final class CheckInStore {
         actionError = nil
         checkedIn = true
         myMinutes = 0
-        step = .snap
+        if method == "manual" { step = .snap }
         Task {
             do {
                 let _: String = try await client.mutation(
