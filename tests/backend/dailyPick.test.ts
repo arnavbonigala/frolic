@@ -45,6 +45,50 @@ describe("question bank", () => {
     }
   });
 
+  test("questions start with a capital and options stay lowercase and short", () => {
+    for (const question of QUESTION_BANK) {
+      expect(question.text.charAt(0)).toBe(question.text.charAt(0).toUpperCase());
+      for (const { label } of question.options) {
+        expect(label.charAt(0)).toBe(label.charAt(0).toLowerCase());
+        expect(label).not.toMatch(/[.!?,;:]/);
+        expect(label.split(/\s+/).length).toBeLessThanOrEqual(4);
+        expect(label.trim()).toBe(label);
+        expect(label).not.toBe(label.toUpperCase());
+      }
+    }
+  });
+
+  test("a tag the crew passed on three times stops showing up", () => {
+    const history = [
+      { day: "2026-11-12", key: "noodles-tacos", category: "food" },
+      { day: "2026-11-13", key: "pizza-dumplings", category: "food" },
+      { day: "2026-11-14", key: "early-late", category: "vibe" },
+    ];
+    const carries = (key: string, tag: string) => QUESTION_BANK.find((q) => q.key === key)!.options.some((o) => o.tags.includes(tag));
+    expect(carries(chooseQuestion("crew-x", "2026-11-15", history, ["late_night_food"]).key, "late_night_food")).toBe(false);
+    const walked = [...history];
+    let day = "2026-11-15";
+    for (let i = 0; i < 60; i++) {
+      const question = chooseQuestion("crew-x", day, walked, ["late_night_food"]);
+      expect(carries(question.key, "late_night_food")).toBe(false);
+      expect(walked.filter((h) => h.day > addDay(day, -30)).map((h) => h.key)).not.toContain(question.key);
+      walked.push({ day, key: question.key, category: question.category });
+      day = addDay(day, 1);
+    }
+  });
+
+  test("passing on everything keeps the bank open instead of running dry", () => {
+    const everything = [...new Set(QUESTION_BANK.flatMap((q) => q.options.flatMap((o) => o.tags)))];
+    const history: { day: string; key: string; category: string }[] = [];
+    let day = "2026-11-01";
+    for (let i = 0; i < 60; i++) {
+      const question = chooseQuestion("crew-y", day, history, everything);
+      expect(history.filter((h) => h.day > addDay(day, -30)).map((h) => h.key)).not.toContain(question.key);
+      history.push({ day, key: question.key, category: question.category });
+      day = addDay(day, 1);
+    }
+  });
+
   test("choice is deterministic per crew and day", () => {
     const a = chooseQuestion("crew-a", "2026-11-15", []);
     expect(chooseQuestion("crew-a", "2026-11-15", []).key).toBe(a.key);
@@ -74,6 +118,77 @@ describe("question bank", () => {
 });
 
 describe("dailyPick", () => {
+  test("a tag the crew passes on three times stops appearing on the card", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, NAMES);
+    const seedDays = async (days: { day: string; key: string; answer?: string }[]) => {
+      await t.run(async (ctx) => {
+        for (const row of days) {
+          const question = QUESTION_BANK.find((q) => q.key === row.key)!;
+          const questionId = await ctx.db.insert("dailyPickQuestions", question);
+          await ctx.db.insert("dailyPicks", {
+            groupId: crew.groupId,
+            day: row.day,
+            questionId,
+            questionKey: row.key,
+            category: question.category,
+            answers: row.answer ? 1 : 0,
+          });
+          if (row.answer) {
+            await ctx.db.insert("dailyPickAnswers", { groupId: crew.groupId, day: row.day, userId: crew.ids.Maya, option: row.answer, answeredAt: NOON });
+          }
+        }
+      });
+    };
+    await seedDays([
+      { day: "2026-11-11", key: "midnight-snack" },
+      { day: "2026-11-12", key: "noodles-tacos", answer: "tacos" },
+      { day: "2026-11-13", key: "pizza-dumplings", answer: "pizza" },
+      { day: "2026-11-14", key: "early-late", answer: "early night" },
+    ]);
+    const history = [
+      { day: "2026-11-11", key: "midnight-snack", category: "food" },
+      { day: "2026-11-12", key: "noodles-tacos", category: "food" },
+      { day: "2026-11-13", key: "pizza-dumplings", category: "food" },
+      { day: "2026-11-14", key: "early-late", category: "vibe" },
+    ];
+    const carries = (key: string) => QUESTION_BANK.find((q) => q.key === key)!.options.some((o) => o.tags.includes("late_night_food"));
+    let day = "2026-11-15";
+    let saved = 0;
+    for (let i = 0; i < 15; i++) {
+      const banned = chooseQuestion(crew.groupId, day, history, ["late_night_food"]);
+      expect(carries(banned.key)).toBe(false);
+      if (chooseQuestion(crew.groupId, day, history).key !== banned.key) saved++;
+      vi.setSystemTime(NOON + (Date.parse(day + "T00:00:00Z") - Date.parse("2026-11-15T00:00:00Z")));
+      const view = await today(t, crew.groupId, "Maya");
+      expect(view.question).toBe(banned.text);
+      await t.mutation(api.dailyPick.answer, { deviceToken: token("Maya"), groupId: crew.groupId, option: view.options[0] });
+      history.push({ day, key: banned.key, category: banned.category });
+      day = addDay(day, 1);
+    }
+    expect(saved).toBeGreaterThan(0);
+  });
+
+  test("thirty days straight of picking one tag keeps asking something new", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, NAMES);
+    const asked: string[] = [];
+    const sets: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      vi.setSystemTime(NOON + i * DAY);
+      const view = await today(t, crew.groupId, "Maya");
+      asked.push(view.question);
+      sets.push([...view.options].sort().join("|"));
+      const question = QUESTION_BANK.find((q) => q.text === view.question)!;
+      const pick = question.options.find((o) => o.tags.includes("food"))?.label ?? question.options[0].label;
+      await t.mutation(api.dailyPick.answer, { deviceToken: token("Maya"), groupId: crew.groupId, option: pick });
+      await t.mutation(api.dailyPick.answer, { deviceToken: token("Dev"), groupId: crew.groupId, option: view.options[view.options.length - 1] });
+    }
+    expect(new Set(asked).size).toBe(30);
+    expect(new Set(sets).size).toBe(30);
+    for (let i = 0; i < asked.length; i++) expect(asked.slice(Math.max(0, i - 6), i)).not.toContain(asked[i]);
+  });
+
   test("results stay hidden until you answer, then show counts and flowers", async () => {
     const t = makeT();
     const crew = await setupCrew(t, NAMES);

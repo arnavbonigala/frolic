@@ -41,14 +41,40 @@ async function pickRow(ctx: QueryCtx, groupId: Id<"groups">, day: string) {
     .unique();
 }
 
-async function history(ctx: QueryCtx, groupId: Id<"groups">, day: string) {
+const PASS_LIMIT = 3;
+const HISTORY_ANSWER_LIMIT = 400;
+
+function passedTags(rows: Doc<"dailyPicks">[], answers: Doc<"dailyPickAnswers">[]): string[] {
+  const passes = new Map<string, number>();
+  for (const row of rows) {
+    const question = BANK_BY_KEY.get(row.questionKey);
+    if (!question) continue;
+    const taken = new Set(answers.filter((answer) => answer.day === row.day).map((answer) => answer.option));
+    if (taken.size === 0) continue;
+    const offered = new Map<string, boolean>();
+    for (const option of question.options) {
+      for (const tag of option.tags) offered.set(tag, (offered.get(tag) ?? false) || taken.has(option.label));
+    }
+    for (const [tag, took] of offered) if (!took) passes.set(tag, (passes.get(tag) ?? 0) + 1);
+  }
+  return [...passes].filter(([, count]) => count >= PASS_LIMIT).map(([tag]) => tag);
+}
+
+async function lookBack(ctx: QueryCtx, groupId: Id<"groups">, day: string) {
+  const since = addDays(day, -NO_REPEAT_DAYS);
   const rows = await ctx.db
     .query("dailyPicks")
-    .withIndex("by_groupId_and_day", (q) =>
-      q.eq("groupId", groupId).gte("day", addDays(day, -NO_REPEAT_DAYS)).lt("day", day),
-    )
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).gte("day", since).lt("day", day))
     .take(NO_REPEAT_DAYS + 5);
-  return rows.map((row) => ({ day: row.day, key: row.questionKey, category: row.category }));
+  if (rows.length === 0) return { history: [], passed: [] as string[] };
+  const answers = await ctx.db
+    .query("dailyPickAnswers")
+    .withIndex("by_groupId_and_day_and_userId", (q) => q.eq("groupId", groupId).gte("day", since).lt("day", day))
+    .take(HISTORY_ANSWER_LIMIT);
+  return {
+    history: rows.map((row) => ({ day: row.day, key: row.questionKey, category: row.category })),
+    passed: passedTags(rows, answers),
+  };
 }
 
 export async function questionFor(ctx: QueryCtx, groupId: Id<"groups">, day: string): Promise<PickQuestion> {
@@ -57,7 +83,8 @@ export async function questionFor(ctx: QueryCtx, groupId: Id<"groups">, day: str
     const stored = await ctx.db.get("dailyPickQuestions", row.questionId);
     if (stored) return { key: stored.key, category: stored.category, text: stored.text, options: stored.options };
   }
-  return chooseQuestion(groupId, day, await history(ctx, groupId, day));
+  const past = await lookBack(ctx, groupId, day);
+  return chooseQuestion(groupId, day, past.history, past.passed);
 }
 
 async function upsertQuestion(ctx: MutationCtx, question: PickQuestion): Promise<Id<"dailyPickQuestions">> {
@@ -74,7 +101,8 @@ async function upsertQuestion(ctx: MutationCtx, question: PickQuestion): Promise
 export async function ensurePick(ctx: MutationCtx, groupId: Id<"groups">, day: string): Promise<{ row: Doc<"dailyPicks">; question: PickQuestion }> {
   const existing = await pickRow(ctx, groupId, day);
   if (existing) return { row: existing, question: await questionFor(ctx, groupId, day) };
-  const question = chooseQuestion(groupId, day, await history(ctx, groupId, day));
+  const past = await lookBack(ctx, groupId, day);
+  const question = chooseQuestion(groupId, day, past.history, past.passed);
   const questionId = await upsertQuestion(ctx, BANK_BY_KEY.get(question.key) ?? question);
   const id = await ctx.db.insert("dailyPicks", { groupId, day, questionId, questionKey: question.key, category: question.category, answers: 0 });
   return { row: (await ctx.db.get("dailyPicks", id))!, question };
