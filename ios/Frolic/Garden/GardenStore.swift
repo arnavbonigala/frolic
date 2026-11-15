@@ -7,11 +7,24 @@ import Observation
 @Observable
 final class GardenStore {
     private static var cachedOverview: [String: GardenOverview] = [:]
+
+    private static func stored(_ groupId: String) -> GardenOverview? {
+        if let cached = cachedOverview[groupId] { return cached }
+        guard let data = UserDefaults.standard.data(forKey: "garden.overview.\(groupId)") else { return nil }
+        return try? JSONDecoder().decode(GardenOverview.self, from: data)
+    }
+
+    private static func store(_ overview: GardenOverview, groupId: String) {
+        cachedOverview[groupId] = overview
+        guard let data = try? JSONEncoder().encode(overview) else { return }
+        UserDefaults.standard.set(data, forKey: "garden.overview.\(groupId)")
+    }
     private(set) var overview: GardenOverview?
     private(set) var phase: ScreenPhase = .loading
     private(set) var memory: GardenMemory?
     private(set) var onThisDay: GardenOnThisDay?
     private(set) var myUserId: String?
+    @ObservationIgnored private var emptyTask: Task<Void, Never>?
     @ObservationIgnored private var meTask: Task<Void, Never>?
     @ObservationIgnored private var onThisDayTask: Task<Void, Never>?
     private(set) var memoryPhase: ScreenPhase = .loading
@@ -39,11 +52,17 @@ final class GardenStore {
             phase = .empty
             return
         }
-        if overview == nil, let cached = GardenStore.cachedOverview[identity.groupId] {
+        if overview == nil, let cached = GardenStore.stored(identity.groupId) {
             overview = cached
             phase = cached.isEmpty ? .empty : .ready
         } else if overview == nil {
             phase = .loading
+            emptyTask?.cancel()
+            emptyTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled, let self, overview == nil, phase == .loading else { return }
+                phase = .empty
+            }
         }
         let args: [String: ConvexEncodable?] = ["deviceToken": identity.deviceToken, "groupId": identity.groupId]
         meTask?.cancel()
@@ -75,7 +94,7 @@ final class GardenStore {
                     guard !Task.isCancelled, let self else { return }
                     guard let value else { continue }
                     overview = value
-                    GardenStore.cachedOverview[identity.groupId] = value
+                    GardenStore.store(value, groupId: identity.groupId)
                     phase = value.isEmpty ? .empty : .ready
                 }
             } catch {

@@ -1,6 +1,6 @@
 import Foundation
 
-struct GardenPerson: Decodable, Hashable, Identifiable {
+struct GardenPerson: Codable, Hashable, Identifiable {
     let userId: String
     let name: String
     let color: FlowerColor
@@ -8,7 +8,7 @@ struct GardenPerson: Decodable, Hashable, Identifiable {
 
     var id: String { userId }
 
-    var flower: FlowerPerson { FlowerPerson(id: userId, name: name, color: color) }
+    var flower: FlowerPerson { FlowerPerson(id: userId, name: name, color: color, photoUrl: photoUrl) }
 }
 
 enum GardenNames {
@@ -22,7 +22,7 @@ enum GardenNames {
     }
 }
 
-struct GardenMemoryRow: Decodable, Hashable, Identifiable {
+struct GardenMemoryRow: Codable, Hashable, Identifiable {
     let frolicId: String
     let title: String
     let dateLine: String
@@ -42,17 +42,17 @@ struct GardenMemoryRow: Decodable, Hashable, Identifiable {
     func subtitle(me: String?) -> String { "\(dateLine) · \(namesLine(me: me))" }
 }
 
-struct GardenTasteLine: Decodable, Hashable {
+struct GardenTasteLine: Codable, Hashable {
     let headline: String
     let why: String
 }
 
-struct GardenFundLine: Decodable, Hashable {
+struct GardenFundLine: Codable, Hashable {
     let line: String
     let frolicTitle: String
 }
 
-struct GardenOverview: Decodable, Hashable {
+struct GardenOverview: Codable, Hashable {
     let groupName: String
     let youWent: Bool
     let count: Double

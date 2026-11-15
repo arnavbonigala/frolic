@@ -160,13 +160,5 @@ struct GardenFlower: View {
             status: nil,
             swayDelay: swayDelay
         )
-        .overlay(alignment: .top) {
-            if let url = person?.photoUrl, !url.isEmpty {
-                GardenRemoteImage(url: url, heroKey: nil)
-                    .frame(width: radius, height: radius)
-                    .clipShape(Circle())
-                    .padding(.top, radius / 2 + 4)
-            }
-        }
     }
 }
