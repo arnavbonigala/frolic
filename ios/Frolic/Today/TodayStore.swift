@@ -90,7 +90,7 @@ final class TodayStore {
     var myFree: CrewFree? { pendingFree ?? meMember?.free }
     var friends: [CrewMember] { (crew?.members ?? []).filter { !$0.isMe } }
     var freeFriends: [TodayPerson] {
-        friends.filter { $0.free?.state != "busy" }.map(Self.person)
+        friends.filter { $0.free?.state == "now" || $0.free?.state == "window" }.map(Self.person)
     }
 
     var allFriends: [TodayPerson] { friends.map(Self.person) }
@@ -217,7 +217,12 @@ final class TodayStore {
     }
 
     func takePendingAction() {
-        guard TodayInbox.take() == TodayInbox.onlyIf else { return }
+        let lockScreen = LockScreenInbox.take()
+        if lockScreen == .imFree {
+            sheet = .imFree
+            return
+        }
+        guard lockScreen == .onlyIf || TodayInbox.take() == TodayInbox.onlyIf else { return }
         if scene == .open {
             picks = []
             sheet = .onlyIf

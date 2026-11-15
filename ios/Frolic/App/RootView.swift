@@ -4,8 +4,14 @@ struct RootView: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
+        OnboardingGate {
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         @Bindable var router = router
-        TabView(selection: $router.tab) {
+        return TabView(selection: $router.tab) {
             Tab(value: AppTab.today) {
                 TodayScreen()
             } label: {
@@ -32,7 +38,6 @@ struct RootView: View {
             }
         }
         .tint(FrolicColor.ink)
-        .overlay(alignment: .bottom) { TabAccessibilityOverlay() }
         .accessibilityIdentifier("app.root")
         .checkInFlowPresenter()
         #if DEBUG || E2E
