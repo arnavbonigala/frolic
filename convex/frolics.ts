@@ -27,11 +27,11 @@ export const open = internalMutation({
   },
   returns: v.id("frolics"),
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    const same = await ctx.db
       .query("frolics")
       .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day))
-      .take(10);
-    const same = existing.find((f) => f.kind === args.kind && f.origin !== "free");
+      .filter((q) => q.and(q.eq(q.field("kind"), args.kind), q.neq(q.field("origin"), "free")))
+      .first();
     if (same) {
       if (same.status === "open" && args.planId && same.planId !== args.planId) {
         await ctx.db.patch("frolics", same._id, { planId: args.planId });
@@ -165,6 +165,43 @@ export const today = query({
   },
 });
 
+async function newestDay(ctx: QueryCtx, groupId: Id<"groups">): Promise<string | null> {
+  const newest = await ctx.db
+    .query("frolics")
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
+    .order("desc")
+    .first();
+  return newest?.day ?? null;
+}
+
+async function presentMembers(
+  ctx: QueryCtx,
+  memberships: Doc<"memberships">[],
+): Promise<Doc<"memberships">[]> {
+  const present = [];
+  for (const membership of memberships) {
+    if (await ctx.db.get("users", membership.userId)) present.push(membership);
+  }
+  return present;
+}
+
+async function dayFrolic(
+  ctx: QueryCtx,
+  groupId: Id<"groups">,
+  day: string | null,
+): Promise<Doc<"frolics"> | null> {
+  if (!day) return null;
+  const range = () =>
+    ctx.db
+      .query("frolics")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).eq("day", day))
+      .order("desc");
+  const planned = await range()
+    .filter((q) => q.not(q.and(q.eq(q.field("origin"), "free"), q.eq(q.field("status"), "faded"))))
+    .first();
+  return planned ?? (await range().first());
+}
+
 export async function todayFor(
   ctx: QueryCtx,
   user: Doc<"users">,
@@ -172,32 +209,22 @@ export async function todayFor(
 ) {
   const group = await ctx.db.get("groups", args.groupId);
   if (!group) throw new ConvexError({ code: "NOT_FOUND", message: "This crew is gone" });
-  const memberships = await ctx.db
+  const joined = await ctx.db
     .query("memberships")
     .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
     .take(100);
+  const memberships = await presentMembers(ctx, joined);
   const picked = args.frolicId ? await ctx.db.get("frolics", args.frolicId) : null;
   if (picked && picked.groupId !== args.groupId) {
     throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
   }
   const frolic = picked
     ? picked
-    : args.day
-    ? (
-        await ctx.db
-          .query("frolics")
-          .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day!))
-          .order("desc")
-          .take(1)
-      )[0]
-    : await ctx.db
-        .query("frolics")
-        .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId))
-        .order("desc")
-        .first();
+    : await dayFrolic(ctx, args.groupId, args.day ?? (await newestDay(ctx, args.groupId)));
   const base = { groupName: group.name, memberCount: memberships.length };
+  const solo = memberships.length <= 1;
   if (!frolic) {
-    return { ...base, phase: memberships.length <= 1 ? ("solo" as const) : ("none" as const), frolic: null, myTap: null, reveal: null };
+    return { ...base, phase: solo ? ("solo" as const) : ("none" as const), frolic: null, myTap: null, reveal: null };
   }
 
   const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
@@ -254,7 +281,7 @@ export async function todayFor(
     return { ...base, phase: "faded" as const, frolic: frolicView, myTap: null, reveal: null };
   }
   if (frolic.status === "open") {
-    const p = myTap?.kind === "down" ? "waiting" : memberships.length <= 1 ? "solo" : "open";
+    const p = myTap?.kind === "down" ? "waiting" : solo ? "solo" : "open";
     return { ...base, phase: p as "waiting" | "solo" | "open", frolic: frolicView, myTap, reveal: null };
   }
 
