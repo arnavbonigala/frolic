@@ -56,6 +56,11 @@ describe("matcher", () => {
     expect(run([onlyIf("a", "b"), onlyIf("b", "c"), onlyIf("c", "a")])?.userIds).toEqual(["a", "b", "c"]);
   });
 
+  test("two rows for the same person count as one", () => {
+    expect(run([any("maya"), any("maya"), any("dev")])?.userIds).toEqual(["dev", "maya"]);
+    expect(run([any("maya"), any("maya")])).toBeNull();
+  });
+
   test("only if naming yourself is ignored", () => {
     expect(run([onlyIf("maya", "maya"), any("dev")])?.userIds).toEqual(["dev", "maya"]);
   });

@@ -19,6 +19,9 @@ export type Match = { userIds: string[]; startsAt: number };
 export const START_STEP_MS = 5 * 60 * 1000;
 
 export function findMatch(input: MatchInput): Match | null {
+  const byUser = new Map<string, MatchTap>();
+  for (const tap of input.taps) byUser.set(tap.userId, tap);
+  input = { ...input, taps: [...byUser.values()] };
   const earliest = Math.max(
     Math.ceil(input.now / START_STEP_MS) * START_STEP_MS,
     input.defaultWindow.start,
