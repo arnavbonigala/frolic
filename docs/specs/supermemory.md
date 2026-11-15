@@ -35,7 +35,7 @@ Every person and every group gets a private Supermemory namespace (the v5 name f
 | Per-person namespaces | all personal events | Limits and passes stay personal, and deleting an account deletes the namespace |
 | `date` on documents | `mapping.ts` | Temporal ordering of a crew's nights |
 
-The skip beat itself runs on exact counters in Convex because Supermemory is not an aggregate store: `closeDay` counts a place's primary tag once when at least two members passed, and two such days suppress the tag in `getMemoryContext`. The query `crewMemoryLines` (not yet consumed by a screen) reads the same counters and no vendor wording reaches a screen. Test: `convex/memory/beat.test.ts` runs the whole sequence through the real tap mutation and the drop workflow, `convex/memory/live.test.ts` runs it against the real API, and `e2e/flows/22-memory-skip-boba-twice.yaml` is the device flow.
+The skip beat itself runs on exact counters in Convex because Supermemory is not an aggregate store: `closeDay` counts a place's primary tag once when at least two members passed, and two such days suppress the tag in `getMemoryContext`. No vendor wording reaches a screen. Test: `convex/memory/beat.test.ts` runs the whole sequence through the real tap mutation and the drop workflow, `convex/memory/live.test.ts` runs it against the real API, and `e2e/flows/22-memory-skip-boba-twice.yaml` is the device flow.
 
 Not built, in the report: memory graph visual on a web page, memory review of inferred memories, semantic forgetMatching for a "forget this" button.
 

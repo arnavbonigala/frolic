@@ -115,11 +115,12 @@ export async function crewMembers(ctx: QueryCtx, groupId: Id<"groups">) {
 }
 
 export async function currentFrolic(ctx: QueryCtx, groupId: Id<"groups">) {
-  return await ctx.db
+  const frolics = await ctx.db
     .query("frolics")
     .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
     .order("desc")
-    .first();
+    .take(8);
+  return frolics.find((f) => f.status === "open") ?? frolics.find((f) => f.status === "on") ?? frolics[0] ?? null;
 }
 
 export function isRevealed(frolic: Doc<"frolics">, now: number): boolean {

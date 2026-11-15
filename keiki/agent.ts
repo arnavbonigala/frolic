@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { noticeToken as computeNoticeToken } from "../convex/keiki/notice";
 import { Effect, Schema } from "effect";
 import { AgentKit, defineTool } from "@onkeiki/agents";
 import type { ToolPolicy } from "@onkeiki/agents";
@@ -8,7 +9,8 @@ export const TOOLS_BASE_URL = (process.env.FROLIC_TOOLS_BASE_URL ?? process.env.
 export const DEDICATED_LINE = ["1", "true"].includes((process.env.KEIKI_DEDICATED_LINE ?? "").trim().toLowerCase());
 
 const basePrompt = readFileSync(new URL("../docs/keiki-system-prompt.md", import.meta.url), "utf8").trim();
-const addendum = readFileSync(new URL("./prompt-addendum.md", import.meta.url), "utf8").trim();
+const noticeToken = process.env.KEIKI_API_KEY ? computeNoticeToken(process.env.KEIKI_API_KEY) : "unset";
+const addendum = readFileSync(new URL("./prompt-addendum.md", import.meta.url), "utf8").trim().replace("{{NOTICE_TOKEN}}", noticeToken);
 const groupAddendum = readFileSync(new URL("./prompt-group.md", import.meta.url), "utf8").trim();
 const systemPrompt = DEDICATED_LINE ? basePrompt + "\n\n" + addendum + "\n\n" + groupAddendum : basePrompt + "\n\n" + addendum;
 
