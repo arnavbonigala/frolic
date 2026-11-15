@@ -332,3 +332,20 @@ Triggering the frolics in the demo scenario:
 `GET /p/avatar/<key>` serves the demo portraits: maya (pink), dev (cobalt), jordan (moss), priya (marigold), 800x800 JPEG with the face centred for the circular crop inside a flower. The bytes live in `convex/avatars/portraits.ts`, so a deployment needs no extra assets, and the route caches for a year. Every person object in `today`, `crew` and `me` returns the absolute URL in `photoUrl`.
 
 The e2e demo seed sets those four portraits and flower colours, so the app, the web page and Keiki show the same faces.
+
+## Garden
+
+`GET`-free public queries in `convex/garden.ts`, membership checked by `deviceToken` like `crew.crew`. Nothing here reads a tap.
+
+**`garden.overview({ deviceToken, groupId })`** returns `{ groupName, youWent, count, sinceLine, weekLine, taste, fund, memories }`.
+- `memories` is one card per frolic that happened, newest first, capped at 30: `{ frolicId, title, dateLine, heroKey, photoUrl, youWent, going: Person[] }`. A frolic counts once its status is `on` or `done` and at least one person is going.
+- `dateLine` is `Today` for today in the crew's timezone, otherwise `Nov 8`.
+- `heroKey` is the memory's painted hero, shared with the plan card. `photoUrl` is the newest snap, else the collage, and is `null` until you have added a photo to a frolic that is still happening.
+- `sinceLine` is `12 before you, 1 with you`, or `all before you joined` when none are yours.
+- `weekLine` is the crew's taste line with a lowercase opening, used under the taste card. `taste` is `{ headline, why }` once a taste profile exists, else `null`.
+- `fund` is `{ line, frolicTitle }` for the newest frolic the Frolic Fund paid into, else `null`.
+
+**`garden.memory({ deviceToken, frolicId })`** returns `{ frolicId, title, dateLine, caption, heroKey, place, fundLine, going, photos }`.
+- `photos` are server URLs oldest first with a generated caption each, and stay hidden from you while the frolic is still happening until you add your own snap. Once it is `done`, every photo is visible to the crew.
+- `fundLine` reads `The Frolic Fund covered $8 of this one.` when the fund paid into that frolic.
+- Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND` (`This frolic did not happen` for a frolic that never matched).
