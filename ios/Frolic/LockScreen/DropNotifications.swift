@@ -24,10 +24,30 @@ enum DropNotifications {
         UNUserNotificationCenter.current().setNotificationCategories([drop])
     }
 
-    static func content(free: [String], sunset: Date?, frolicId: String?, day: String) -> UNMutableNotificationContent {
+    static let crewLineMax = 150
+    static let crewLineFloor = 60
+
+    static func crewFirst(_ crew: String?, _ line: String) -> String {
+        let name = (crew ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !line.localizedCaseInsensitiveContains(name) else { return line }
+        let room = max(crewLineFloor, crewLineMax - name.count - 2)
+        return name + ": " + fitLine(line, room: room)
+    }
+
+    static func fitLine(_ line: String, room: Int) -> String {
+        guard line.count > room else { return line }
+        let cut = String(line.prefix(room))
+        if let stop = cut.range(of: ". ", options: .backwards), stop.lowerBound != cut.startIndex {
+            return String(cut[cut.startIndex..<stop.upperBound]).trimmingCharacters(in: .whitespaces)
+        }
+        let head = cut.lastIndex(of: " ").map { String(cut[cut.startIndex..<$0]) } ?? cut
+        return head.trimmingCharacters(in: CharacterSet(charactersIn: ".,;: ")) + "\u{2026}"
+    }
+
+    static func content(free: [String], sunset: Date?, frolicId: String?, day: String, crew: String?) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = LockScreenCopy.dropTitle
-        content.body = LockScreenCopy.dropBody(free: free, sunset: sunset)
+        content.body = crewFirst(crew, LockScreenCopy.dropBody(free: free, sunset: sunset))
         content.categoryIdentifier = category
         content.threadIdentifier = "frolic.drop"
         content.interruptionLevel = .active
@@ -53,15 +73,15 @@ enum DropNotifications {
         let sameDay = Calendar.current.isDate(fireAt, inSameDayAs: now)
         let free = sameDay ? (snapshot?.free.map(\.name) ?? []) : []
         let sunset = sunsetDate(on: fireAt, lat: snapshot?.placeLat, lng: snapshot?.placeLng)
-        let content = content(free: free, sunset: sunset, frolicId: nil, day: LockScreenStore.localDay(fireAt))
+        let content = content(free: free, sunset: sunset, frolicId: nil, day: LockScreenStore.localDay(fireAt), crew: snapshot?.groupName)
         let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireAt)
         let request = UNNotificationRequest(identifier: nextDropId, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false))
         try? await UNUserNotificationCenter.current().add(request)
     }
 
-    static func postSoon(free: [String], sunset: Date?, frolicId: String?, after seconds: TimeInterval) async {
+    static func postSoon(free: [String], sunset: Date?, frolicId: String?, crew: String?, after seconds: TimeInterval) async {
         guard await NotificationPermission.isAllowed() else { return }
-        let content = content(free: free, sunset: sunset, frolicId: frolicId, day: LockScreenStore.localDay())
+        let content = content(free: free, sunset: sunset, frolicId: frolicId, day: LockScreenStore.localDay(), crew: crew)
         let request = UNNotificationRequest(
             identifier: "frolic.drop.now",
             content: content,
@@ -74,14 +94,12 @@ enum DropNotifications {
         let content = UNMutableNotificationContent()
         content.title = "Frolic"
         let apiError = error as? FrolicAPIError
-        switch apiError {
-        case .server(let code, let message) where code == "CLOSED" || code == "NOT_FOUND":
-            content.body = message
-        case .offline:
-            content.body = "You're offline, so your answer didn't send. Open Frolic to try again."
-        default:
-            content.body = LockScreenCopy.tapFailed
+        let line = switch apiError {
+        case .server(let code, let message) where code == "CLOSED" || code == "NOT_FOUND": message
+        case .offline: "You're offline, so your answer didn't send. Open Frolic to try again."
+        default: LockScreenCopy.tapFailed
         }
+        content.body = crewFirst(LockScreenStore.snapshot?.groupName, line)
         content.threadIdentifier = "frolic.drop"
         let request = UNNotificationRequest(identifier: "frolic.tap.failed", content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)

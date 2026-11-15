@@ -348,8 +348,8 @@ describe("onCollage", () => {
 
     await advance(t, 0);
     expect(fetchMock.notices).toHaveLength(2);
-    expect(fetchMock.notices.find((notice) => notice.phone === SAM_PHONE)!.text).toContain("Here's your group snap:");
-    expect(fetchMock.notices.find((notice) => notice.phone === CHAT)!.text).toContain("Today's group snap:");
+    expect(fetchMock.notices.find((notice) => notice.phone === SAM_PHONE)!.text).toContain("Here's your group snap.");
+    expect(fetchMock.notices.find((notice) => notice.phone === CHAT)!.text).toContain("Today's group snap.");
   });
 
   it("skips a plan with no going attendees", async () => {
