@@ -1,8 +1,12 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
 import { hashToken } from "../lib/identity";
+import { PLACE_BY_SLUG, type Place, type Span } from "../places/data";
+import { isOpenFor, timeOfDay } from "../plans/engine";
+import { clockLabel, solarTimes } from "../plans/time";
+import { CAMPUS, tripLabel, tripTo } from "../plans/travel";
 import { addMember, createGroupFor } from "../users";
 
 const ZONE = "America/Los_Angeles";
@@ -10,6 +14,10 @@ const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const BATCH = 100;
 const MAX_BATCHES = 50;
+const SLOT = 5 * MINUTE;
+const PLAN_LEAD = 45 * MINUTE;
+const PREFERRED_HOUR = 16;
+const PREFERRED_MINUTE = 30;
 const INDIAN_ROCK = "indian-rock";
 const KAYAKS = "berkeley-marina-kayaks";
 
@@ -61,6 +69,59 @@ function instantInZone(day: string, hour: number, minute: number, timeZone: stri
 function addDays(day: string, days: number): string {
   const [year, month, date] = day.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, date) + days * 24 * HOUR).toISOString().slice(0, 10);
+}
+
+function weekdayOf(day: string): number {
+  return new Date(day + "T00:00:00Z").getUTCDay();
+}
+
+function spanOf(place: Place, day: string): Span | null {
+  return place.hours[weekdayOf(day)][0] ?? null;
+}
+
+function closesAt(place: Place, day: string): number | null {
+  const span = spanOf(place, day);
+  if (!span) return null;
+  return instantInZone(day, 0, 0, ZONE) + span[1] * MINUTE;
+}
+
+function startsAtFor(now: number, place: Place, day: string): number {
+  const preferred = instantInZone(day, PREFERRED_HOUR, PREFERRED_MINUTE, ZONE);
+  const lead = Math.ceil((now + PLAN_LEAD) / SLOT) * SLOT;
+  const span = spanOf(place, day);
+  if (!span) return Math.max(preferred, lead);
+  const open = instantInZone(day, 0, 0, ZONE) + span[0] * MINUTE;
+  const latest = instantInZone(day, 0, 0, ZONE) + span[1] * MINUTE - place.durationMin * MINUTE;
+  if (latest <= open) return preferred;
+  return Math.max(open, Math.min(latest, Math.max(preferred, lead)));
+}
+
+function titleFor(place: Place, start: number, sunsetMs: number): string {
+  return place.titles?.[timeOfDay(start, sunsetMs)] ?? place.title;
+}
+
+function lineFor(place: Place, start: number, sunsetMs: number, day: string): string {
+  const hook = place.tip.charAt(0).toUpperCase() + place.tip.slice(1) + ".";
+  const parts = [hook];
+  if (start < sunsetMs) parts.push("Sunset at " + clockLabel(sunsetMs) + ".");
+  const close = closesAt(place, day);
+  if (close !== null) parts.push("Open until " + clockLabel(close) + ".");
+  parts.push(tripLabel(tripTo(CAMPUS, place)) + ".");
+  return parts.join(" ");
+}
+
+function chipsFor(place: Place, start: number, sunsetMs: number, day: string): string[] {
+  const trip = tripLabel(tripTo(CAMPUS, place));
+  const golden = start >= sunsetMs - 90 * MINUTE && start <= sunsetMs;
+  const close = closesAt(place, day);
+  const third = golden
+    ? "Golden hour " + clockLabel(sunsetMs - 30 * MINUTE)
+    : start < sunsetMs
+      ? "Sunset " + clockLabel(sunsetMs)
+      : close !== null
+        ? "Open until " + clockLabel(close)
+        : trip;
+  return [place.costLabel, trip, third];
 }
 
 function deviceToken(): string {
@@ -118,6 +179,38 @@ async function clearFrolic(ctx: MutationCtx, frolicId: Id<"frolics">): Promise<n
   cleared += await drain(ctx, "etas", () =>
     ctx.db.query("etas").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(BATCH),
   );
+  cleared += await drain(ctx, "shares", () =>
+    ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(BATCH),
+  );
+  cleared += await drain(ctx, "whopPlans", () =>
+    ctx.db.query("whopPlans").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(BATCH),
+  );
+  cleared += await drain(ctx, "collages", () =>
+    ctx.db.query("collages").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(BATCH),
+  );
+  cleared += await drain(ctx, "fundLedger", () =>
+    ctx.db.query("fundLedger").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(BATCH),
+  );
+  cleared += await drain(ctx, "keikiOutbox", () =>
+    ctx.db.query("keikiOutbox").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(BATCH),
+  );
+  return cleared;
+}
+
+async function drainContainer(ctx: MutationCtx, containerTag: string): Promise<number> {
+  let cleared = 0;
+  cleared += await drain(ctx, "memoryOutbox", () =>
+    ctx.db
+      .query("memoryOutbox")
+      .withIndex("by_containerTag", (q) => q.eq("containerTag", containerTag))
+      .take(BATCH),
+  );
+  cleared += await drain(ctx, "memoryContainers", () =>
+    ctx.db
+      .query("memoryContainers")
+      .withIndex("by_containerTag", (q) => q.eq("containerTag", containerTag))
+      .take(BATCH),
+  );
   return cleared;
 }
 
@@ -158,6 +251,37 @@ async function clearRun(ctx: MutationCtx, run: string): Promise<number> {
       cleared += await drain(ctx, "invites", () =>
         ctx.db.query("invites").withIndex("by_groupId_and_kind", (q) => q.eq("groupId", group._id)).take(BATCH),
       );
+      cleared += await drain(ctx, "fundLedger", () =>
+        ctx.db.query("fundLedger").withIndex("by_groupId", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "memoryEvents", () =>
+        ctx.db.query("memoryEvents").withIndex("by_groupId_and_kind", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "memoryTagStats", () =>
+        ctx.db.query("memoryTagStats").withIndex("by_groupId_and_tag", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "memoryContextCache", () =>
+        ctx.db.query("memoryContextCache").withIndex("by_groupId_and_day", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "keikiGroupChats", () =>
+        ctx.db.query("keikiGroupChats").withIndex("by_groupId", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "gardenNudges", () =>
+        ctx.db.query("gardenNudges").withIndex("by_groupId", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "tasteProfiles", () =>
+        ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "dailyPicks", () =>
+        ctx.db.query("dailyPicks").withIndex("by_groupId_and_day", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "dailyPickAnswers", () =>
+        ctx.db.query("dailyPickAnswers").withIndex("by_groupId_and_day_and_userId", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drain(ctx, "planRuns", () =>
+        ctx.db.query("planRuns").withIndex("by_groupId_and_day", (q) => q.eq("groupId", group._id)).take(BATCH),
+      );
+      cleared += await drainContainer(ctx, "frolic_g_" + group._id);
       for (let memberPass = 0; memberPass < MAX_BATCHES; memberPass++) {
         const memberships = await ctx.db
           .query("memberships")
@@ -172,6 +296,19 @@ async function clearRun(ctx: MutationCtx, run: string): Promise<number> {
             .withIndex("by_userId", (q) => q.eq("userId", membership.userId))
             .take(1);
           if (remaining.length === 0) {
+            cleared += await drain(ctx, "limits", () =>
+              ctx.db.query("limits").withIndex("by_userId", (q) => q.eq("userId", membership.userId)).take(BATCH),
+            );
+            cleared += await drain(ctx, "keikiLinks", () =>
+              ctx.db.query("keikiLinks").withIndex("by_userId", (q) => q.eq("userId", membership.userId)).take(BATCH),
+            );
+            cleared += await drain(ctx, "memoryEvents", () =>
+              ctx.db.query("memoryEvents").withIndex("by_userId", (q) => q.eq("userId", membership.userId)).take(BATCH),
+            );
+            cleared += await drain(ctx, "dailyPickAnswers", () =>
+              ctx.db.query("dailyPickAnswers").withIndex("by_userId", (q) => q.eq("userId", membership.userId)).take(BATCH),
+            );
+            cleared += await drainContainer(ctx, "frolic_p_" + membership.userId);
             await ctx.db.delete("users", membership.userId);
             cleared++;
           }
@@ -199,6 +336,23 @@ async function upsertPlace(
     return existing._id;
   }
   return await ctx.db.insert("places", place);
+}
+
+async function catalogPlace(ctx: MutationCtx, slug: string): Promise<Doc<"places">> {
+  const place = PLACE_BY_SLUG.get(slug);
+  if (!place) throw new ConvexError({ code: "NO_PLACE", message: "No catalog place for " + slug });
+  const stored = await ctx.db
+    .query("places")
+    .withIndex("by_slug", (q) => q.eq("slug", slug))
+    .unique();
+  if (stored && stored.title === place.title && stored.blurb === place.fallbackWhy) return stored;
+  await ctx.runMutation(internal.places.seed.seedPlaces, {});
+  const refreshed = await ctx.db
+    .query("places")
+    .withIndex("by_slug", (q) => q.eq("slug", slug))
+    .unique();
+  if (!refreshed) throw new ConvexError({ code: "NO_PLACE", message: "No stored place for " + slug });
+  return refreshed;
 }
 
 async function upsertPlan(
@@ -240,6 +394,12 @@ export const seed = internalMutation({
     inviteCode: v.string(),
     frolicId: v.id("frolics"),
     deadline: v.number(),
+    plan: v.object({
+      title: v.string(),
+      line: v.string(),
+      chips: v.array(v.string()),
+      startsAt: v.number(),
+    }),
     users: v.object({
       maya: seededUser,
       dev: seededUser,
@@ -264,66 +424,43 @@ export const seed = internalMutation({
         avatarUrl: `/p/avatar/${name.toLowerCase()}.jpg`,
       });
     }
-    const { groupId, inviteCode } = await createGroupFor(ctx, ids.Maya, "Sunset Crew", ZONE, args.run);
+    const { groupId, inviteCode } = await createGroupFor(ctx, ids.Maya, "Sunset Crew", ZONE, args.run, args.scenario === "demo" ? true : undefined);
     for (const name of ["Dev", "Jordan", "Priya"]) await addMember(ctx, groupId, ids[name], "invite");
 
-    const rock = await upsertPlace(ctx, {
-      slug: INDIAN_ROCK,
-      name: "Indian Rock Park",
-      neighborhood: "North Berkeley",
-      title: "Sunset at Indian Rock",
-      address: "Indian Rock Path, Berkeley, CA 94704",
-      lat: 37.8925,
-      lng: -122.2726,
-      cost: 0,
-      costPerPersonCents: 0,
-      costLabel: "Free",
-      payUpFront: false,
-      priceVerified: true,
-      tags: ["sunsets", "views", "outdoors"],
-      hours: [],
-      bestTime: "goldenHour",
-      indoor: false,
-      sober: true,
-      energy: "chill",
-      needsDaylight: true,
-      durationMinutes: 60,
-      meetSpot: "Indian Rock Path",
-      blurb: "Climb the rock and watch the sun drop behind the Golden Gate.",
-      source: "e2e",
-    });
-
-    const fourThirty = instantInZone(today, 16, 30, ZONE);
-    const startsAt = fourThirty >= now + 20 * MINUTE ? fourThirty : now + 30 * MINUTE;
+    const rock = await catalogPlace(ctx, INDIAN_ROCK);
+    const rockPlace = PLACE_BY_SLUG.get(INDIAN_ROCK)!;
+    const { sunsetMs } = solarTimes(today);
+    const startsAt = startsAtFor(now, rockPlace, today);
+    if (!isOpenFor(rockPlace, startsAt, rockPlace.durationMin)) {
+      throw new ConvexError({ code: "PLACE_CLOSED", message: "Indian Rock is not open at the seeded hour" });
+    }
     const indianRockPlan = await upsertPlan(ctx, groupId, today, {
       kind: "daily",
-      placeId: rock,
-      title: "Sunset at Indian Rock",
-      line: "Golden hour on the rocks, ten minutes from campus.",
-      why: "You keep saying yes to sunset plans.",
-      cost: 0,
+      placeId: rock._id,
+      title: titleFor(rockPlace, startsAt, sunsetMs),
+      line: lineFor(rockPlace, startsAt, sunsetMs, today),
+      why: rockPlace.fallbackWhy,
+      cost: rockPlace.costPerPersonCents / 100,
       startsAt,
-      durationMinutes: 60,
-      meetingPoint: { lat: 37.8925, lng: -122.2726, label: "Indian Rock Path" },
-      sunsetAt: instantInZone(today, 17, 1, ZONE),
-      weather: "Clear",
+      durationMinutes: rockPlace.durationMin,
+      meetingPoint: { lat: rockPlace.lat, lng: rockPlace.lng, label: rockPlace.meetSpot },
+      sunsetAt: sunsetMs,
       source: "fallback",
       generatedAt: now,
-      costLabel: "Free",
-      payUpFront: false,
-      chips: ["Free", "Sunset", "10 min walk"],
+      costLabel: rockPlace.costLabel,
+      payUpFront: rockPlace.payUpFront,
+      chips: chipsFor(rockPlace, startsAt, sunsetMs, today),
       whySource: "template",
       whyInputs: {
-        placeName: "Indian Rock Park",
+        placeName: rockPlace.name,
         memory: undefined,
-        topTags: ["sunset", "views"],
-        weather: "Clear",
-        tempF: 61,
-        sunsetAt: instantInZone(today, 17, 1, ZONE),
+        topTags: rockPlace.tags.slice(0, 2),
+        weather: undefined,
+        tempF: undefined,
+        sunsetAt: sunsetMs,
         rainSwap: false,
       },
       weatherSwap: false,
-      weatherCheckedAt: now,
     });
 
     const deadline = now + 3 * HOUR;
@@ -332,8 +469,8 @@ export const seed = internalMutation({
       day: today,
       kind: "daily",
       planId: indianRockPlan,
-      window: { start: now, end: now + 8 * HOUR },
-      durationMinutes: 60,
+      window: { start: startsAt - 2 * HOUR, end: startsAt + rockPlace.durationMin * MINUTE + 3 * HOUR },
+      durationMinutes: rockPlace.durationMin,
       deadline,
     });
 
@@ -343,8 +480,8 @@ export const seed = internalMutation({
       day: today,
       state: "window",
       window: {
-        start: instantInZone(today, 17, 0, ZONE),
-        end: instantInZone(today, 20, 0, ZONE),
+        start: startsAt - 15 * MINUTE,
+        end: startsAt + 3 * HOUR,
       },
       updatedAt: now,
     });
@@ -357,7 +494,7 @@ export const seed = internalMutation({
           userId: ids.Jordan,
           day: today,
           state: "window",
-          window: { start: instantInZone(today, 16, 0, ZONE), end: instantInZone(today, 21, 0, ZONE) },
+          window: { start: startsAt - 30 * MINUTE, end: startsAt + 3 * HOUR },
           updatedAt: now,
         });
       }
@@ -372,6 +509,12 @@ export const seed = internalMutation({
       inviteCode,
       frolicId,
       deadline,
+      plan: {
+        title: titleFor(rockPlace, startsAt, sunsetMs),
+        line: lineFor(rockPlace, startsAt, sunsetMs, today),
+        chips: chipsFor(rockPlace, startsAt, sunsetMs, today),
+        startsAt,
+      },
       users: {
         maya: { userId: ids.Maya, deviceToken: tokens.Maya, link: link("Maya") },
         dev: { userId: ids.Dev, deviceToken: tokens.Dev, link: link("Dev") },
@@ -392,58 +535,56 @@ async function seedDemo(
   const day = addDays(today, 1);
   const kayaks = await upsertPlace(ctx, {
     slug: KAYAKS,
-    name: "Cal Adventures Kayaks",
+    name: "Cal Adventures",
     neighborhood: "Berkeley Marina",
     title: "Kayaks at the Marina",
     address: "124 University Ave, Berkeley, CA 94710",
-    lat: 37.865,
-    lng: -122.314,
+    lat: 37.8654,
+    lng: -122.3141,
     cost: 8,
     costPerPersonCents: 800,
-    costLabel: "$8",
+    costLabel: "$8 each",
     payUpFront: true,
-    priceVerified: true,
-    tags: ["water", "kayak", "outdoors"],
+    priceVerified: false,
+    tags: ["water", "outdoors", "kayak"],
     hours: [],
     bestTime: "daytime",
     indoor: false,
     sober: true,
     energy: "active",
     needsDaylight: true,
-    durationMinutes: 90,
-    meetSpot: "Cal Adventures dock",
-    blurb: "Two hours in a kayak with the bay to yourselves.",
+    durationMinutes: 120,
+    meetSpot: "The Cal Adventures boat ramp",
+    blurb: "Two hours on the bay with the marina to yourselves.",
     capacity: 6,
-    source: "e2e",
+    source: "https://recwell.berkeley.edu/facilities/uc-aquatic-center-at-the-berkeley-marina/",
   });
   const kayakPlanId = await upsertPlan(ctx, groupId, day, {
     kind: "daily",
     placeId: kayaks,
     title: "Kayaks at the Marina",
-    line: "Paddle out before the wind picks up.",
-    why: "You said the water one looked fun.",
+    line: "Paddle out before noon, the afternoon wind picks up.",
+    why: "Dev's been asking for something on the water, and it fits everyone's budget.",
     cost: 8,
     startsAt: instantInZone(day, 11, 0, ZONE),
-    durationMinutes: 90,
-    meetingPoint: { lat: 37.865, lng: -122.314, label: "Cal Adventures dock" },
-    weather: "Clear",
+    durationMinutes: 120,
+    meetingPoint: { lat: 37.8654, lng: -122.3141, label: "The Cal Adventures boat ramp" },
     source: "fallback",
     generatedAt: now,
-    costLabel: "$8",
+    costLabel: "$8 each",
     payUpFront: true,
-    chips: ["$8", "Kayaks", "Bring a layer"],
+    chips: ["$8 each", "2 hours", "Calm before noon"],
     whySource: "template",
     whyInputs: {
-      placeName: "Cal Adventures Kayaks",
+      placeName: "Cal Adventures",
       memory: undefined,
-      topTags: ["water", "kayak"],
-      weather: "Clear",
-      tempF: 58,
+      topTags: ["water", "outdoors"],
+      weather: undefined,
+      tempF: undefined,
       sunsetAt: undefined,
       rainSwap: false,
     },
     weatherSwap: false,
-    weatherCheckedAt: now,
   });
   await seedPast(ctx, groupId, today, kayakPlanId);
 }
@@ -480,10 +621,11 @@ async function seedPast(ctx: MutationCtx, groupId: Id<"groups">, today: string, 
       placeId: place._id,
       title: past.title,
       line: past.line,
-      cost: 0,
-      costLabel: "Free",
-      payUpFront: false,
-      chips: ["Free"],
+      why: place.blurb ?? base.why,
+      cost: place.costPerPersonCents / 100,
+      costLabel: place.costLabel,
+      payUpFront: place.payUpFront,
+      chips: [place.costLabel],
       startsAt: start,
       durationMinutes: 60,
     });
@@ -553,7 +695,7 @@ export const advance = internalMutation({
       kind: "daily",
       planId: plan._id,
       window: { start: now, end: now + 8 * HOUR },
-      durationMinutes: 90,
+      durationMinutes: 120,
       deadline: now + 3 * HOUR,
       capacity: 6,
     });
