@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { makeT, setupCrew, token } from "./setup.helpers";
 
 beforeEach(() => {
-  vi.stubEnv("E2E_SECRET", "hold-secret");
+  vi.stubEnv("E2E_SECRET", "hold-secret-0123456789");
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -53,7 +53,7 @@ describe("crew hold", () => {
     for (const scenario of ["three-phone", "demo"] as const) {
       const res = await t.fetch("/e2e/seed", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-e2e-secret": "hold-secret" },
+        headers: { "content-type": "application/json", "x-e2e-secret": "hold-secret-0123456789" },
         body: JSON.stringify({ run: `hold-${scenario}`, scenario }),
       });
       expect(res.status).toBe(200);

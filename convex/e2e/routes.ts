@@ -1,10 +1,13 @@
 import type { HttpRouter } from "convex/server";
 import { internal } from "../_generated/api";
 import { httpAction } from "../_generated/server";
+import { constantTimeEqual } from "../keiki/auth";
 
 declare const process: { env: Record<string, string | undefined> };
 
 const RUN = /^[A-Za-z0-9_-]{1,64}$/;
+const MIN_SECRET_LENGTH = 16;
+const PROVIDER_KEYS = ["OPENAI_API_KEY", "WHOP_SANDBOX_API_KEY", "KEIKI_API_KEY", "SUPERMEMORY_API_KEY"];
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -13,10 +16,18 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-function denied(req: Request): Response | null {
+function sharedSecret(): string | null {
   const secret = process.env.E2E_SECRET;
+  if (!secret || secret.length < MIN_SECRET_LENGTH) return null;
+  if (PROVIDER_KEYS.some((name) => process.env[name] === secret)) return null;
+  return secret;
+}
+
+function denied(req: Request): Response | null {
+  const secret = sharedSecret();
   if (!secret) return json({ error: "Not found" }, 404);
-  if (req.headers.get("x-e2e-secret") !== secret) return json({ error: "Unauthorized" }, 401);
+  const presented = req.headers.get("x-e2e-secret");
+  if (!presented || !constantTimeEqual(presented, secret)) return json({ error: "Unauthorized" }, 401);
   return null;
 }
 
