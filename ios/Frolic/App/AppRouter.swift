@@ -127,6 +127,13 @@ final class AppRouter {
 
     #if DEBUG || E2E
     private func apply(_ route: E2ERoute) {
+        let query = route.query
+        if let token = query["token"] ?? query["deviceToken"] {
+            FrolicIdentity.shared.signIn(deviceToken: token, groupId: query["group"] ?? query["groupId"])
+        } else if let group = query["group"] ?? query["groupId"] {
+            FrolicIdentity.shared.setGroup(group)
+        }
+        if route.screen == "signin" { return }
         if route.query["clearLocation"] != nil {
             setSimulatedLocation(nil)
         } else if let location = SimulatedLocation(query: route.query) {

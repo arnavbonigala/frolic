@@ -72,7 +72,8 @@ With neither set, every tab shows its error state ("Frolic isn't connected to a 
 
 - **Token, in this order:** the `FROLIC_DEVICE_TOKEN` launch variable, the Keychain (service `com.frolic.app`, account `deviceToken`), then App Group defaults `frolic.deviceToken`. If none is set, a 48-character hex token is minted on first launch. Tokens are 32 to 256 characters.
 - **Group, in this order:** the `FROLIC_GROUP_ID` launch variable, then App Group defaults `frolic.groupId`. Call `identity.setGroup(id)` after `createGroup` or `joinGroup`.
-- **Debug and E2E builds:** `frolic://signin?deviceToken=..&groupId=..` stores both.
+- **Debug and E2E builds:** `frolic://signin?deviceToken=..&groupId=..` stores both. So does any e2e route that carries `?token=..&group=..` (or `deviceToken` and `groupId`), for example `frolic://e2e/signin?token=..&group=..` or `frolic://e2e/crew?token=..&group=..`. The shell signs in before the route reaches your screen, so screens do not sign in on their own.
+- **Onboarding:** after `createGroup` or `joinGroup`, call `FrolicIdentity.shared.signIn(deviceToken:groupId:)`. A group stored under the older session keys (`session.groupId`, `frolic.onboarding.groupId`) is also picked up when the app becomes active.
 - **Lane stand-ins:** delete `CrewIdentity`, `YouIdentity`, `CheckInSession` and the Garden stand-in once this lands.
 
 ## Build
