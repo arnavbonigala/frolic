@@ -33,6 +33,7 @@ import type * as keiki_outbound from "../keiki/outbound.js";
 import type * as keiki_refs from "../keiki/refs.js";
 import type * as keiki_routes from "../keiki/routes.js";
 import type * as keiki_tools from "../keiki/tools.js";
+import type * as lib_copy from "../lib/copy.js";
 import type * as lib_core from "../lib/core.js";
 import type * as lib_heroArt from "../lib/heroArt.js";
 import type * as lib_hooks from "../lib/hooks.js";
@@ -118,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   "keiki/refs": typeof keiki_refs;
   "keiki/routes": typeof keiki_routes;
   "keiki/tools": typeof keiki_tools;
+  "lib/copy": typeof lib_copy;
   "lib/core": typeof lib_core;
   "lib/heroArt": typeof lib_heroArt;
   "lib/hooks": typeof lib_hooks;
