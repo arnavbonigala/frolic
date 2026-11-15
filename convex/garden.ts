@@ -11,6 +11,7 @@ import { photoUrlOf } from "./lib/photo";
 import { decodeTasteLine } from "./memory/read";
 import { templateTaste } from "./memory/taste";
 import { flowerColor } from "./schema";
+import { lastWateredDay } from "./dailyPick";
 
 const MAX_MEMORIES = 30;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -94,6 +95,7 @@ const health = v.object({
   daysSince: v.number(),
   line: v.string(),
   cta: v.union(v.literal("imFree"), v.null()),
+  todayWatered: v.boolean(),
 });
 
 const collection = v.object({
@@ -189,9 +191,10 @@ function collectionFor(rows: Bloom[]) {
   };
 }
 
-function gardenHealth(group: Doc<"groups">, newest: Bloom | null, planted: number, today: string) {
-  const since = newest ? newest.frolic.day : dayIn(group.timezone, group._creationTime);
-  return healthFor(Math.max(0, daysBetween(since, today)), planted);
+function gardenHealth(group: Doc<"groups">, newest: Bloom | null, planted: number, today: string, watered: string | null) {
+  const bloomed = newest ? newest.frolic.day : dayIn(group.timezone, group._creationTime);
+  const since = watered && watered > bloomed ? watered : bloomed;
+  return { ...healthFor(Math.max(0, daysBetween(since, today)), planted), todayWatered: watered === today };
 }
 
 function hourIn(timezone: string, at: number): number {
@@ -355,6 +358,7 @@ export const overview = query({
     const weekLine = line.why.charAt(0).toLowerCase() + line.why.slice(1);
     const count = memories.length;
     const planted = await blooms(ctx, args.groupId);
+    const today = args.day ?? dayIn(group.timezone, now);
 
     return {
       groupName: group.name,
@@ -365,7 +369,7 @@ export const overview = query({
       taste,
       fund,
       memories,
-      health: gardenHealth(group, planted[0] ?? null, planted.length, args.day ?? dayIn(group.timezone, now)),
+      health: gardenHealth(group, planted[0] ?? null, planted.length, today, await lastWateredDay(ctx, args.groupId, today)),
       collection: collectionFor(planted),
       milestone: milestoneFor(planted.length),
     };
@@ -586,7 +590,8 @@ export const nudgeCrew = internalMutation({
     if (!group) return false;
     const now = Date.now();
     const newest = (await blooms(ctx, args.groupId, true))[0] ?? null;
-    if (gardenHealth(group, newest, newest ? 1 : 0, dayIn(group.timezone, now)).state !== "thirsty") return false;
+    const today = dayIn(group.timezone, now);
+    if (gardenHealth(group, newest, newest ? 1 : 0, today, await lastWateredDay(ctx, args.groupId, today)).state !== "thirsty") return false;
     const anchor = newest?.frolic._id ?? null;
     const sent = await ctx.db
       .query("gardenNudges")
