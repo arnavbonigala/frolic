@@ -4,6 +4,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { planWrites, type EventInput } from "./mapping";
+import schema from "../schema";
 
 export const eventKind = v.union(
   v.literal("tap"),
@@ -80,11 +81,13 @@ export async function enqueue(ctx: MutationCtx, args: EventInput & { eventKey: s
 
 export const recordEvent = internalMutation({
   args: eventArgs,
+  returns: v.object({ queued: v.boolean(), eventId: v.id("memoryEvents") }),
   handler: async (ctx, args) => enqueue(ctx, args),
 });
 
 export const claimEvent = internalMutation({
   args: { eventId: v.id("memoryEvents") },
+  returns: v.union(v.null(), schema.doc("memoryEvents").extend({ attempts: v.number() })),
   handler: async (ctx, { eventId }) => {
     const event = await ctx.db.get("memoryEvents", eventId);
     if (!event) return null;
@@ -99,6 +102,7 @@ export const claimEvent = internalMutation({
 
 export const markSent = internalMutation({
   args: { eventId: v.id("memoryEvents") },
+  returns: v.null(),
   handler: async (ctx, { eventId }) => {
     const event = await ctx.db.get("memoryEvents", eventId);
     if (!event || event.status === "sent") return null;
@@ -114,6 +118,7 @@ export const markSent = internalMutation({
 
 export const markFailed = internalMutation({
   args: { eventId: v.id("memoryEvents"), error: v.string() },
+  returns: v.union(v.null(), v.object({ retryInMs: v.union(v.number(), v.null()) })),
   handler: async (ctx, { eventId, error }) => {
     const event = await ctx.db.get("memoryEvents", eventId);
     if (!event) return null;
@@ -130,6 +135,7 @@ export const markFailed = internalMutation({
 
 export const dueEvents = internalQuery({
   args: {},
+  returns: v.array(v.id("memoryEvents")),
   handler: async (ctx) => {
     const now = Date.now();
     const queued = await ctx.db.query("memoryEvents").withIndex("by_status_and_nextAttemptAt", (q) => q.eq("status", "queued").lte("nextAttemptAt", now)).take(50);
@@ -140,5 +146,6 @@ export const dueEvents = internalQuery({
 
 export const getEvent = internalQuery({
   args: { eventId: v.id("memoryEvents") },
+  returns: v.union(v.null(), schema.doc("memoryEvents")),
   handler: async (ctx, { eventId }) => ctx.db.get("memoryEvents", eventId),
 });

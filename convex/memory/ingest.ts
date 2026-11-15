@@ -15,6 +15,7 @@ export function getClient(): MemoryClient {
 
 export const isReady = internalQuery({
   args: { containerTag: v.string() },
+  returns: v.boolean(),
   handler: async (ctx, { containerTag }) => {
     const row = await ctx.db.query("memoryContainers").withIndex("by_containerTag", (q) => q.eq("containerTag", containerTag)).unique();
     return row?.lastSyncedAt !== undefined;
@@ -28,6 +29,7 @@ export const markReady = internalMutation({
     userId: v.optional(v.id("users")),
     groupId: v.optional(v.id("groups")),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.query("memoryContainers").withIndex("by_containerTag", (q) => q.eq("containerTag", args.containerTag)).unique();
     if (row) await ctx.db.patch("memoryContainers", row._id, { lastSyncedAt: Date.now() });
@@ -38,6 +40,7 @@ export const markReady = internalMutation({
 
 export const flushEvent = internalAction({
   args: { eventId: v.id("memoryEvents") },
+  returns: v.object({ status: v.union(v.literal("sent"), v.literal("skipped"), v.literal("retry"), v.literal("failed")) }),
   handler: async (ctx, { eventId }): Promise<{ status: "sent" | "skipped" | "retry" | "failed" }> => {
     const event = await ctx.runMutation(internal.memory.events.claimEvent, { eventId });
     if (!event) return { status: "skipped" };
@@ -74,6 +77,7 @@ export const flushEvent = internalAction({
 
 export const flushDue = internalAction({
   args: {},
+  returns: v.number(),
   handler: async (ctx): Promise<number> => {
     const ids = await ctx.runQuery(internal.memory.events.dueEvents, {});
     for (const eventId of ids) await ctx.scheduler.runAfter(0, internal.memory.ingest.flushEvent, { eventId });

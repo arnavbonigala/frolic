@@ -42,6 +42,7 @@ export const MIN_SKIPPERS = 2;
 
 export const closeDay = internalMutation({
   args: { groupId: v.id("groups"), day: v.string() },
+  returns: v.object({ counted: v.array(v.string()) }),
   handler: async (ctx, { groupId, day }) => {
     const { tags, revealed } = await dayTags(ctx, groupId, day);
     if (tags.length === 0 || revealed) return { counted: [] as string[] };
@@ -62,6 +63,7 @@ export const closeDay = internalMutation({
 
 export const tagStats = internalQuery({
   args: { groupId: v.id("groups") },
+  returns: v.array(v.object({ tag: v.string(), liked: v.number(), skipped: v.number() })),
   handler: async (ctx, { groupId }) => {
     const rows = await ctx.db.query("memoryTagStats").withIndex("by_groupId_and_tag", (q) => q.eq("groupId", groupId)).take(200);
     return rows.map((r) => ({ tag: r.tag, liked: r.liked, skipped: r.skipped }));
