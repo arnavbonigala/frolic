@@ -169,7 +169,7 @@ final class TodayStore {
         routeKey = newKey
         stop()
         #if DEBUG || E2E
-        if let route, route.screen == "today", route.query["token"] == nil, let fixture = TodayFixture(route: route) {
+        if let route, route.screen == "today", route.query["fixture"] == "1", let fixture = TodayFixture(route: route) {
             isFixture = true
             applyFixture(fixture, route: route)
             return

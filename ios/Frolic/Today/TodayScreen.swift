@@ -566,8 +566,8 @@ private struct TodayOnView: View {
                   let frolicId = store.frolic?.frolicId, heldPrompted != frolicId, store.bloomID > 0 || store.isFixture
             else { return }
             heldPrompted = frolicId
-            try? await Task.sleep(nanoseconds: 1_600_000_000)
-            if store.sheet == nil, store.visiblePayment?.state == "due" { store.sheet = .hold }
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if store.bloomed, store.sheet == nil, store.visiblePayment?.state == "due" { store.sheet = .hold }
         }
     }
 
@@ -884,19 +884,3 @@ private struct TodaySkeleton: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
-            HStack(spacing: 8) {
-                ProgressView().tint(FrolicColor.secondaryText)
-                Text("Checking who's free")
-                    .todayFont(13, relativeTo: .footnote)
-                    .foregroundStyle(FrolicColor.secondaryText)
-            }
-            .padding(.top, 14)
-        }
-        .opacity(reduceMotion ? 1 : (pulse ? 1 : 0.6))
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.9).repeatForever(), value: pulse)
-        .onAppear { pulse = true }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Checking who's free")
-        .accessibilityIdentifier("state.loading")
-    }
-}
