@@ -43,14 +43,12 @@ enum TasteTag: String, CaseIterable, Identifiable, Hashable {
         let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "_", with: "-")
-        switch normalized {
-        case "sunset", "sunsets", "golden-hour", "view", "views": .sunsets
-        case "outdoors", "outdoor", "nature", "hike", "hiking", "picnic", "beach": .outdoors
-        case "late-night-food", "late-night", "latenight", "food", "pizza", "noodles", "dinner": .lateNightFood
-        case "games", "game", "bowling", "arcade": .games
-        case "free-stuff", "free", "campus", "pier": .freeStuff
-        default: nil
-        }
+        if ["sunset", "sunsets", "golden-hour", "view", "views"].contains(normalized) { return .sunsets }
+        if ["outdoors", "outdoor", "nature", "hike", "hiking", "picnic", "beach"].contains(normalized) { return .outdoors }
+        if ["late-night-food", "late-night", "latenight", "food", "pizza", "noodles", "dinner"].contains(normalized) { return .lateNightFood }
+        if ["games", "game", "bowling", "arcade"].contains(normalized) { return .games }
+        if ["free-stuff", "free", "campus", "pier"].contains(normalized) { return .freeStuff }
+        return nil
     }
 
     static func from(classifier identifier: String) -> TasteTag? {
