@@ -260,6 +260,24 @@ Args: `{ deviceToken, frolicId, storageId, takenAt }`. Returns `null`.
 
 Needs a check-in first, else `NOT_CHECKED_IN`. Accepted from 1000 ms before `snapAt` to 120000 ms after it, else `NO_SNAP_WINDOW`. A second upload in the same window replaces the first.
 
+## Drops
+
+Local spots and student clubs sell Frolic experiences as visible Whop products. Each row in `drops` is one of them: seller, title, per-person price, capacity, the place it happens at, tags, and the days and minutes it runs. The daily plan engine scores active drops next to places, with a small boost when a drop matches the crew's taste, and a plan built from one carries `plans.dropId`. When that frolic goes on, each going friend's share is charged against the seller's own Whop product: a full share buys the seller's variant by `variant_id`, and a share the Frolic Fund made smaller is charged as an inline variant under the seller's product. The fund, split, webhook and refund paths are the same ones every paid plan uses.
+
+### `drops.forPlan`
+
+Args: `{ deviceToken, frolicId }`. Returns `null` when the frolic's plan is not a drop, else:
+
+```
+{ dropId, sellerName, hostedBy: "Hosted by Cal Kayak Club", title, priceCents, priceLabel, seatsLeft, imageKey }
+```
+
+`seatsLeft` is capacity minus friends going on any crew's `on` frolic for that drop that day, so a pending match never changes it. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`.
+
+### Seeding
+
+`npx convex run drops:seed` creates the three demo drops in the Whop sandbox company (visible products with one visible variant each) and stores their ids. It reads `WHOP_SANDBOX_API_KEY`, `WHOP_API_BASE` and `WHOP_ACCOUNT_ID`, and is idempotent: a row that already has its ids is skipped, and a missing row finds its product by metadata and its variant by `sku` before creating anything.
+
 ## Internal surface
 
 Not callable from a client. These exist so the web, iMessage and plans lanes act as a user without holding a device token.
@@ -278,6 +296,9 @@ Not callable from a client. These exist so the web, iMessage and plans lanes act
 | `reveal.flip` | `{ frolicId }` | `null` |
 | `reveal.fade` | `{ frolicId }` | `null` |
 | `reveal.complete` | `{ frolicId }` | `null` |
+| `drops.seed` | `{}` | `{ key, dropId, productId, planId, purchaseUrl, created }[]` |
+| `drops.offers` | `{ day }` | active drops with Whop ids and `seatsLeft`, as the plan engine reads them |
+| `drops.chargeTarget` | `{ frolicId }` | `{ productId, planId, priceCents, dropId }` or `null` |
 
 `taps.tapAs` and the other `*As` wrappers share the validation of their public counterparts. They differ only in taking `userId` instead of `deviceToken`, so a caller must already have resolved the user.
 
