@@ -1,0 +1,122 @@
+import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
+import { mutation, query, type QueryCtx } from "../_generated/server";
+import { findUserByToken, requireMember, userFromToken } from "../lib/identity";
+import { fundBalance, shareFor } from "./money";
+import { linkFor, linkResult } from "./links";
+
+export const link = mutation({
+  args: { deviceToken: v.string(), frolicId: v.id("frolics") },
+  returns: linkResult,
+  handler: async (ctx, { deviceToken, frolicId }) => {
+    const user = await userFromToken(ctx, deviceToken);
+    return await linkFor(ctx, user._id, frolicId);
+  },
+});
+
+const moneyState = v.union(
+  v.literal("none"),
+  v.literal("due"),
+  v.literal("paying"),
+  v.literal("held"),
+  v.literal("returning"),
+  v.literal("returned"),
+  v.literal("paid"),
+  v.literal("kept"),
+  v.literal("covered"),
+  v.literal("failed"),
+  v.literal("sorting"),
+);
+
+function view(status: string, kind: "deposit" | "chipIn", amountCents: number) {
+  switch (status) {
+    case "due":
+      return "due" as const;
+    case "pending":
+      return "paying" as const;
+    case "held":
+      return "held" as const;
+    case "releasing":
+    case "refunding":
+      return "returning" as const;
+    case "released":
+    case "refunded":
+      return "returned" as const;
+    case "paid":
+      return "paid" as const;
+    case "forfeited":
+      return "kept" as const;
+    case "failed":
+      return "failed" as const;
+    case "needsAttention":
+      return "sorting" as const;
+    case "waived":
+      return amountCents === 0 && kind === "chipIn" ? ("covered" as const) : ("none" as const);
+  }
+  return "none" as const;
+}
+
+export const myPayment = query({
+  args: { deviceToken: v.string(), frolicId: v.id("frolics") },
+  returns: v.object({
+    state: moneyState,
+    kind: v.union(v.literal("hold"), v.literal("share"), v.literal("none")),
+    amountCents: v.number(),
+    error: v.union(v.string(), v.null()),
+    paidNames: v.array(v.string()),
+  }),
+  handler: async (ctx, { deviceToken, frolicId }) => {
+    const empty = { state: "none" as const, kind: "none" as const, amountCents: 0, error: null, paidNames: [] };
+    const user = await findUserByToken(ctx, deviceToken);
+    const frolic = await ctx.db.get("frolics", frolicId);
+    if (!user || !frolic || frolic.revealAt === undefined || frolic.status === "open") return empty;
+    const share = await shareFor(ctx, frolicId, user._id);
+    if (!share) return empty;
+    const all = await ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(200);
+    const paidNames: string[] = [];
+    for (const s of all) {
+      if (s.userId === user._id || !["held", "paid", "releasing", "released"].includes(s.status)) continue;
+      const u = await ctx.db.get("users", s.userId);
+      if (u) paidNames.push(u.name);
+    }
+    return {
+      state: view(share.status, share.kind, share.amountCents),
+      kind: share.kind === "deposit" ? ("hold" as const) : ("share" as const),
+      amountCents: share.amountCents,
+      error: share.status === "failed" ? "That didn't go through. Try again." : null,
+      paidNames,
+    };
+  },
+});
+
+async function recentEntries(ctx: QueryCtx, groupId: Id<"groups">) {
+  return await ctx.db.query("fundLedger").withIndex("by_groupId", (q) => q.eq("groupId", groupId)).order("desc").take(20);
+}
+
+export const fund = query({
+  args: { deviceToken: v.string(), groupId: v.id("groups") },
+  returns: v.object({
+    balanceCents: v.number(),
+    entries: v.array(v.object({ amountCents: v.number(), line: v.string(), at: v.number(), frolicId: v.union(v.id("frolics"), v.null()) })),
+  }),
+  handler: async (ctx, { deviceToken, groupId }) => {
+    const user = await findUserByToken(ctx, deviceToken);
+    if (!user) return { balanceCents: 0, entries: [] };
+    await requireMember(ctx, groupId, user._id);
+    const balanceCents = await fundBalance(ctx, groupId);
+    const entries = [];
+    for (const e of await recentEntries(ctx, groupId)) {
+      const frolic = e.frolicId ? await ctx.db.get("frolics", e.frolicId) : null;
+      if (e.entry === "forfeit" && frolic?.status !== "done") continue;
+      const dollars = `$${(Math.abs(e.amountCents) / 100).toFixed(e.amountCents % 100 === 0 ? 0 : 2)}`;
+      const line =
+        e.entry === "forfeit"
+          ? `A no-show added ${dollars}.`
+          : e.entry === "payout"
+            ? `The Frolic Fund covered ${dollars}.`
+            : `${dollars} went back.`;
+      entries.push({ amountCents: e.amountCents, line, at: e.at, frolicId: e.frolicId ?? null });
+    }
+    return { balanceCents, entries };
+  },
+});
