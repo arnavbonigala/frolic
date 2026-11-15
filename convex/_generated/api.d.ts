@@ -27,6 +27,7 @@ import type * as garden from "../garden.js";
 import type * as http from "../http.js";
 import type * as keiki_auth from "../keiki/auth.js";
 import type * as keiki_env from "../keiki/env.js";
+import type * as keiki_imFreeCall from "../keiki/imFreeCall.js";
 import type * as keiki_lib from "../keiki/lib.js";
 import type * as keiki_notice from "../keiki/notice.js";
 import type * as keiki_outbound from "../keiki/outbound.js";
@@ -112,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "keiki/auth": typeof keiki_auth;
   "keiki/env": typeof keiki_env;
+  "keiki/imFreeCall": typeof keiki_imFreeCall;
   "keiki/lib": typeof keiki_lib;
   "keiki/notice": typeof keiki_notice;
   "keiki/outbound": typeof keiki_outbound;
