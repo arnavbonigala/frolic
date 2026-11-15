@@ -64,7 +64,7 @@ private struct TodayOnlyIfSheet: View {
         let picked = friends.filter { store.picks.contains($0.userId) }
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                TodaySheetTitle(text: "I'm down only if…", identifier: "onlyIf.title")
+                TodaySheetTitle(text: "I'm down only with…", identifier: "onlyIf.title")
                 TodaySheetBody(text: "Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them.", identifier: "onlyIf.body")
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(friends) { friend in

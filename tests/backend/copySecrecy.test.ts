@@ -65,8 +65,8 @@ describe("the faded and bail copy", () => {
   test("is the approved sentence pair with nobody named and no count", () => {
     expect(FADED_TEXT).toBe("This one drifted off. Nobody knows you said yes.");
     expect(BAIL_BODY).toBe("Your crew will see a spot open up.");
-    expect(ONLY_IF_BUTTON).toBe("Only if…");
-    expect(ONLY_IF_TITLE).toBe("I'm down only if…");
+    expect(ONLY_IF_BUTTON).toBe("Only with…");
+    expect(ONLY_IF_TITLE).toBe("I'm down only with…");
     assertNoNameNoCount(FADED_TITLE + ". " + FADED_BODY, FADED_TEXT, NAMES);
     assertNoNameNoCount(BAIL_BODY, BAIL_BODY, NAMES);
   });

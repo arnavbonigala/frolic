@@ -257,7 +257,7 @@ private struct TodayOpenView: View {
                 Button("I'm down") { store.tapDown(onlyIf: []) }
                     .buttonStyle(.frolicPrimary)
                     .accessibilityIdentifier("today.down")
-                Button("Only if…") {
+                Button("Only with…") {
                     store.picks = []
                     store.sheet = .onlyIf
                 }

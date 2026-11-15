@@ -280,7 +280,7 @@ describe("invites", () => {
     expect(new Set(preview?.members.map((m) => m.color)).size).toBe(6);
   });
 
-  test.skip("BUG-1 an iMessage join refuses an expired invite like every other join", async () => {
+  test("an iMessage join refuses an expired invite like every other join", async () => {
     const t = makeT();
     const c = await crew(t, ["Maya"]);
     const code = await t.mutation(api.users.createInvite, { deviceToken: token("Maya"), groupId: c.groupId });
