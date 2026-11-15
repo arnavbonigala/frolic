@@ -61,65 +61,33 @@ struct YouToday: Decodable {
     }
 }
 
-struct YouOverview: Decodable {
-    var memories: [Memory]
-    var yourCount: Int?
-    var collection: GardenCollection?
-
-    struct Memory: Decodable {
-        var youWent: Bool
-    }
-
-    enum CodingKeys: String, CodingKey { case memories, yourCount, collection }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        memories = (try? container.decodeIfPresent([Memory].self, forKey: .memories)) ?? []
-        yourCount = try? container.decodeIfPresent(Int.self, forKey: .yourCount)
-        collection = try? container.decodeIfPresent(GardenCollection.self, forKey: .collection)
-    }
-}
-
 struct YouTotals: Equatable, Encodable {
     var frolics: Int
     var crews: Int
-    var flowers: [GardenVariety]
+    var varieties: [GardenVariety]
 
-    init(frolics: Int, crews: Int, flowers: [GardenVariety] = []) {
-        self.frolics = frolics
+    init(frolics: Int, crews: Int, varieties: [GardenVariety] = []) {
+        self.frolics = max(frolics, 0)
         self.crews = max(crews, 1)
-        self.flowers = flowers
+        self.varieties = varieties
     }
-}
 
-extension YouTotals: Decodable {
-    enum CodingKeys: String, CodingKey {
-        case frolics, crews, count, crewCount, flowers, varieties
+    enum CodingKeys: String, CodingKey { case frolics, crews, varieties }
+
+    private struct Wire: Decodable {
+        var key: String
+        var name: String
+        var count: Double
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        guard let frolics = Self.number(container, .frolics) ?? Self.number(container, .count) else {
-            throw DecodingError.keyNotFound(
-                CodingKeys.frolics,
-                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "You totals has no frolic count")
-            )
+        let wire = try container.decode([Wire].self, forKey: .varieties)
+        frolics = max(Int(try container.decode(Double.self, forKey: .frolics)), 0)
+        crews = max(Int(try container.decode(Double.self, forKey: .crews)), 1)
+        varieties = wire.map {
+            GardenVariety(key: $0.key, name: $0.name, count: Int($0.count), unlocked: true, hint: nil)
         }
-        self.init(
-            frolics: frolics,
-            crews: Self.number(container, .crews) ?? Self.number(container, .crewCount) ?? 1,
-            flowers: Self.list(container, .flowers) ?? Self.list(container, .varieties) ?? []
-        )
-    }
-
-    private static func number(_ container: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> Int? {
-        guard let value = try? container.decodeIfPresent(Double.self, forKey: key) else { return nil }
-        return Int(value)
-    }
-
-    private static func list(_ container: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> [GardenVariety]? {
-        guard let value = try? container.decodeIfPresent([GardenVariety].self, forKey: key) else { return nil }
-        return value
     }
 }
 
@@ -204,7 +172,6 @@ final class YouModel {
     @ObservationIgnored private var hasLoaded = false
     @ObservationIgnored private var cardOverride: YouCard?
     @ObservationIgnored private var totalsPinned = false
-    @ObservationIgnored private var personalTotals = false
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var totalsTask: Task<Void, Never>?
 
@@ -257,7 +224,6 @@ final class YouModel {
             group.addTask { await self.trackProfile(client: client, token: token) }
             group.addTask { await self.trackCard(client: client, token: token) }
             group.addTask { await self.trackTotals(client: client, token: token) }
-            group.addTask { await self.trackCount(client: client, token: token) }
             group.addTask { await self.watchLoad() }
         }
     }
@@ -317,7 +283,6 @@ final class YouModel {
             card = YouCard.none
             totals = nil
             totalsPhase = .loading
-            personalTotals = false
             hasLoaded = false
             loadPhase = .empty
             accountPhase = .idle
@@ -426,32 +391,6 @@ final class YouModel {
         loadPhase = .empty
     }
 
-    private func trackCount(client: ConvexClient, token: String) async {
-        guard let groupId = await resolvedGroupId() else {
-            failTotals()
-            return
-        }
-        let publisher = client.subscribe(
-            to: "garden:overview",
-            with: ["deviceToken": token, "groupId": groupId],
-            yielding: YouOverview.self
-        )
-        do {
-            for try await overview in publisher.values {
-                guard !totalsPinned, !personalTotals else { continue }
-                let count = overview.yourCount ?? overview.memories.filter(\.youWent).count
-                let totals = YouTotals(frolics: count, crews: 1, flowers: overview.collection?.varieties ?? [])
-                self.totals = totals
-                totalsPhase = .ready
-                YouPreferences.save(totals: totals)
-            }
-        } catch is CancellationError {
-            return
-        } catch {
-            failTotals()
-        }
-    }
-
     private func trackTotals(client: ConvexClient, token: String) async {
         let publisher = client.subscribe(
             to: "you:totals",
@@ -462,14 +401,15 @@ final class YouModel {
             for try await totals in publisher.values {
                 guard !totalsPinned else { continue }
                 self.totals = totals
-                personalTotals = true
                 totalsPhase = .ready
                 YouPreferences.save(totals: totals)
             }
         } catch is CancellationError {
             return
         } catch {
-            return
+            guard !totalsPinned else { return }
+            totals = nil
+            totalsPhase = .failed
         }
     }
 
@@ -478,24 +418,14 @@ final class YouModel {
         totalsTask?.cancel()
         totals = nil
         totalsPhase = .loading
-        personalTotals = false
         guard let client = try? backend.requireClient() else {
             totalsPhase = .failed
             return
         }
         let token = FrolicIdentity.shared.deviceToken
         totalsTask = Task { [weak self] in
-            guard let self else { return }
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask { await self.trackTotals(client: client, token: token) }
-                group.addTask { await self.trackCount(client: client, token: token) }
-            }
+            await self?.trackTotals(client: client, token: token)
         }
-    }
-
-    private func failTotals() {
-        guard !totalsPinned, !personalTotals, totals == nil else { return }
-        totalsPhase = .failed
     }
 
     private func resolvedGroupId() async -> String? {
@@ -580,8 +510,8 @@ final class YouModel {
                 totalsPhase = .failed
             } else if let frolics = Int(state) {
                 let crews = max(Int(route.query["crews"] ?? "") ?? 1, 1)
-                let flowers = route.query["flowers"] == "0" ? [] : Self.sampleFlowers
-                totals = YouTotals(frolics: frolics, crews: crews, flowers: frolics > 0 ? flowers : [])
+                let varieties = route.query["flowers"] == "0" ? [] : Self.sampleVarieties
+                totals = YouTotals(frolics: frolics, crews: crews, varieties: frolics > 0 ? varieties : [])
                 totalsPhase = .ready
             }
         }
@@ -589,7 +519,7 @@ final class YouModel {
     }
 
     #if DEBUG || E2E
-    private static let sampleFlowers = [
+    private static let sampleVarieties = [
         GardenVariety(key: "golden-poppy", name: "Golden poppy", count: 3, unlocked: true, hint: nil),
         GardenVariety(key: "lupine", name: "Lupine", count: 1, unlocked: true, hint: nil),
         GardenVariety(key: "daisy", name: "Daisy", count: 2, unlocked: true, hint: nil),

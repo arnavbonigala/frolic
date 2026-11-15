@@ -264,8 +264,8 @@ private struct YouContent: View {
 
     @ViewBuilder
     private var flowers: some View {
-        if let totals = model.totals, !totals.flowers.isEmpty {
-            GardenCollectionShelf(collection: GardenCollection(varieties: totals.flowers))
+        if let totals = model.totals, !totals.varieties.isEmpty {
+            GardenCollectionShelf(collection: GardenCollection(varieties: totals.varieties))
         }
     }
 
