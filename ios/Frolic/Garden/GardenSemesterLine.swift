@@ -7,10 +7,19 @@ struct GardenSemesterLine: View {
 
     private var parts: [String] {
         [
-            frolics > 0 ? (frolics == 1 ? "1 frolic" : "\(frolics) frolics") : nil,
-            places > 0 ? (places == 1 ? "1 place" : "\(places) places") : nil,
-            friends > 0 ? (friends == 1 ? "1 friend" : "\(friends) friends") : nil,
+            frolics > 0 ? Self.count(frolics, "frolic") : nil,
+            places > 0 ? Self.count(places, "place") : nil,
+            friends > 0 ? Self.count(friends, "friend") : nil,
         ].compactMap { $0 }
+    }
+
+    static func phrase(frolics: Int, places: Int, friends: Int) -> String {
+        [count(frolics, "frolic"), count(places, "place"), count(friends, "friend")]
+            .joined(separator: " · ")
+    }
+
+    private static func count(_ value: Int, _ noun: String) -> String {
+        value == 1 ? "1 \(noun)" : "\(value) \(noun)s"
     }
 
     var body: some View {

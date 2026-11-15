@@ -25,7 +25,7 @@ struct GardenScreen: View {
                                     }
                                 }
                                 .accessibilityHidden(true)
-                                StoryCaption(text: "\(semester.frolics) frolics · \(semester.places) places · \(semester.friends) friends")
+                                StoryCaption(text: GardenSemesterLine.phrase(frolics: semester.frolics, places: semester.places, friends: semester.friends))
                             }
                         }
                     }
