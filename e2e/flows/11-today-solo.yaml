@@ -16,7 +16,7 @@ test:
       step_type: "navigate"
       step_description: "frolic://e2e/solo"
     - type: "validation"
-      step_description: "A plan card with the band \"TODAY · JUST FOR YOU\" and the label \"Your first frolic\" is visible"
+      step_description: "A plan card tagged \"Just for you\" and the label \"Your first frolic\" is visible"
     - type: "validation"
       step_description: "The line \"Your crew grows from here. Today's plan is still yours.\" is visible"
     - type: "validation"

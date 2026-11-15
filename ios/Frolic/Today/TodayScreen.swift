@@ -208,33 +208,45 @@ private struct TodayPlanPacket: View {
     var number: String?
     var showsWhy = true
     var hostedBy: String?
+    var friends: [TodayPerson] = []
+    var friendsLine: String?
+    var onFriends: (() -> Void)?
 
     var body: some View {
         let plan = store.plan
         let title = plan?.title ?? ""
         TodayPacket(
-            label: label ?? "TODAY · " + TodayCopy.weekday(plan?.startsAt ?? store.now()),
+            label: label ?? TodayCopy.weekday(plan?.startsAt ?? store.now()),
             number: number ?? store.today?.frolicNumber.map { "Crew frolic No. \(Int($0))" } ?? store.today?.groupName,
             hero: TodayCopy.heroAsset(plan),
             heroURL: plan?.place?.photoUrl,
             heroDescription: title,
             showsWhy: showsWhy,
-            why: plan?.why
+            why: plan?.why,
+            friends: friends,
+            friendsLine: friendsLine,
+            onFriends: onFriends
         ) {
             Text(title)
-                .todayFont(title.count > 20 ? 25 : 30, .heavy, rounded: true, relativeTo: .title)
-                .tracking(-0.3)
+                .storyFont(title.count > 22 ? 28 : 32)
                 .foregroundStyle(FrolicColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             if let line = plan?.line, !line.isEmpty {
                 Text(line)
-                    .todayFont(15, relativeTo: .subheadline)
+                    .todayFont(17, relativeTo: .body)
                     .foregroundStyle(FrolicColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.plan.line")
             }
-            ChipRow(chips: TodayCopy.chips(plan: plan, walk: store.walkMinutes))
+            let chips = TodayCopy.chips(plan: plan, walk: store.walkMinutes)
+            if !chips.isEmpty {
+                Text(chips.joined(separator: "  ·  "))
+                    .todayFont(14, .semibold, rounded: true, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.chipText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("today.plan.chips")
+            }
             if let hostedBy = hostedBy ?? store.drop?.hostedBy {
                 Text(hostedBy.hasPrefix("Hosted by") ? hostedBy : "Hosted by \(hostedBy)")
                     .todayFont(13, .semibold, relativeTo: .footnote)
@@ -268,9 +280,6 @@ private struct TodayOpenView: View {
     var body: some View {
         let free = store.freeFriends
         VStack(spacing: 0) {
-            TodayMeadow(people: free, waiting: false) { router.tab = .crew }
-                .accessibilityIdentifier("today.meadow")
-            TodayCaption(text: free.isEmpty ? "Nobody's free yet. Your yes still counts." : TodayCopy.names(free.map(\.name)) + (free.count == 1 ? " is free" : " are free"), identifier: "today.freeRow")
             if store.frolic?.origin == "free", let notice = store.frolic?.notice {
                 Text(notice)
                     .todayFont(15, .semibold, relativeTo: .subheadline)
@@ -281,24 +290,30 @@ private struct TodayOpenView: View {
                     .padding(.top, 10)
                     .accessibilityIdentifier("today.freeNotice")
             }
-            TodayPlanPacket(store: store)
-            HStack(spacing: 10) {
+            TodayPlanPacket(
+                store: store,
+                friends: free,
+                friendsLine: store.crew == nil ? nil : free.isEmpty ? "Nobody's free yet. Your yes still counts." : TodayCopy.names(free.map(\.name)) + (free.count == 1 ? " is free" : " are free"),
+                onFriends: { router.tab = .crew }
+            )
+            VStack(spacing: 2) {
                 Button("I'm down") {
                     store.seeHint()
                     store.tapDown(onlyIf: [])
                 }
-                    .buttonStyle(.frolicPrimary)
-                    .accessibilityIdentifier("today.down")
-                Button("Only with…") {
+                .buttonStyle(.frolicPrimary)
+                .sensoryFeedback(.impact(weight: .light), trigger: store.isDown)
+                .accessibilityIdentifier("today.down")
+                Button("Only if certain friends come") {
                     store.picks = []
                     store.sheet = .onlyIf
                 }
-                .buttonStyle(.frolicSecondary)
+                .buttonStyle(.frolicText)
                 .accessibilityIdentifier("today.onlyIf")
             }
             .disabled(!online)
             .padding(.horizontal, 16)
-            .padding(.top, 14)
+            .padding(.top, 16)
             if store.hintSeen {
                 TodayHush(text: "Nobody sees you're down unless they are too", identifier: "today.hush")
             } else {
@@ -405,7 +420,7 @@ private struct TodaySoloView: View {
                 showsDots: waiting
             )
             .padding(.horizontal, 22)
-            TodayPlanPacket(store: store, label: "TODAY · JUST FOR YOU", number: "Your first frolic", showsWhy: !waiting)
+            TodayPlanPacket(store: store, label: "Just for you", number: "Your first frolic", showsWhy: !waiting)
                 .accessibilityIdentifier("today.solo.band")
             if waiting {
                 TodayStatusCard(

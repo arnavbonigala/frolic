@@ -10,47 +10,87 @@ struct TodayPacket<Content: View>: View {
     var why: String?
     var bandColor: Color = FrolicColor.band
     var bandText: Color = FrolicColor.bandText
+    var friends: [TodayPerson] = []
+    var friendsLine: String?
+    var onFriends: (() -> Void)?
     @ViewBuilder var content: Content
+
+    private let stems: [CGFloat] = [30, 12, 38, 20, 26]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(label)
-                    .todayFont(12, .bold, relativeTo: .caption)
-                    .tracking(0.3)
-                Spacer(minLength: 8)
-                if let number {
-                    Text(number)
-                        .todayFont(12, .semibold, relativeTo: .caption)
-                        .opacity(0.7)
-                }
-            }
-            .foregroundStyle(bandText)
-            .padding(.horizontal, 16)
-            .frame(minHeight: 36)
-            .background(bandColor)
-            .accessibilityElement(children: .combine)
             TodayHeroImage(asset: hero, remote: heroURL, description: heroDescription)
-                .frame(height: 118)
+                .frame(height: friends.isEmpty ? 220 : 280)
                 .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.horizontal, 10)
-                .padding(.top, 10)
-            VStack(alignment: .leading, spacing: 10) {
+                .overlay(alignment: .topLeading) {
+                    HStack(spacing: 5) {
+                        Text(label)
+                            .todayFont(13, .bold, rounded: true, relativeTo: .caption)
+                        if let number {
+                            Text(number)
+                                .todayFont(13, .medium, rounded: true, relativeTo: .caption)
+                                .opacity(0.72)
+                        }
+                    }
+                    .foregroundStyle(FrolicColor.ink)
+                    .lineLimit(1)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(FrolicColor.cream.opacity(0.94)))
+                    .padding(12)
+                    .accessibilityElement(children: .combine)
+                }
+                .overlay(alignment: .bottom) {
+                    if !friends.isEmpty || friendsLine != nil {
+                        Button { onFriends?() } label: {
+                            VStack(spacing: 6) {
+                                HStack(alignment: .bottom, spacing: 0) {
+                                    ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { index, person in
+                                        TodayFlower(person: person, radius: 22, stem: stems[index % stems.count], swayDelay: Double(index) * 0.6)
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                }
+                                .padding(.horizontal, 24)
+                                if let friendsLine {
+                                    Text(friendsLine)
+                                        .todayFont(14, .semibold, rounded: true, relativeTo: .footnote)
+                                        .foregroundStyle(FrolicColor.ink)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Capsule().fill(FrolicColor.cream.opacity(0.94)))
+                                        .accessibilityIdentifier("today.freeRow")
+                                }
+                            }
+                            .padding(.bottom, 12)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(onFriends == nil)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(friendsLine ?? "")
+                        .accessibilityHint(onFriends == nil ? "" : "Opens your crew")
+                        .accessibilityIdentifier("today.meadow")
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .padding(8)
+            VStack(alignment: .leading, spacing: 8) {
                 content
                 if showsWhy, let why {
                     WhyThis(text: why)
+                        .padding(.top, 4)
                         .accessibilityIdentifier("today.plan.why")
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 12)
-            .padding(.bottom, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 20)
         }
         .background(FrolicColor.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
-        .shadow(color: Color(hex: 0x78501E, opacity: 0.12), radius: 17, y: 14)
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+        .shadow(color: Color(hex: 0x78501E, opacity: 0.10), radius: 20, y: 12)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.plan.card")
     }

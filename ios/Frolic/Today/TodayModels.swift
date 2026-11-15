@@ -225,7 +225,7 @@ enum TodayCopy {
     }
 
     static func weekday(_ milliseconds: Double) -> String {
-        weekdayFormatter.string(from: Date(timeIntervalSince1970: milliseconds / 1000)).uppercased()
+        weekdayFormatter.string(from: Date(timeIntervalSince1970: milliseconds / 1000))
     }
 
     static func money(cents: Double) -> String {
