@@ -110,6 +110,9 @@ struct CrewView: Equatable {
     var fund: CrewFund
     var wentToday: Bool
     var todayTitle: String?
+    var holdEnabled: Bool = false
+
+    var showsFund: Bool { holdEnabled || !fund.isEmpty }
 
     var friendRows: [CrewRow] { rows.filter { !$0.isMe } }
     var lookingNames: [String] { rows.filter(\.lookingNow).map(\.name) }

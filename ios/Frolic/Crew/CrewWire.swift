@@ -42,6 +42,7 @@ struct CrewWire: Decodable {
     let members: [CrewMemberWire]
     let memberCount: Double?
     let createdAt: Double?
+    let holdEnabled: Bool?
 }
 
 struct CrewMeWire: Decodable {

@@ -288,3 +288,39 @@ struct CrewFundSection: View {
         .accessibilityIdentifier("crew.fund")
     }
 }
+
+struct CrewHoldRow: View {
+    var groupName: String
+    var isOn: Bool
+    var onChange: (Bool) -> Void
+
+    var body: some View {
+        let line = isOn ? "\(groupName) plays for $3. Show up, it's released." : "Nobody puts money down for a plan."
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Play for $3")
+                    .frolicFont(.bodyEmphasis)
+                    .foregroundStyle(FrolicColor.ink)
+                Text(line)
+                    .frolicFont(.subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Toggle("Play for $3", isOn: Binding(get: { isOn }, set: onChange))
+                .labelsHidden()
+                .tint(FrolicColor.free)
+                .frame(minWidth: 51, minHeight: 44)
+                .accessibilityLabel("Play for $3")
+                .accessibilityValue(isOn ? "On" : "Off")
+                .accessibilityIdentifier("crew.hold.toggle")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(minHeight: 60)
+        .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("crew.hold")
+    }
+}

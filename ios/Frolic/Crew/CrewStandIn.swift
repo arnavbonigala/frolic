@@ -112,7 +112,8 @@ enum CrewStandIn {
             favorites: favorites,
             fund: fund,
             wentToday: went,
-            todayTitle: "Sunset at Indian Rock"
+            todayTitle: "Sunset at Indian Rock",
+            holdEnabled: true
         )
     }
 

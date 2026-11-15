@@ -163,9 +163,15 @@ private struct CrewContent: View {
         .padding(.top, 18)
         .accessibilityIdentifier("crew.invite")
 
-        SectionHeader(title: "Frolic Fund")
-        CrewFundSection(fund: view.fund)
-            .padding(.top, 2)
+        SectionHeader(title: "Your crew's stakes")
+        CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled) { enabled in
+            Task { await store.setHold(enabled) }
+        }
+        if view.showsFund {
+            SectionHeader(title: "Frolic Fund")
+            CrewFundSection(fund: view.fund)
+                .padding(.top, 2)
+        }
 
         if !view.lately.isEmpty {
             SectionHeader(title: "Lately")
