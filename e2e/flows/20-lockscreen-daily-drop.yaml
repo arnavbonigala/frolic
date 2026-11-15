@@ -27,7 +27,7 @@ test:
     - type: "instructions"
       step_description: "Open the notification shade by swiping down from the top of the screen"
     - type: "validation"
-      step_description: "A Frolic notification reads \"Maya, Dev and Jordan are free and the sun sets at 4:58. Just saying.\""
+      step_description: "A Frolic notification reads \"Sunset Crew: Maya, Dev and Jordan are free and the sun sets at 4:58. Just saying.\""
     - type: "instructions"
       step_description: "Long press the Frolic notification to reveal its actions"
     - type: "validation"

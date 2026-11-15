@@ -88,6 +88,7 @@ final class LockScreenAppDelegate: NSObject, UIApplicationDelegate, UNUserNotifi
 #if DEBUG || E2E
 enum LockScreenDemo {
     static let sampleFree = ["Maya", "Dev", "Jordan"]
+    static let sampleCrew = "Sunset Crew"
 
     @MainActor
     static func apply(route: String, query: [String: String]) async {
@@ -104,6 +105,7 @@ enum LockScreenDemo {
                 free: live?.free.map(\.name) ?? sampleFree,
                 sunset: sunset,
                 frolicId: live?.frolicId,
+                crew: live?.groupName ?? sampleCrew,
                 after: Double(query["delay"] ?? "") ?? 4
             )
         case "meadow":

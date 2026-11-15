@@ -99,7 +99,7 @@ describe("the faded and bail copy", () => {
     for (const run of [two, three]) {
       expect(run.texts).toHaveLength(run.size);
       for (const text of run.texts) {
-        expect(text).toBe(FADED_TEXT);
+        expect(text).toBe("Sunset Crew: " + FADED_TEXT);
         assertNoNameNoCount(text, FADED_TEXT, NAMES);
       }
     }

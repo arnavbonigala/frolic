@@ -276,7 +276,7 @@ describe("secrecy of who said I'm free", () => {
     expect(maya.after.Dev.today).toEqual(dev.after.Dev.today);
     expect(maya.after.Maya.web).toEqual(dev.after.Maya.web);
 
-    expect(maya.before.Maya.texts.map((x) => x.text)).toEqual([expect.stringMatching(/^You're counted as down\. .+ Nobody knows it was you\.$/)]);
+    expect(maya.before.Maya.texts.map((x) => x.text)).toEqual([expect.stringMatching(/^Sunset Crew: You're counted as down\. .+ Nobody knows it was you\.$/)]);
     expect(dev.before.Dev.texts).toEqual(maya.before.Maya.texts);
   });
 });

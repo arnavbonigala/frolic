@@ -172,10 +172,10 @@ describe("I'm free", () => {
     );
     expect(rows.map((r) => r.userId).sort()).toEqual([c.ids.Dev, c.ids.Maya, c.ids.Priya].sort());
     const mine = rows.find((r) => r.userId === c.ids.Maya)!;
-    expect(mine.text).toMatch(/^You're counted as down\. .+ at \d{1,2}:\d{2} just went to your crew\. Nobody knows it was you\.$/);
+    expect(mine.text).toMatch(/^Sunset Crew: You're counted as down\. .+ at \d{1,2}:\d{2} just went to your crew\. Nobody knows it was you\.$/);
     for (const r of rows.filter((x) => x.userId !== c.ids.Maya)) {
       expect(r.kind).toBe("drop");
-      expect(r.text.split("\n")[0]).toMatch(/^Someone in your crew is free\. .+ at \d{1,2}:\d{2}\?$/);
+      expect(r.text.split("\n")[0]).toMatch(/^Sunset Crew: Someone in your crew is free\. .+ at \d{1,2}:\d{2}\?$/);
       expect(r.text).not.toContain("Maya");
       expect(r.text).not.toMatch(/[—!]/);
     }

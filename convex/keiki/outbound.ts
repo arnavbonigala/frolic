@@ -13,7 +13,7 @@ import {
 } from "./lib";
 import { keikiEnv } from "./env";
 import { fence, noticeToken } from "./notice";
-import { FADED_TEXT } from "../lib/copy";
+import { FADED_TEXT, crewFirst } from "../lib/copy";
 import { titleNamesPlace } from "../lib/names";
 import { ensurePick } from "../dailyPick";
 import { smsLine } from "../dailyPickBank";
@@ -51,7 +51,15 @@ async function chatsOf(ctx: MutationCtx, groupId: Id<"groups">) {
     .take(4);
 }
 
+async function crewOf(ctx: MutationCtx, frolicId: Id<"frolics">) {
+  const frolic = await ctx.db.get("frolics", frolicId);
+  if (!frolic) return "";
+  const group = await ctx.db.get("groups", frolic.groupId);
+  return group?.name ?? "";
+}
+
 async function enqueue(ctx: MutationCtx, frolicId: Id<"frolics">, drafts: Draft[]) {
+  const crew = await crewOf(ctx, frolicId);
   const now = Date.now();
   let latest = now;
   let queued = 0;
@@ -66,7 +74,7 @@ async function enqueue(ctx: MutationCtx, frolicId: Id<"frolics">, drafts: Draft[
       const link = await linkOf(ctx, draft.userId);
       if (!link || link.paused) status = "skipped";
     }
-    await ctx.db.insert("keikiOutbox", { ...draft, frolicId, status, attempts: 0 });
+    await ctx.db.insert("keikiOutbox", { ...draft, text: crewFirst(crew, draft.text), frolicId, status, attempts: 0 });
     if (status === "queued") {
       queued++;
       latest = Math.max(latest, draft.notBefore);
@@ -226,7 +234,7 @@ export const onReveal = internalMutation({
     const names = joinNames(users.map((u) => firstName(u.name)));
     const chats = await chatsOf(ctx, c.group._id);
     for (const chat of chats) {
-      drafts.push({ key: "reveal:" + args.frolicId + ":" + chat.chatId, kind: "reveal", target: chat.chatId, text: "It's on: " + names + " at " + (view.place ?? view.title) + ", " + view.startsAt + ". Hop in?", notBefore: revealAt });
+      drafts.push({ key: "reveal:" + args.frolicId + ":" + chat.chatId, kind: "reveal", target: chat.chatId, text: "It's on. " + names + " at " + (view.place ?? view.title) + ", " + view.startsAt + ". Hop in?", notBefore: revealAt });
     }
     if (chats.length === 0) {
       const members = await crewMembers(ctx, c.group._id);
@@ -235,7 +243,7 @@ export const onReveal = internalMutation({
         ...(await personal(ctx, rest, (user) => ({
           key: "hopIn:" + args.frolicId + ":" + user._id,
           kind: "hopIn",
-          text: "It's on: " + names + " at " + (view.place ?? view.title) + ", " + view.startsAt + ". Room for one more?",
+          text: "It's on. " + names + " at " + (view.place ?? view.title) + ", " + view.startsAt + ". Room for one more?",
           notBefore: revealAt,
         }))),
       );
@@ -328,11 +336,11 @@ export const onCollage = internalMutation({
     const drafts = await personal(ctx, [...new Set(snaps.map((s) => s.userId))], (user) => ({
       key: "collage:" + frolicId + ":" + user._id,
       kind: "collage",
-      text: "Here's your group snap: " + url,
+      text: "Here's your group snap. " + url,
       notBefore: Date.now(),
     }));
     for (const chat of await chatsOf(ctx, frolic.groupId)) {
-      drafts.push({ key: "collage:" + frolicId + ":" + chat.chatId, kind: "collage", target: chat.chatId, text: "Today's group snap: " + url, notBefore: Date.now() });
+      drafts.push({ key: "collage:" + frolicId + ":" + chat.chatId, kind: "collage", target: chat.chatId, text: "Today's group snap. " + url, notBefore: Date.now() });
     }
     await enqueue(ctx, frolicId, drafts);
     return null;

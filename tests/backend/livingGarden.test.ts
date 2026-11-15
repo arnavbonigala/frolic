@@ -274,7 +274,7 @@ describe("garden nudge", () => {
     const rows = await outbox(t);
     expect(rows).toHaveLength(2);
     const maya = rows.find((r) => r.userId === crew.ids.Maya)!;
-    expect(maya).toMatchObject({ kind: "nudge", status: "queued", text: "Your garden's getting thirsty. Anyone free tonight?" });
+    expect(maya).toMatchObject({ kind: "nudge", status: "queued", text: "Sunset Crew: Your garden's getting thirsty. Anyone free tonight?" });
     expect(rows.find((r) => r.userId === crew.ids.Dev)?.status).toBe("skipped");
 
     const inApp = await t.query(api.garden.nudge, { deviceToken: token("Jordan"), groupId: crew.groupId });
