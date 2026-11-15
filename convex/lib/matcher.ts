@@ -19,7 +19,11 @@ export type Match = { userIds: string[]; startsAt: number };
 export const START_STEP_MS = 5 * 60 * 1000;
 
 export function findMatch(input: MatchInput): Match | null {
-  const earliest = Math.ceil(input.now / START_STEP_MS) * START_STEP_MS;
+  const earliest = Math.max(
+    Math.ceil(input.now / START_STEP_MS) * START_STEP_MS,
+    input.defaultWindow.start,
+  );
+  const latestEnd = input.defaultWindow.end;
   const clamp = (t: number) => Math.max(t, earliest);
   const preferred =
     input.preferredStart === null ? null : clamp(input.preferredStart);
@@ -33,7 +37,7 @@ export function findMatch(input: MatchInput): Match | null {
   for (const t of [...starts].sort((a, b) => a - b)) {
     let set = input.taps.filter((tap) => {
       const w = windowOf(tap);
-      return w.start <= t && t + input.durationMs <= w.end;
+      return w.start <= t && t + input.durationMs <= Math.min(w.end, latestEnd);
     });
     for (;;) {
       const ids = new Set(set.map((tap) => tap.userId));

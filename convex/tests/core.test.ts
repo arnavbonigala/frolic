@@ -245,6 +245,19 @@ describe("hop in, sit out and refill", () => {
     expect((await today(t, crew, "Priya")).reveal?.me.hopInWaiting).toBe(true);
   });
 
+  test("sitting out inside the reveal window cancels your seat", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await tap(t, crew, "Jordan");
+    await t.mutation(api.frolics.sitOut, { deviceToken: token("Jordan"), frolicId: crew.frolicId });
+    await flipDue(t);
+    const r = await today(t, crew, "Maya");
+    expect(r.reveal?.going.map((p) => p.name).sort()).toEqual(["Dev", "Maya"]);
+    expect((await today(t, crew, "Jordan")).reveal?.me.going).toBe(false);
+  });
+
   test("a match never seats more than the capacity", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev", "Jordan", "Priya"], { capacity: 2 });
