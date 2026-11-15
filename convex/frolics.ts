@@ -6,7 +6,13 @@ import { findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOut
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
 import { rateLimiter } from "./lib/rateLimits";
+import { HERO_KEYS, PLACE_BY_SLUG, heroKeyFor } from "./places/data";
 import { timeWindow } from "./schema";
+
+function heroKeyOf(slug: string) {
+  const seeded = PLACE_BY_SLUG.get(slug);
+  return seeded ? heroKeyFor(seeded) : ("plan-free-stuff" as const);
+}
 
 export const open = internalMutation({
   args: {
@@ -102,6 +108,7 @@ export const today = query({
             title: v.string(),
             line: v.string(),
             why: v.union(v.string(), v.null()),
+            heroKey: v.union(...HERO_KEYS.map((k) => v.literal(k))),
             cost: v.number(),
             costLabel: v.string(),
             payUpFront: v.boolean(),
@@ -196,6 +203,7 @@ export const today = query({
             title: plan.title,
             line: plan.line,
             why: plan.why ?? null,
+            heroKey: place ? heroKeyOf(place.slug) : "plan-free-stuff",
             cost: plan.cost,
             costLabel: plan.costLabel,
             payUpFront: plan.payUpFront,
