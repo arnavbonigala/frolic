@@ -18,7 +18,7 @@ const vPlace = v.object({
 
 const vPlanView = v.object({
   planId: v.id("plans"),
-  kind: v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo")),
+  kind: v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo"), v.literal("free")),
   title: v.string(),
   line: v.string(),
   why: v.union(v.string(), v.null()),

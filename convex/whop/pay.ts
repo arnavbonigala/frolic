@@ -105,8 +105,7 @@ export const fund = query({
     const balanceCents = await fundBalance(ctx, groupId);
     const entries = [];
     for (const e of await recentEntries(ctx, groupId)) {
-      const frolic = e.frolicId ? await ctx.db.get("frolics", e.frolicId) : null;
-      if (e.entry === "forfeit" && frolic?.status !== "done") continue;
+      if (e.amountCents === 0) continue;
       const dollars = `$${(Math.abs(e.amountCents) / 100).toFixed(e.amountCents % 100 === 0 ? 0 : 2)}`;
       const line =
         e.entry === "forfeit"

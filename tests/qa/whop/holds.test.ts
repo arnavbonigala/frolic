@@ -196,14 +196,14 @@ describe("a double check in", () => {
   });
 });
 
-describe("a hold after the ten minute drop", () => {
+describe("a hold after the leave-time drop", () => {
   test("the share is waived and a late authorization cannot hold it again", async () => {
     const t = makeT();
     const c = await crew(t, ["Maya", "Dev"]);
     await revealed(t, c, ["Maya", "Dev"]);
     const share = (await shares(t, c.frolicId))[0];
     expect(share.status).toBe("due");
-    await drain(t, 4, 6 * MINUTE);
+    await drain(t, 9, 6 * MINUTE);
     const waived = await shareOf(t, c.frolicId, share.userId);
     expect(waived.status, "a hold not placed in time is waived").toBe("waived");
     await deliver(t, {
@@ -222,7 +222,7 @@ describe("a hold after the ten minute drop", () => {
     const c = await crew(t, ["Maya", "Dev"]);
     await revealed(t, c, ["Maya", "Dev"]);
     const share = (await shares(t, c.frolicId))[0];
-    await drain(t, 4, 6 * MINUTE);
+    await drain(t, 9, 6 * MINUTE);
     const before = world.calls.filter((call) => call.method === "POST" && call.path === "/payments").length;
     const begun = await t.mutation(internal.whop.money.beginCharge, { token: share.token });
     expect(begun.ok, "a waived share cannot start a charge").toBe(false);
@@ -236,7 +236,7 @@ describe("a hold after the ten minute drop", () => {
     const t = makeT();
     const c = await crew(t, ["Maya", "Dev", "Jordan"]);
     await revealed(t, c, ["Maya", "Dev", "Jordan"]);
-    await drain(t, 4, 6 * MINUTE);
+    await drain(t, 9, 6 * MINUTE);
     const attendees = await t.run(
       async (ctx: any) =>
         await ctx.db

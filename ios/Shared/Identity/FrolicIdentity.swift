@@ -28,15 +28,28 @@ final class FrolicIdentity {
             deviceToken = token
         }
         defaults.set(deviceToken, forKey: Self.tokenDefaultsKey)
-        groupId = Self.nonEmpty(environment[Self.groupEnvironmentKey]) ?? Self.nonEmpty(defaults.string(forKey: Self.groupDefaultsKey))
+        groupId = Self.nonEmpty(environment[Self.groupEnvironmentKey]) ?? Self.storedGroup(defaults)
+    }
+
+    func refresh() {
+        guard let stored = Self.storedGroup(AppGroup.defaults), stored != groupId else { return }
+        groupId = stored
+    }
+
+    private static func storedGroup(_ defaults: UserDefaults) -> String? {
+        nonEmpty(defaults.string(forKey: groupDefaultsKey))
+            ?? nonEmpty(defaults.string(forKey: "session.groupId"))
+            ?? nonEmpty(UserDefaults.standard.string(forKey: "frolic.onboarding.groupId"))
     }
 
     func setGroup(_ id: String?) {
         groupId = Self.nonEmpty(id)
         if let groupId {
             AppGroup.defaults.set(groupId, forKey: Self.groupDefaultsKey)
+            AppGroup.defaults.set(groupId, forKey: "session.groupId")
         } else {
             AppGroup.defaults.removeObject(forKey: Self.groupDefaultsKey)
+            AppGroup.defaults.removeObject(forKey: "session.groupId")
         }
     }
 
@@ -46,6 +59,7 @@ final class FrolicIdentity {
         Self.writeKeychain(token)
         AppGroup.defaults.set(token, forKey: Self.tokenDefaultsKey)
         if let group { setGroup(group) }
+        AppGroup.defaults.set(token, forKey: "session.deviceToken")
     }
 
     static func validToken(_ raw: String?) -> String? {

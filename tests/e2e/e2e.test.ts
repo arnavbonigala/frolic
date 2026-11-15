@@ -80,7 +80,7 @@ async function counts(t: T) {
 
 describe("e2e guard", () => {
   test("404 when E2E_SECRET is not set", async () => {
-    vi.unstubAllEnvs();
+    vi.stubEnv("E2E_SECRET", undefined);
     const t = makeT();
     const response = await post(t, "/e2e/reset", { run: RUN });
     expect(response.status).toBe(404);

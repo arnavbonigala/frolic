@@ -90,6 +90,10 @@ const QUERY_REGISTRY: Record<string, ArgsFor> = {
     deviceToken: f.tokens[observer],
     frolicId: f.frolicId,
   }),
+  "drops:forPlan": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    frolicId: f.frolicId,
+  }),
   "whop/pay:fund": (f, observer) => ({
     deviceToken: f.tokens[observer],
     groupId: f.groupId,

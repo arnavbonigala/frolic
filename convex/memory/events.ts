@@ -91,6 +91,7 @@ export const claimEvent = internalMutation({
     const claimable = event.status === "queued" || event.status === "sending";
     if (!claimable || event.nextAttemptAt > now) return null;
     await ctx.db.patch("memoryEvents", eventId, { status: "sending", attempts: event.attempts + 1, nextAttemptAt: now + LEASE_MS });
+    await ctx.scheduler.runAfter(LEASE_MS, internal.memory.ingest.flushEvent, { eventId });
     return { ...event, attempts: event.attempts + 1 };
   },
 });
