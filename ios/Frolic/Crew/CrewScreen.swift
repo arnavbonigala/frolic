@@ -132,15 +132,6 @@ private struct CrewContent: View {
                 CrewPersonRowView(row: row, showsDivider: true, onTap: { store.friend = row })
             }
         }
-        if view.nobodyFree {
-            Text("Nobody's free yet today. When someone says yes, their flower blooms here.")
-                .frolicFont(.footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .accessibilityIdentifier("crew.nobodyFree")
-        }
         Text("Distances are rough on purpose. Nobody sees exactly where you are.")
             .frolicFont(.footnote)
             .foregroundStyle(FrolicColor.secondaryText)
@@ -163,7 +154,6 @@ private struct CrewContent: View {
         .padding(.top, 18)
         .accessibilityIdentifier("crew.invite")
 
-        SectionHeader(title: "Your crew's stakes")
         CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled, amount: CrewCopy.money(view.holdCents)) { enabled in
             Task { await store.setHold(enabled) }
         }

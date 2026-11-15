@@ -296,16 +296,18 @@ struct CrewHoldRow: View {
     var onChange: (Bool) -> Void
 
     var body: some View {
-        let line = isOn ? "\(groupName) plays for \(amount). Show up, it's released." : "Nobody puts money down for a plan."
+        let line: String? = isOn ? "\(groupName) plays for \(amount). Show up, it's released." : nil
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Play for \(amount)")
                     .frolicFont(.bodyEmphasis)
                     .foregroundStyle(FrolicColor.ink)
-                Text(line)
-                    .frolicFont(.subheadline)
-                    .foregroundStyle(FrolicColor.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let line {
+                    Text(line)
+                        .frolicFont(.subheadline)
+                        .foregroundStyle(FrolicColor.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 8)
             Toggle("Play for \(amount)", isOn: Binding(get: { isOn }, set: onChange))

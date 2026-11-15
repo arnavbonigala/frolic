@@ -38,10 +38,6 @@ struct CrewFreeSheet: View {
 
     var body: some View {
         CrewSheetShell(title: "When are you free today?", identifier: "free.sheet.title") {
-            Text("Your crew sees this. What you're doing stays private.")
-                .frolicFont(.subheadline)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 6)
             VStack(spacing: 0) {
                 ForEach(Array(CrewFreeOption.allCases.enumerated()), id: \.element.id) { index, option in
                     Button {
@@ -176,11 +172,6 @@ struct CrewInviteSheet: View {
 
     var body: some View {
         CrewSheetShell(title: "Invite to Sunset Crew", identifier: "crew.invite.title") {
-            Text("Only people you send this to can join. Your crew sees when someone new joins, and the link expires in 7 days.")
-                .frolicFont(.subheadline)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 6)
-                .fixedSize(horizontal: false, vertical: true)
             Group {
                 if let link {
                     Text(link)
