@@ -1,5 +1,17 @@
 import SwiftUI
 
+enum PlanHero {
+    static let fallback = "plan-free-stuff"
+
+    static func resolve(_ key: String) -> String {
+        #if canImport(UIKit)
+        return UIImage(named: key) == nil ? fallback : key
+        #else
+        return key
+        #endif
+    }
+}
+
 struct SeedPacket<Content: View>: View {
     var label: String
     var number: String?
@@ -27,7 +39,7 @@ struct SeedPacket<Content: View>: View {
             .background(bandColor)
             .accessibilityElement(children: .combine)
             if let image {
-                Image(image)
+                Image(PlanHero.resolve(image))
                     .resizable()
                     .scaledToFill()
                     .frame(height: 118)
@@ -99,6 +111,7 @@ struct FrolicCell<Leading: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             leading
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .frolicFont(.bodyEmphasis)

@@ -22,6 +22,8 @@ let calls: WhopCall[] = [];
 let payments = new Map<string, PaymentState>();
 let created: PaymentState = { status: "authorized", substatus: "requires_capture" };
 let seq = 0;
+let listFails = false;
+let meta = new Map<string, Record<string, unknown>>();
 
 function paymentJson(id: string, state: PaymentState) {
   return {
@@ -46,7 +48,12 @@ async function fakeFetch(
   if (method === "POST" && path === "/payments") {
     const id = `pay_${++seq}`;
     payments.set(id, { ...created });
+    meta.set(id, (body?.metadata as Record<string, unknown>) ?? {});
     return reply(paymentJson(id, created));
+  }
+  if (method === "GET" && path.startsWith("/payments?")) {
+    if (listFails) return reply({ error: "boom" }, 500);
+    return reply({ data: [...payments.entries()].map(([id, state]) => ({ ...paymentJson(id, state), metadata: meta.get(id) })) });
   }
   const match = /^\/payments\/([^/]+)(?:\/(void|capture|refund))?$/.exec(path);
   if (!match) return reply({ error: "unknown" }, 404);
@@ -75,6 +82,8 @@ beforeEach(() => {
   payments = new Map();
   created = { status: "authorized", substatus: "requires_capture" };
   seq = 0;
+  listFails = false;
+  meta = new Map();
   vi.stubGlobal("fetch", fakeFetch);
 });
 
@@ -119,6 +128,21 @@ async function heldCrew(t: T, names = ["Maya", "Dev", "Jordan"]) {
   await flipDue(t);
   await drain(t);
   return crew;
+}
+
+async function onMoneyCalls(t: T) {
+  const rows = await t.run(async (ctx) => await ctx.db.system.query("_scheduled_functions").collect());
+  return rows
+    .filter((r) => r.name.includes("keiki/outbound") && r.name.endsWith("onMoney"))
+    .map((r) => r.args[0] as { userId: Id<"users">; event: string; amountCents: number });
+}
+
+function resetOnFirstCreate() {
+  vi.stubGlobal("fetch", async (input: string, init?: { method?: string }) => {
+    const res = await fakeFetch(input, init as never);
+    if ((init?.method ?? "GET").toUpperCase() === "POST" && input.endsWith("/payments") && seq === 1) throw new Error("network reset");
+    return res;
+  });
 }
 
 async function hold(t: T, crew: Crew, name: string) {
@@ -469,6 +493,105 @@ describe("holds, check ins, no shows", () => {
     expect(rows.reduce((sum, r) => sum + r.amountCents, 0)).toBe(300);
   });
 
+  test("an explicit call off before the start refunds every paid share, the bailer's too", async () => {
+    const t = makeT();
+    const crew = await paidCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    created = { status: "paid", substatus: "succeeded" };
+    await hold(t, crew, "Maya");
+    await hold(t, crew, "Dev");
+
+    await t.mutation(internal.whop.money.callOff, { frolicId: crew.frolicId });
+    await drain(t);
+
+    expect((await shareOf(t, crew, "Maya")).status).toBe("refunded");
+    expect((await shareOf(t, crew, "Dev")).status).toBe("refunded");
+    expect(calls.filter((c) => c.path.endsWith("/refund")).map((c) => c.path).sort()).toEqual(["/payments/pay_1/refund", "/payments/pay_2/refund"]);
+    const rows = await ledgerRows(t, crew.groupId);
+    expect(rows.reduce((sum, r) => sum + r.amountCents, 0)).toBe(300);
+
+    await t.mutation(internal.whop.money.callOff, { frolicId: crew.frolicId });
+    await drain(t);
+    expect((await ledgerRows(t, crew.groupId)).reduce((sum, r) => sum + r.amountCents, 0)).toBe(300);
+  });
+
+  test("a payment whose create response was lost is found in Whop and adopted, so a retry adds nothing", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    const share = await shareOf(t, crew, "Maya");
+    resetOnFirstCreate();
+    const first = await t.action(internal.whop.actions.charge, { token: share.token!, confirmationToken: "ctok_a" });
+    expect(first.ok).toBe(true);
+    expect(await shareOf(t, crew, "Maya")).toMatchObject({ status: "held", whopPaymentId: "pay_1" });
+    vi.stubGlobal("fetch", fakeFetch);
+    const retry = await t.action(internal.whop.actions.charge, { token: share.token!, confirmationToken: "ctok_b" });
+    expect(retry.ok).toBe(false);
+    expect(seq).toBe(1);
+  });
+
+  test("a lost create Whop does not list yet is adopted by the later sweep", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    const share = await shareOf(t, crew, "Maya");
+    resetOnFirstCreate();
+    listFails = true;
+    const first = await t.action(internal.whop.actions.charge, { token: share.token!, confirmationToken: "ctok_a" });
+    expect(first.ok).toBe(false);
+    expect((await shareOf(t, crew, "Maya")).status).toBe("failed");
+    vi.stubGlobal("fetch", fakeFetch);
+    listFails = false;
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    await drain(t);
+    expect(await shareOf(t, crew, "Maya")).toMatchObject({ status: "held", whopPaymentId: "pay_1" });
+  });
+
+  test("a payment whose create response was lost is reconciled by its webhook into one live hold", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    const share = await shareOf(t, crew, "Maya");
+    resetOnFirstCreate();
+    listFails = true;
+    const first = await t.action(internal.whop.actions.charge, { token: share.token!, confirmationToken: "ctok_a" });
+    expect(first.ok).toBe(false);
+    expect((await shareOf(t, crew, "Maya")).status).toBe("failed");
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const lost = JSON.stringify({
+      type: "payment.authorized",
+      data: { id: "pay_1", status: "authorized", substatus: "requires_capture", metadata: { shareId: share._id } },
+    });
+    await t.mutation(internal.whop.webhooks.ingest, { eventId: "evt_lost", type: "payment.authorized", payload: lost });
+    expect(await shareOf(t, crew, "Maya")).toMatchObject({ status: "held", whopPaymentId: "pay_1" });
+    const retry = await t.action(internal.whop.actions.charge, { token: share.token!, confirmationToken: "ctok_b" });
+    expect(retry.ok).toBe(false);
+    expect(seq).toBe(1);
+  });
+
+  test("a lost create whose webhook lands after the retry voids the stray and keeps one hold", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    const share = await shareOf(t, crew, "Maya");
+    resetOnFirstCreate();
+    listFails = true;
+    await t.action(internal.whop.actions.charge, { token: share.token!, confirmationToken: "ctok_a" });
+    vi.stubGlobal("fetch", fakeFetch);
+    const retried = await hold(t, crew, "Maya");
+    expect(retried.whopPaymentId).toBe("pay_2");
+
+    const late = JSON.stringify({
+      type: "payment.authorized",
+      data: { id: "pay_1", status: "authorized", substatus: "requires_capture", metadata: { shareId: share._id } },
+    });
+    expect(await t.mutation(internal.whop.webhooks.ingest, { eventId: "evt_late", type: "payment.authorized", payload: late })).toBe("ignored");
+    await drain(t);
+    expect(await shareOf(t, crew, "Maya")).toMatchObject({ status: "held", whopPaymentId: "pay_2" });
+    expect(payments.get("pay_1")?.status).toBe("void");
+    expect(payments.get("pay_2")?.status).toBe("authorized");
+  });
+
   test("an unpaid share is waived when the plan is called off", async () => {
     const t = makeT();
     const crew = await paidCrew(t, ["Maya", "Dev"]);
@@ -534,6 +657,59 @@ describe("holds, check ins, no shows", () => {
     expect(post.body).toMatchObject({ capture: true });
     expect((post.body!.variant as Record<string, unknown>).initial_price).toBe(7);
     expect((await shareOf(t, crew, "Maya")).status).toBe("paid");
+  });
+});
+
+describe("money messages over iMessage", () => {
+  test("a released hold tells that friend once", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    await hold(t, crew, "Maya");
+    expect(await onMoneyCalls(t)).toEqual([]);
+    await t.mutation(internal.checkins.checkInAs, { userId: crew.ids.Maya, frolicId: crew.frolicId, method: "geofence" });
+    await drain(t);
+    expect((await shareOf(t, crew, "Maya")).status).toBe("released");
+    expect(await onMoneyCalls(t)).toEqual([{ frolicId: crew.frolicId, userId: crew.ids.Maya, event: "released", amountCents: 300 }]);
+  });
+
+  test("a no show tells everyone else in the crew once each and never the no show", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    await hold(t, crew, "Maya");
+    await t.mutation(internal.whop.money.noShowSweep, { frolicId: crew.frolicId });
+    await drain(t);
+    await t.mutation(internal.whop.money.noShowSweep, { frolicId: crew.frolicId });
+    await drain(t);
+    const told = await onMoneyCalls(t);
+    expect(told.every((c) => c.event === "noShowCredit" && c.amountCents === 300)).toBe(true);
+    expect(told.map((c) => c.userId).sort()).toEqual([crew.ids.Dev, crew.ids.Jordan].sort());
+  });
+
+  test("a late arrival refunded after a forfeit hears that the money is back", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    await hold(t, crew, "Maya");
+    await t.mutation(internal.whop.money.noShowSweep, { frolicId: crew.frolicId });
+    await drain(t);
+    await t.mutation(internal.checkins.checkInAs, { userId: crew.ids.Maya, frolicId: crew.frolicId, method: "geofence" });
+    await drain(t);
+    const released = (await onMoneyCalls(t)).filter((c) => c.event === "released");
+    expect(released).toEqual([{ frolicId: crew.frolicId, userId: crew.ids.Maya, event: "released", amountCents: 300 }]);
+  });
+
+  test("a chip in refund sends no deposit message", async () => {
+    const t = makeT();
+    const crew = await paidCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    created = { status: "paid", substatus: "succeeded" };
+    await hold(t, crew, "Maya");
+    await t.mutation(internal.whop.money.callOff, { frolicId: crew.frolicId });
+    await drain(t);
+    expect((await shareOf(t, crew, "Maya")).status).toBe("refunded");
+    expect(await onMoneyCalls(t)).toEqual([]);
   });
 });
 

@@ -107,6 +107,13 @@ final class AppRouter {
             showsGallery = true
             return
         }
+        if url.host == "signin" {
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            if let token = items.first(where: { $0.name == "deviceToken" })?.value {
+                FrolicIdentity.shared.signIn(deviceToken: token, groupId: items.first(where: { $0.name == "groupId" })?.value)
+            }
+            return
+        }
         if let route = E2ERoute(url: url) {
             apply(route)
         }

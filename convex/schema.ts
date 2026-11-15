@@ -315,6 +315,7 @@ export default defineSchema({
     storageId: v.id("_storage"),
     snapAt: v.number(),
     takenAt: v.number(),
+    caption: v.optional(v.string()),
   })
     .index("by_frolicId", ["frolicId"])
     .index("by_groupId", ["groupId"])
@@ -512,6 +513,7 @@ export default defineSchema({
       v.literal("nudge"),
       v.literal("snap"),
       v.literal("collage"),
+      v.literal("money"),
     ),
     frolicId: v.id("frolics"),
     userId: v.optional(v.id("users")),

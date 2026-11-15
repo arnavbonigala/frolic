@@ -133,7 +133,7 @@ Args: `{ deviceToken, groupId, day?, frolicId? }`. Returns:
 
 Pick the frolic with `frolicId` when you have one, else with `day`, else with the newest row for the crew. A `frolicId` from another crew is `NOT_FOUND`. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND`.
 
-`plan.startsAt` is the frolic's matched start once it is `on`, and the plan's own start before that. `cost` is dollars per person, `plan.costLabel` is the display string such as "$8" or "Free", and `plan.payUpFront` says whether the plan needs a chip-in before the reveal.
+`plan.startsAt` is the frolic's matched start once it is `on`, and the plan's own start before that. `plan.heroKey` is the painted plan hero for the plan's place (`plan-sunsets`, `plan-outdoors`, `plan-late-night-food`, `plan-games`, `plan-free-stuff`), which the widget and the Today card use to pick the art. `cost` is dollars per person, `plan.costLabel` is the display string such as "$8" or "Free", and `plan.payUpFront` says whether the plan needs a chip-in before the reveal.
 
 `reveal.me`:
 
@@ -332,3 +332,24 @@ Triggering the frolics in the demo scenario:
 `GET /p/avatar/<key>` serves the demo portraits: maya (pink), dev (cobalt), jordan (moss), priya (marigold), 800x800 JPEG with the face centred for the circular crop inside a flower. The bytes live in `convex/avatars/portraits.ts`, so a deployment needs no extra assets, and the route caches for a year. Every person object in `today`, `crew` and `me` returns the absolute URL in `photoUrl`.
 
 The e2e demo seed sets those four portraits and flower colours, so the app, the web page and Keiki show the same faces.
+
+## Garden
+
+`GET`-free public queries in `convex/garden.ts`, membership checked by `deviceToken` like `crew.crew`. Nothing here reads a tap.
+
+**`garden.overview({ deviceToken, groupId })`** returns `{ groupName, youWent, count, sinceLine, weekLine, taste, fund, memories }`.
+- `memories` is one card per frolic that happened, newest first, capped at 30: `{ frolicId, title, dateLine, heroKey, photoUrl, youWent, going: Person[] }`. A frolic counts once its status is `on` or `done` and at least one person is going.
+- `dateLine` is `Today` for today in the crew's timezone, otherwise `Nov 8`.
+- `heroKey` is the memory's painted hero, shared with the plan card. `photoUrl` is the newest snap, else the collage, and is `null` until you have added a photo to a frolic that is still happening.
+- `sinceLine` is `12 before you, 1 with you`, or `all before you joined` when none are yours.
+- `weekLine` is the crew's taste line with a lowercase opening, used under the taste card. `taste` is `{ headline, why }` once a taste profile exists, else `null`.
+- `fund` is `{ line, frolicTitle }` for the newest frolic the Frolic Fund paid into, else `null`.
+
+**`garden.memory({ deviceToken, frolicId })`** returns `{ frolicId, title, dateLine, caption, heroKey, place, fundLine, going, photos }`.
+- `photos` are server URLs oldest first with a generated caption each, and stay hidden from you while the frolic is still happening until you add your own snap. Once it is `done`, every photo is visible to the crew.
+- `fundLine` reads `The Frolic Fund covered $8 of this one.` when the fund paid into that frolic.
+- Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND` (`This frolic did not happen` for a frolic that never matched).
+
+**`garden.setMine({ deviceToken, frolicId, storageId?, caption? })`** is how a person adds their own photo memory or caption to a frolic they went to. It writes to `snaps` as that person, so their photo unlocks the crew's photos for them, and the caption replaces the generated one for their snap. Rules: you must be in the crew, the frolic must not have faded, and you must have been going. A caption is 1 to 80 characters with no em dash and no exclamation mark. Calling it again updates the same snap. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND`, `NOT_GOING`, `BAD_CAPTION`, `NO_PHOTO`.
+
+**`snaps.forFrolic({ deviceToken, frolicId })`** returns `[{ userId, url, takenAt, mine }]` for the caller's latest snap window, and `[]` until the caller has added their own snap. That empty array is the mock's rule: you see everyone's shot once you add yours. `url` is null for a doc whose file is gone. Errors: `UNKNOWN_DEVICE`, `NOT_FOUND`, `NOT_A_MEMBER`.
