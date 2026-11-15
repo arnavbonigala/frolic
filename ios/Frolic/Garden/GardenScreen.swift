@@ -87,7 +87,7 @@ struct GardenScreen: View {
                 }
             }
             if let milestone = overview.milestone {
-                GardenMilestoneRow(milestone: milestone)
+                GardenMilestoneRow(milestone: milestone, count: overview.flowerCount)
             }
             Button {
                 showsStory = true

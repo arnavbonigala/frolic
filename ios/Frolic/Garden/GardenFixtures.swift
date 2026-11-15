@@ -44,7 +44,7 @@ enum GardenFixtures {
             memories: memories,
             health: health(route: route),
             collection: collection,
-            milestone: GardenMilestone(reached: 7, next: 10, nextAt: nil, line: "3 more frolics to unlock the bench")
+            milestone: GardenMilestone(reached: nil, next: nil, nextAt: 20, line: "7 more frolics to unlock the bench")
         )
     }
 
@@ -62,7 +62,7 @@ enum GardenFixtures {
         switch state {
         case .thriving: return GardenHealth(state: .thriving, daysSince: 1, line: "Your garden is glowing. Two frolics this week.", cta: nil)
         case .fine: return GardenHealth(state: .fine, daysSince: 3, line: "Your garden is doing well.", cta: nil)
-        case .thirsty: return GardenHealth(state: .thirsty, daysSince: 7, line: "Your garden would love a frolic soon.", cta: "I'm free")
+        case .thirsty: return GardenHealth(state: .thirsty, daysSince: 7, line: "Your garden would love a frolic soon.", cta: "imFree")
         case .wilting: return GardenHealth(state: .wilting, daysSince: 14, line: "It has been a while. The flowers are resting, and they never wilt for good.", cta: "I'm free")
         }
     }

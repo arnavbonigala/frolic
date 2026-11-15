@@ -153,14 +153,14 @@ struct GardenOnThisDay: Decodable, Hashable {
 
     var hasContent: Bool { !(title ?? "").isEmpty || !(line ?? "").isEmpty }
 
-    enum CodingKeys: String, CodingKey { case frolicId, title, line, dateLine, heroKey, photoUrl }
+    enum CodingKeys: String, CodingKey { case frolicId, title, line, dateLine, label, heroKey, photoUrl }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         frolicId = try? container.decodeIfPresent(String.self, forKey: .frolicId)
         title = try? container.decodeIfPresent(String.self, forKey: .title)
         line = try? container.decodeIfPresent(String.self, forKey: .line)
-        dateLine = try? container.decodeIfPresent(String.self, forKey: .dateLine)
+        dateLine = (try? container.decodeIfPresent(String.self, forKey: .label)) ?? (try? container.decodeIfPresent(String.self, forKey: .dateLine))
         heroKey = try? container.decodeIfPresent(String.self, forKey: .heroKey)
         photoUrl = try? container.decodeIfPresent(String.self, forKey: .photoUrl)
     }

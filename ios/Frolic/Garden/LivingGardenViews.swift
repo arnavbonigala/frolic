@@ -11,8 +11,8 @@ struct GardenHealthRow: View {
                     .frolicFont(.subheadline)
                     .foregroundStyle(FrolicColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
-                if health.state.needsWater {
-                    Button(health.cta ?? "I'm free", action: onFree)
+                if health.state.needsWater, health.cta != nil {
+                    Button("I'm free", action: onFree)
                         .buttonStyle(.frolicSecondaryWide)
                         .accessibilityIdentifier("garden.health.free")
                 }
@@ -26,6 +26,7 @@ struct GardenHealthRow: View {
 
 struct GardenMilestoneRow: View {
     var milestone: GardenMilestone
+    var count: Int
 
     var body: some View {
         if let line = milestone.line, !line.isEmpty {
@@ -41,8 +42,8 @@ struct GardenMilestoneRow: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
-                if let reached = milestone.reached, let next = milestone.next, next > 0 {
-                    ProgressView(value: min(max(reached / next, 0), 1))
+                if let target = milestone.nextAt, target > 0 {
+                    ProgressView(value: min(max(Double(count) / target, 0), 1))
                         .tint(FrolicColor.pollenRing)
                         .accessibilityHidden(true)
                 }
