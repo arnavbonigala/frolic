@@ -20,10 +20,10 @@ struct NameScreen: View {
                     .accessibilityIdentifier("name.foot")
                 Spacer(minLength: 8)
                 if model.showsCounter {
-                    Text("\(model.firstName.count)/\(OnboardingModel.nameLimit)")
+                    Text("\(model.nameLength)/\(OnboardingModel.nameLimit)")
                         .monospacedDigit()
-                        .foregroundStyle(model.firstName.count >= OnboardingModel.nameLimit ? FrolicColor.ink : FrolicColor.secondaryText)
-                        .accessibilityLabel("\(model.firstName.count) of \(OnboardingModel.nameLimit) characters")
+                        .foregroundStyle(model.nameLength >= OnboardingModel.nameLimit ? FrolicColor.ink : FrolicColor.secondaryText)
+                        .accessibilityLabel("\(model.nameLength) of \(OnboardingModel.nameLimit) characters")
                         .accessibilityIdentifier("name.counter")
                         .transition(.opacity)
                 }

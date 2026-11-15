@@ -52,6 +52,10 @@ struct OnboardingGate<Content: View>: View {
             guard phase == .active, !showsContent, router.e2eRoute == nil else { return }
             Task { await adoptMembership() }
         }
+        .onChange(of: model?.invitePhase) { _, phase in
+            guard phase == .expired || phase == .invalid, !showsContent, router.e2eRoute == nil else { return }
+            Task { await adoptMembership() }
+        }
         .onOpenURL { url in
             guard url.scheme == "frolic", url.host == "join", let link = InviteLink(url: url) else { return }
             if identity.groupId != nil, OnboardingIdentity.isComplete {
@@ -77,9 +81,19 @@ struct OnboardingGate<Content: View>: View {
     }
 
     private func adoptMembership() async {
-        guard let group = await OnboardingBackend(client: backend.client).existingMembership(), !(model?.isMidFlow ?? false) else { return }
+        guard !holdsInvite else { return }
+        guard let group = await OnboardingBackend(client: backend.client).existingMembership() else { return }
+        guard !holdsInvite, !showsContent else { return }
         OnboardingIdentity.commit(groupId: group)
         finished = true
+    }
+
+    private var holdsInvite: Bool {
+        if InviteLink.launchOverride != nil, model?.link == nil { return true }
+        guard let model else { return false }
+        if model.createdInviteCode != nil || model.isMidFlow { return true }
+        guard model.link != nil else { return false }
+        return model.invitePhase != .expired && model.invitePhase != .invalid
     }
 
     private var forcesOnboarding: Bool {

@@ -261,11 +261,20 @@ final class OnboardingModel {
     static let nameLimit = 40
     static let counterFrom = 30
 
-    var showsCounter: Bool { firstName.count >= Self.counterFrom }
+    var nameLength: Int { firstName.utf16.count }
+
+    var showsCounter: Bool { nameLength >= Self.counterFrom }
 
     func editName(_ raw: String) {
-        let trimmedLeading = String(raw.drop(while: { $0.isWhitespace }))
-        firstName = String(trimmedLeading.prefix(Self.nameLimit))
+        var kept = ""
+        var units = 0
+        for character in raw.drop(while: { $0.isWhitespace }) {
+            let width = String(character).utf16.count
+            guard units + width <= Self.nameLimit else { break }
+            units += width
+            kept.append(character)
+        }
+        firstName = kept
         if failure != nil { failure = nil }
     }
 
