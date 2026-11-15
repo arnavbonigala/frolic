@@ -97,6 +97,8 @@ struct CheckInFlowScreen: View {
         }
         .onChange(of: watcher.arrived) { _, _ in checkInIfArrived() }
         .onChange(of: store.phase) { _, _ in checkInIfArrived() }
+        .onChange(of: store.snapAt) { _, _ in joinLiveSnap() }
+        .onChange(of: store.checkedIn) { _, _ in joinLiveSnap() }
         .onChange(of: watcher.currentCoordinate?.latitude) { _, _ in
             Task { await store.refreshRoute() }
         }
@@ -116,6 +118,13 @@ struct CheckInFlowScreen: View {
     private func checkInIfArrived() {
         guard watcher.arrived, store.phase == .ready, !store.checkedIn else { return }
         store.checkIn(method: "geofence")
+    }
+
+    private func joinLiveSnap() {
+        guard store.checkedIn, store.step == .onTheWay, let snapAt = store.snapAt else { return }
+        let now = Date().timeIntervalSince1970 * 1000 + store.clockOffset
+        guard now < snapAt + 1000 else { return }
+        store.step = .snap
     }
 
     private func plant() {

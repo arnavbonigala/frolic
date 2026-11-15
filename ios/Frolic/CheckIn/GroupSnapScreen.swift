@@ -60,6 +60,7 @@ struct GroupSnapScreen: View {
             }
         }
         .onChange(of: store.snapAt) { _, _ in armIfNeeded() }
+        .onChange(of: model.camera.mode) { _, _ in armIfNeeded() }
         .onChange(of: picked) { _, item in
             guard let item else { return }
             Task {
