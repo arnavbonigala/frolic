@@ -36,14 +36,14 @@ Not built, in the report: memory graph visual on a web page, memory review of in
 | tap (down, only if) | yes, with group context | never |
 | skip, not today | yes | never, only as a day-close aggregate counter (below) |
 | plan shown | no | yes (everyone saw it) |
-| reveal (outcome, place, tags, size) | each member | yes, at or after revealAt |
-| check-in | yes | yes, after reveal |
-| snap caption | yes | yes, after reveal |
+| reveal (outcome, place, tags, size) | each member | yes, at or after revealAt, by count never by name |
+| check-in | yes | yes, after reveal, no name |
+| snap caption | yes | yes, after reveal, no name |
 | limits (budget, no car, vegetarian) | yes | never |
 
 The mapping lives in one pure function (`convex/memory/mapping.ts`), keyed by event kind, which returns the namespace and text. Reveal, check-in and snap events must carry a `revealAt` (recordEvent refuses them otherwise) and the flusher holds the whole event until then; liked-tag counters are bumped only when the reveal event has been sent. Tests assert no group write for tap, skip, only if and limits.
 
-Skips in aggregate: skips are personal. `closeDay(group, day)` runs after the day ends, counts a tag as skipped for the group once if the plan was shown, nobody revealed, and at least one skip was recorded. The counter has no person ids. Counter (Convex table, since Supermemory is not an aggregate store) drives suppression; a one-line group memory ("The crew passed on boba 2 times") goes to Supermemory so the taste profile reflects it.
+Skips in aggregate: skips are personal. `closeDay(group, day)` runs after the day ends and reads the day's frolics and `not today` taps directly. A tag counts as skipped once for the group only if the day's plan was shown, nobody revealed, and at least two members passed. One person passing is that person's business, not the crew's. The counter has no person ids. Counter (Convex table, since Supermemory is not an aggregate store) drives suppression; a one-line group memory ("The crew passed on boba 2 times") goes to Supermemory so the taste profile reflects it.
 
 ## Entry points (stable, used by the Keiki lane too)
 
@@ -65,7 +65,7 @@ A namespace only exists after its first write (PATCH and PUT on a new namespace 
 
 ## Deletion
 
-`deleteAccountMemory(userId)` deletes `frolic_p_<userId>` and clears that user's event rows. Group namespaces hold no personal facts, so they stay.
+`deleteAccountMemory(userId)` deletes `frolic_p_<userId>` and clears that user's event rows. Group namespaces hold no personal facts: group memories are written by count, never by name, so they stay.
 
 ## Proof
 

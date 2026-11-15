@@ -80,7 +80,7 @@ describe("ingest", () => {
     expect(fake.calls.filter((c) => c.path.endsWith("/document"))).toEqual([]);
     await t.run((ctx) => ctx.db.patch("memoryEvents", eventId as never, { nextAttemptAt: Date.now() - 1 }));
     expect(await flush(t, eventId as never)).toEqual({ status: "sent" });
-    expect(fake.texts(groupNamespace(groupId))).toEqual(["Maya, Dev went to Indian Rock (sunset)."]);
+    expect(fake.texts(groupNamespace(groupId))).toEqual(["Two friends went to Indian Rock (sunset)."]);
     expect(fake.texts(personalNamespace(dev))).toHaveLength(1);
   });
 
@@ -167,39 +167,62 @@ describe("ingest", () => {
 });
 
 describe("stats and context", () => {
-  async function shownDay(t: Awaited<ReturnType<typeof seed>>["t"], maya: never, groupId: never, day: string, skip = true, reveal = false) {
-    await t.mutation(internal.memory.events.recordEvent, { eventKey: "shown:" + day, kind: "plan_shown", groupId, payload: { title: "Boba run", tags: ["boba"], day } });
-    if (skip) await t.mutation(internal.memory.events.recordEvent, { eventKey: "skip:" + day, kind: "skip", groupId, userId: maya, payload: { title: "Boba run", tags: ["boba"], day } });
-    if (reveal) await t.mutation(internal.memory.events.recordEvent, { eventKey: "rev:" + day, kind: "reveal", groupId, revealAt: Date.now(), payload: { title: "Boba run", tags: ["boba"], memberIds: [maya], day } });
-    return t.mutation(internal.memory.stats.closeDay, { groupId, day });
+  async function shownDay(t: Awaited<ReturnType<typeof seed>>["t"], ids: { maya: never; dev: never; groupId: never }, day: string, skips = 2, reveal = false) {
+    const frolicId = await t.run(async (ctx) => {
+      const place = await ctx.db.insert("places", {
+        slug: "boba-" + day, name: "Boba Guys", lat: 0, lng: 0, cost: 8, tags: ["boba"], hours: [], indoor: true, sober: true,
+        title: "Boba run", address: "Telegraph Ave", costPerPersonCents: 800, costLabel: "$8 each", payUpFront: false,
+        priceVerified: true, energy: "chill", needsDaylight: false, durationMinutes: 60, meetSpot: "Telegraph Ave", source: "seed",
+      });
+      const planId = await ctx.db.insert("plans", {
+        groupId: ids.groupId, day, kind: "daily", placeId: place, title: "Boba run", line: "l", cost: 8, startsAt: 0,
+        durationMinutes: 60, source: "scorer", generatedAt: 0, costLabel: "$8 each", payUpFront: false, chips: [], whySource: "template",
+        whyInputs: { placeName: "Boba Guys", topTags: ["boba"], rainSwap: false }, weatherSwap: false,
+      });
+      return await ctx.db.insert("frolics", {
+        groupId: ids.groupId, day, kind: "daily", planId, status: reveal ? "on" : "open",
+        window: { start: 0, end: 1 }, durationMinutes: 60, deadline: 0, revealAt: reveal ? Date.now() : undefined,
+      });
+    });
+    const skippers = skips >= 2 ? [ids.maya, ids.dev] : skips === 1 ? [ids.maya] : [];
+    await t.run(async (ctx) => {
+      for (const userId of skippers) await ctx.db.insert("taps", { frolicId, groupId: ids.groupId, userId, kind: "notToday", onlyIf: [], source: "app", updatedAt: 0 });
+    });
+    return t.mutation(internal.memory.stats.closeDay, { groupId: ids.groupId, day });
   }
 
   test("a tag skipped on two days is suppressed; closeDay is idempotent per day", async () => {
-    const { t, maya, groupId } = await seed();
-    expect((await shownDay(t, maya as never, groupId as never, "2026-11-10")).counted).toEqual(["boba"]);
+    const { t, maya, dev, groupId } = await seed();
+    expect((await shownDay(t, { maya: maya as never, dev: dev as never, groupId: groupId as never }, "2026-11-10")).counted).toEqual(["boba"]);
     expect((await t.mutation(internal.memory.stats.closeDay, { groupId, day: "2026-11-10" })).counted).toEqual([]);
     let ctxA = await t.action(internal.memory.read.getMemoryContext, { groupId, day: "2026-11-11" });
     expect(ctxA.suppressed).toEqual([]);
     expect(ctxA.skipped).toEqual([{ tag: "boba", count: 1 }]);
-    await shownDay(t, maya as never, groupId as never, "2026-11-12");
+    await shownDay(t, { maya: maya as never, dev: dev as never, groupId: groupId as never }, "2026-11-12");
     ctxA = await t.action(internal.memory.read.getMemoryContext, { groupId, day: "2026-11-13" });
     expect(ctxA.suppressed).toEqual(["boba"]);
     expect(ctxA.likedTags).not.toContain("boba");
   });
 
+  test("one person passing is not the crew passing", async () => {
+    const { t, maya, dev, groupId } = await seed();
+    expect((await shownDay(t, { maya: maya as never, dev: dev as never, groupId: groupId as never }, "2026-11-10", 1)).counted).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("memoryTagStats").collect())).toEqual([]);
+  });
+
   test("a revealed day is not a group skip", async () => {
-    const { t, maya, groupId } = await seed();
-    expect((await shownDay(t, maya as never, groupId as never, "2026-11-10", true, true)).counted).toEqual([]);
+    const { t, maya, dev, groupId } = await seed();
+    expect((await shownDay(t, { maya: maya as never, dev: dev as never, groupId: groupId as never }, "2026-11-10", 2, true)).counted).toEqual([]);
   });
 
   test("a day nobody skipped is not a group skip", async () => {
-    const { t, maya, groupId } = await seed();
-    expect((await shownDay(t, maya as never, groupId as never, "2026-11-10", false)).counted).toEqual([]);
+    const { t, maya, dev, groupId } = await seed();
+    expect((await shownDay(t, { maya: maya as never, dev: dev as never, groupId: groupId as never }, "2026-11-10", 0)).counted).toEqual([]);
   });
 
   test("the group learns skips only as an aggregate with no person", async () => {
-    const { t, maya, groupId } = await seed();
-    await shownDay(t, maya as never, groupId as never, "2026-11-10");
+    const { t, maya, dev, groupId } = await seed();
+    await shownDay(t, { maya: maya as never, dev: dev as never, groupId: groupId as never }, "2026-11-10");
     const events = await t.run((ctx) => ctx.db.query("memoryEvents").collect());
     const gs = events.find((e) => e.kind === "group_skip")!;
     expect(gs.userId).toBeUndefined();
@@ -232,7 +255,7 @@ describe("stats and context", () => {
     });
     await t.action(internal.memory.ingest.flushEvent, { eventId });
     const why = await t.action(internal.memory.read.whyThis, { groupId, tags: ["sunset"] });
-    expect(why?.text).toBe("Maya, Dev went to Marina (sunset).");
+    expect(why?.text).toBe("Two friends went to Marina (sunset).");
     expect(await t.action(internal.memory.read.whyThis, { groupId, tags: ["bowling"] })).toBeNull();
   });
 

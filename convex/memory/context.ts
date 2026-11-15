@@ -65,6 +65,13 @@ export async function buildContext(client: MemoryClient, namespace: string, stat
   };
 }
 
+export const buildContextFailure = (stats: TagStat[]): MemoryContext => ({
+  likedTags: stats.filter((s) => s.liked > 0 && !suppressedTags(stats).includes(s.tag)).sort((a, b) => b.liked - a.liked).map((s) => s.tag),
+  skipped: stats.filter((s) => s.skipped > 0).sort((a, b) => b.skipped - a.skipped).map((s) => ({ tag: s.tag, count: s.skipped })),
+  suppressed: suppressedTags(stats),
+  pastNights: [],
+});
+
 export async function findWhyThis(client: MemoryClient, namespace: string, tags: string[]): Promise<WhyThis | null> {
   if (tags.length === 0) return null;
   const results = await client.search(namespace, {

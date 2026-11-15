@@ -22,7 +22,7 @@ describe("context", () => {
   });
 
   test("buildContext lists liked tags without suppressed ones and cites past nights", async () => {
-    const client = fake({ search: vi.fn().mockResolvedValue([{ id: "m1", memory: "Maya, Dev went to Indian Rock (sunset).", metadata: { placeId: "p1", day: "2026-10-12" } }]) });
+    const client = fake({ search: vi.fn().mockResolvedValue([{ id: "m1", memory: "Two friends went to Indian Rock (sunset).", metadata: { placeId: "p1", day: "2026-10-12" } }]) });
     const ctx = await buildContext(client, "frolic_g_1", [
       { tag: "sunset", liked: 3, skipped: 0 },
       { tag: "boba", liked: 0, skipped: 2 },
@@ -30,7 +30,7 @@ describe("context", () => {
     expect(ctx.likedTags).toEqual(["sunset"]);
     expect(ctx.suppressed).toEqual(["boba"]);
     expect(ctx.skipped).toEqual([{ tag: "boba", count: 2 }]);
-    expect(ctx.pastNights).toEqual([{ id: "m1", text: "Maya, Dev went to Indian Rock (sunset).", placeId: "p1", date: "2026-10-12" }]);
+    expect(ctx.pastNights).toEqual([{ id: "m1", text: "Two friends went to Indian Rock (sunset).", placeId: "p1", date: "2026-10-12" }]);
   });
 
   test("buildContext survives a Supermemory failure with empty nights", async () => {
@@ -44,11 +44,11 @@ describe("context", () => {
     const client = fake({
       search: vi.fn().mockResolvedValue([
         { id: "a", memory: "Went to the arcade." },
-        { id: "b", memory: "Maya, Dev went to Marina (sunset).", included: { related: { parents: [{ id: "c", memory: "Sunset is the crew's favorite." }] } } },
+        { id: "b", memory: "Two friends went to Marina (sunset).", included: { related: { parents: [{ id: "c", memory: "Sunset is the crew's favorite." }] } } },
       ]),
     });
     const why = await findWhyThis(client, "n", ["sunset"]);
-    expect(why).toEqual({ memoryId: "b", text: "Maya, Dev went to Marina (sunset).", because: ["Sunset is the crew's favorite."] });
+    expect(why).toEqual({ memoryId: "b", text: "Two friends went to Marina (sunset).", because: ["Sunset is the crew's favorite."] });
   });
 
   test("findWhyThis returns null when nothing matches", async () => {

@@ -54,11 +54,10 @@ export const flushEvent = internalAction({
       for (const w of writes) {
         if (!(await ctx.runQuery(internal.memory.ingest.isReady, { containerTag: w.namespace }))) {
           await ensureNamespace(client, w.namespace, w.scope);
-          const userId = w.scope === "personal" ? w.namespace.slice("frolic_p_".length) : undefined;
           await ctx.runMutation(internal.memory.ingest.markReady, {
             containerTag: w.namespace,
             scope: w.scope === "personal" ? "user" : "group",
-            userId: userId as never,
+            userId: w.userId as never,
             groupId: w.scope === "group" ? event.groupId : undefined,
           });
         }

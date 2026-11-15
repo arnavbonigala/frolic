@@ -31,7 +31,7 @@ describe("privacy separation", () => {
     const { writes } = planWrites("k", { ...base, kind: "reveal", revealAt: 1 } as EventInput);
     const namespaces = writes.map((w) => w.namespace).sort();
     expect(namespaces).toEqual([groupNamespace("g1"), personalNamespace("u1"), personalNamespace("u2")].sort());
-    expect(writes.find((w) => w.scope === "group")!.content).toContain("Maya, Dev went to Indian Rock");
+    expect(writes.find((w) => w.scope === "group")!.content).toContain("Two friends went to Indian Rock");
   });
 
   test("document ids are stable and URL safe", () => {

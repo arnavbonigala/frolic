@@ -44,7 +44,7 @@ describe.skipIf(!live)("live Supermemory proof", () => {
       expect(nights.some((n) => n.text.includes("Cesar Chavez Park"))).toBe(true);
 
       const why = await findWhyThis(client, gNs, ["sunset"]);
-      expect(why?.text).toContain("Maya, Dev went to Cesar Chavez Park");
+      expect(why?.text).toContain("Two friends went to Cesar Chavez Park");
 
       const groupTexts = (await client.search(gNs, { query: "vegetarian no car budget", limit: 20, threshold: 0, searchMode: "hybrid" })).map((r) => r.memory ?? r.chunk ?? "").join(" ");
       expect(groupTexts.toLowerCase()).not.toContain("vegetarian");

@@ -13,6 +13,7 @@ export type EventInput = {
 export type MemoryWrite = {
   scope: "personal" | "group";
   namespace: string;
+  userId?: string;
   id: string;
   content: string;
   metadata: Record<string, string | number | boolean | string[]>;
@@ -23,6 +24,8 @@ export const personalNamespace = (userId: string) => "frolic_p_" + userId;
 export const groupNamespace = (groupId: string) => "frolic_g_" + groupId;
 
 const safeId = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, "_");
+const WORDS = ["Nobody", "One friend", "Two friends", "Three friends", "Four friends", "Five friends", "Six friends", "Seven friends", "Eight friends", "Nine friends"];
+const crew = (size: number) => WORDS[size] ?? size + " friends";
 const str = (v: unknown, fallback = "") => (typeof v === "string" ? v : fallback);
 const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 const day = (e: EventInput) => str(e.payload.day) || undefined;
@@ -37,6 +40,7 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
     return {
       scope: "personal",
       namespace: personalNamespace(e.userId),
+      userId: e.userId,
       id: safeId(eventKey) + "_p",
       content,
       metadata: { kind, groupId: e.groupId, ...base, ...extra },
@@ -51,7 +55,6 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
     metadata: { kind, ...base },
     date: day(e),
   });
-  const who = str(e.payload.name, "Someone");
   if ((e.kind === "reveal" || e.kind === "checkin" || e.kind === "snap") && e.revealAt === undefined) throw new Error(e.kind + " needs revealAt");
 
   switch (e.kind) {
@@ -77,14 +80,15 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
       return { writes: [group("plan_shown", "Frolic suggested " + title + (tags.length ? " (" + tags.join(", ") + ")" : "") + (str(e.payload.why) ? ". " + str(e.payload.why) : "") + ".")], notBefore: 0 };
     case "reveal": {
       const memberIds = strs(e.payload.memberIds);
-      const names = strs(e.payload.memberNames);
-      const text = (names.join(", ") || memberIds.length + " friends") + " went to " + where + (tags.length ? " (" + tags.join(", ") + ")" : "") + ".";
+      const size = memberIds.length > 0 ? memberIds.length : 1;
+      const text = crew(size) + " went to " + where + (tags.length ? " (" + tags.join(", ") + ")" : "") + ".";
       return {
         writes: [
-          { ...group("night", text), metadata: { kind: "night", ...base, size: memberIds.length } },
+          { ...group("night", text), metadata: { kind: "night", ...base, size } },
           ...memberIds.map((id): MemoryWrite => ({
             scope: "personal",
             namespace: personalNamespace(id),
+            userId: id,
             id: safeId(eventKey) + "_p_" + safeId(id),
             content: "Went to " + where + " with the crew.",
             metadata: { kind: "night", groupId: e.groupId, ...base },
@@ -98,7 +102,7 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
       return {
         writes: [
           personal("checkin", "Checked in at " + where + "."),
-          group("checkin", who + " checked in at " + where + "."),
+          group("checkin", "Someone checked in at " + where + "."),
         ],
         notBefore: e.revealAt!,
       };
@@ -107,7 +111,7 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
       return {
         writes: [
           personal("snap", "Snap at " + where + (caption ? ": " + caption : "") + "."),
-          group("snap", who + " took a snap at " + where + (caption ? ": " + caption : "") + "."),
+          group("snap", "The crew took a snap at " + where + (caption ? ": " + caption : "") + "."),
         ],
         notBefore: e.revealAt!,
       };

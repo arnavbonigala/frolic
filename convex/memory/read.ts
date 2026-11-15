@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getClient } from "./ingest";
-import { buildContext, buildTaste, findWhyThis, type MemoryContext, type TasteProfile, type WhyThis } from "./context";
+import { buildContext, buildContextFailure, buildTaste, findWhyThis, type MemoryContext, type TasteProfile, type WhyThis } from "./context";
 import { templateTaste, validateTasteLine, type TasteLine } from "./taste";
 import { groupNamespace } from "./mapping";
 
@@ -30,7 +30,7 @@ export const getMemoryContext = internalAction({
     const hit = await ctx.runQuery(internal.memory.read.cached, { groupId, day });
     if (hit) return hit;
     const stats = await ctx.runQuery(internal.memory.stats.tagStats, { groupId });
-    const context = await buildContext(getClient(), groupNamespace(groupId), stats);
+    const context = await buildContext(getClient(), groupNamespace(groupId), stats).catch(() => buildContextFailure(stats));
     await ctx.runMutation(internal.memory.read.saveCache, { groupId, day, context });
     return context;
   },
@@ -39,7 +39,7 @@ export const getMemoryContext = internalAction({
 export const whyThis = internalAction({
   args: { groupId: v.id("groups"), tags: v.array(v.string()) },
   handler: async (_ctx, { groupId, tags }): Promise<WhyThis | null> =>
-    findWhyThis(getClient(), groupNamespace(groupId), tags).catch(() => null),
+    findWhyThis(getClient(), groupNamespace(groupId), tags),
 });
 
 const TASTE_SOURCES = ["device", "template", "haiku"] as const;
