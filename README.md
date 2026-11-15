@@ -7,15 +7,15 @@
 <p align="center"><b>Frolic plans hangouts for your friend group, so nobody has to ask, nobody has to decide, and nobody flakes.</b></p>
 
 <p align="center">
+  <img src="docs/screens/welcome-live.png" width="190" alt="Welcome screen">
   <img src="docs/screens/today-live.png" width="190" alt="Today: one plan for the crew">
   <img src="docs/screens/on-live.png" width="190" alt="It's on: the reveal">
-  <img src="docs/screens/crew-live.png" width="190" alt="Crew: who is free today">
-  <img src="docs/screens/garden-live.png" width="190" alt="Garden: every hangout you went to">
+  <img src="docs/screens/pay-live.png" width="190" alt="The $3 hold, paid through Whop">
 </p>
 <p align="center">
-  <img src="docs/screens/welcome-live.png" width="190" alt="Welcome screen">
   <img src="docs/screens/free-live.png" width="190" alt="No plan yet: I'm free now">
-  <img src="docs/screens/pay-live.png" width="190" alt="The $3 hold, paid through Whop">
+  <img src="docs/screens/crew-live.png" width="190" alt="Crew: who is free today">
+  <img src="docs/screens/garden-live.png" width="190" alt="Garden: every hangout you went to">
   <img src="docs/screens/you-live.png" width="190" alt="You: your flower and your limits">
 </p>
 
