@@ -61,8 +61,7 @@ enum YouPreferences {
         for key in [Key.limits, Key.card, Key.tasteTags] {
             AppGroup.defaults.removeObject(forKey: key)
         }
-        UserDefaults.standard.removeObject(forKey: YouIdentity.groupDefaultsKey)
-        UserDefaults.standard.removeObject(forKey: YouIdentity.tokenDefaultsKey)
+        FrolicIdentity.shared.setGroup(nil)
     }
 }
 

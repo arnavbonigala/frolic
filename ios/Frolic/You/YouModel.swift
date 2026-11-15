@@ -145,7 +145,7 @@ final class YouModel {
     }
 
     var groupId: String? {
-        profile?.groups.first?.groupId ?? YouIdentity.groupId
+        profile?.groups.first?.groupId ?? FrolicIdentity.shared.groupId
     }
 
     var crewName: String? {
@@ -158,10 +158,7 @@ final class YouModel {
 
     func run(backend: FrolicBackend, router: AppRouter) async {
         applyRoute(router.e2eRoute)
-        guard let token = YouIdentity.token else {
-            if !hasLoaded { loadPhase = .empty }
-            return
-        }
+        let token = FrolicIdentity.shared.deviceToken
         if !backend.isConfigured {
             if !hasLoaded { loadPhase = .error(BackendError.notConfigured.localizedDescription) }
             return
@@ -229,7 +226,8 @@ final class YouModel {
 
     func deleteAccount(backend: FrolicBackend) async {
         accountPhase = .working
-        guard let token = YouIdentity.token, let client = try? backend.requireClient() else {
+        let token = FrolicIdentity.shared.deviceToken
+        guard let client = try? backend.requireClient() else {
             accountPhase = .failed
             return
         }
@@ -356,7 +354,8 @@ final class YouModel {
     }
 
     private func flush(backend: FrolicBackend) async {
-        guard let token = YouIdentity.token, let client = try? backend.requireClient() else {
+        let token = FrolicIdentity.shared.deviceToken
+        guard let client = try? backend.requireClient() else {
             savePhase = .failed
             return
         }
@@ -388,9 +387,6 @@ final class YouModel {
     private func applyRoute(_ route: E2ERoute?) {
         #if DEBUG || E2E
         guard let route, route.screen == "you" else { return }
-        if let token = route.query["token"] {
-            YouIdentity.store(token: token, groupId: route.query["groupId"])
-        }
         if route.query["went"] != nil {
             cardOverride = .wentSample
         }
