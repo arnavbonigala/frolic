@@ -274,6 +274,7 @@ struct GroupSnapScreen: View {
                 .monospacedDigit()
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.4), radius: 15, y: 6)
+                .compositingGroup()
                 .id(model.numeral)
                 .transition(reduceMotion ? .opacity : .scale(scale: 1.4).combined(with: .opacity))
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: model.numeral)

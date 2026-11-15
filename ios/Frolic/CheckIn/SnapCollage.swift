@@ -12,7 +12,7 @@ final class MotionTilt {
 
     func start() {
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
-        manager.deviceMotionUpdateInterval = 1.0 / 120.0
+        manager.deviceMotionUpdateInterval = 1.0 / 60.0
         manager.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] motion, _ in
             guard let motion else { return }
             MainActor.assumeIsolated { self?.update(motion.attitude) }
@@ -126,10 +126,11 @@ struct SnapCollage: View {
             let width = proxy.size.width
             ZStack(alignment: .topLeading) {
                 ForEach(Array(people.prefix(3).enumerated()), id: \.element.id) { index, person in
-                    polaroid(person: person, index: index)
-                        .frame(width: width * 0.56)
+                    ParallaxLayer(motion: motion, depth: depth(index)) {
+                        polaroid(person: person, index: index)
+                            .frame(width: width * 0.56)
+                    }
                         .offset(x: offsetX(index: index, width: width), y: offsetY(index: index))
-                        .offset(x: motion.roll * depth(index), y: -motion.pitch * depth(index))
                         .rotationEffect(.degrees(rotation(index: index)), anchor: .center)
                         .zIndex(Double(3 - index))
                         .opacity(index < revealed ? 1 : 0)
@@ -137,8 +138,7 @@ struct SnapCollage: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .rotation3DEffect(.degrees(-motion.pitch), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
-            .rotation3DEffect(.degrees(motion.roll), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+            .modifier(TiltEffect(motion: motion))
         }
         .frame(height: 372)
         .padding(.horizontal, 26)
@@ -235,5 +235,26 @@ struct SnapCollage: View {
                     .foregroundStyle(FrolicColor.secondaryText)
             }
         }
+    }
+}
+
+private struct TiltEffect: ViewModifier {
+    let motion: MotionTilt
+
+    func body(content: Content) -> some View {
+        content
+            .rotation3DEffect(.degrees(-motion.pitch), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
+            .rotation3DEffect(.degrees(motion.roll), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+    }
+}
+
+private struct ParallaxLayer<Content: View>: View {
+    let motion: MotionTilt
+    let depth: Double
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .offset(x: motion.roll * depth, y: -motion.pitch * depth)
     }
 }
