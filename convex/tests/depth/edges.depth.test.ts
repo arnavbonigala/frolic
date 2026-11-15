@@ -48,6 +48,7 @@ async function planFor(t: T, groupId: Id<"groups">, title: string, neighborhood?
       line: "Catch the last light",
       cost: 0,
       startsAt: NOON + 2 * HOUR,
+      sunsetAt: NOON + 5 * HOUR,
       durationMinutes: 60,
       source: "scorer",
       generatedAt: NOON,
@@ -267,6 +268,18 @@ describe("missing rows never break a read", () => {
     expect(view.myTap?.kind).toBe("down");
   });
 
+  test("an only if person with a photo reads with a photo url", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    const photo = await t.run(async (ctx) => await ctx.storage.store(new Blob(["face"])));
+    await t.mutation(api.users.updateProfile, { deviceToken: token("Dev"), photoId: photo });
+    await tap(t, crew, "Maya", { onlyIf: ["Dev"] });
+    const view = await t.query(api.frolics.today, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(view.myTap?.onlyIf).toHaveLength(1);
+    expect(view.myTap?.onlyIf[0].photoUrl).toEqual(expect.any(String));
+    expect(view.myTap?.onlyIf[0].name).toBe("Dev");
+  });
+
   test("a crew of one sees the solo phase even with a frolic open", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya"]);
@@ -292,5 +305,6 @@ describe("missing rows never break a read", () => {
     const view = await t.query(api.frolics.today, { deviceToken: token("Maya"), groupId: crew.groupId });
     expect(view.frolic?.plan?.place?.neighborhood).toBe("Berkeley Hills");
     expect(view.frolic?.plan?.place?.name).toBe("Indian Rock");
+    expect(view.frolic?.plan?.sunsetAt).toBe(NOON + 5 * HOUR);
   });
 });
