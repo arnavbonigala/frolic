@@ -475,6 +475,7 @@ export default defineSchema({
       v.literal("checkin"),
       v.literal("snap"),
       v.literal("group_skip"),
+      v.literal("daily_pick"),
     ),
     groupId: v.id("groups"),
     userId: v.optional(v.id("users")),
@@ -582,4 +583,30 @@ export default defineSchema({
     card: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_groupId", ["groupId"]),
+
+  dailyPickQuestions: defineTable({
+    key: v.string(),
+    category: v.string(),
+    text: v.string(),
+    options: v.array(v.object({ label: v.string(), tags: v.array(v.string()) })),
+  }).index("by_key", ["key"]),
+
+  dailyPicks: defineTable({
+    groupId: v.id("groups"),
+    day: v.string(),
+    questionId: v.id("dailyPickQuestions"),
+    questionKey: v.string(),
+    category: v.string(),
+    answers: v.number(),
+  }).index("by_groupId_and_day", ["groupId", "day"]),
+
+  dailyPickAnswers: defineTable({
+    groupId: v.id("groups"),
+    day: v.string(),
+    userId: v.id("users"),
+    option: v.string(),
+    answeredAt: v.number(),
+  })
+    .index("by_groupId_and_day_and_userId", ["groupId", "day", "userId"])
+    .index("by_userId", ["userId"]),
 });

@@ -1,4 +1,4 @@
-export const EVENT_KINDS = ["tap", "only_if", "skip", "limit", "plan_shown", "reveal", "checkin", "snap", "group_skip"] as const;
+export const EVENT_KINDS = ["tap", "only_if", "skip", "limit", "plan_shown", "reveal", "checkin", "snap", "group_skip", "daily_pick"] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 
 export type EventInput = {
@@ -106,6 +106,17 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
         ],
         notBefore: e.revealAt!,
       };
+    case "daily_pick": {
+      const question = str(e.payload.question);
+      const option = str(e.payload.option);
+      return {
+        writes: [
+          personal("daily_pick", "Picked " + option + " for \"" + question + "\"" + (tags.length ? " (" + tags.join(", ") + ")" : "") + "."),
+          group("daily_pick", "Someone in the crew picked " + option + " for \"" + question + "\"."),
+        ],
+        notBefore: 0,
+      };
+    }
     case "snap": {
       const caption = str(e.payload.caption);
       return {

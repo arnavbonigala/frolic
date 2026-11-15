@@ -151,7 +151,7 @@ describe("only if, used strangely", () => {
 describe("I'm free, twice and at once", () => {
   test("two people starting at once share one plan, and the second start is not counted", async () => {
     const t = makeT();
-    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"], { window: { start: Date.now() + 5 * HOUR, end: Date.now() + 8 * HOUR } });
     const a = await t.mutation(api.frolics.imFree, { deviceToken: token("Maya"), groupId: crew.groupId, forMinutes: 120 });
     const b = await t.mutation(api.frolics.imFree, { deviceToken: token("Dev"), groupId: crew.groupId, forMinutes: 120 });
     const again = await t.mutation(api.frolics.imFree, { deviceToken: token("Maya"), groupId: crew.groupId, forMinutes: 120 });
@@ -424,11 +424,12 @@ describe("left open", () => {
     expect(out).toMatchObject({ ok: true });
   });
 
-  test.skip("I'm free while the daily drop is open keeps your daily answer visible (skipped: two open frolics per day needs a product call on which one Today shows)", async () => {
+  test("I'm free while the daily drop is open returns the open plan and keeps your daily answer visible", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev"]);
     await tap(t, crew, "Maya");
-    await t.mutation(api.frolics.imFree, { deviceToken: token("Dev"), groupId: crew.groupId, forMinutes: 120 });
+    const result = await t.mutation(api.frolics.imFree, { deviceToken: token("Dev"), groupId: crew.groupId, forMinutes: 120 });
+    expect(result).toEqual({ frolicId: crew.frolicId, started: false });
     expect((await today(t, crew, "Maya")).phase).toBe("waiting");
   });
 });
