@@ -12,11 +12,11 @@ const body = html
 writeFileSync("convex/web/pageTemplate.ts", "export const PAGE_TEMPLATE = " + JSON.stringify(body) + ";\n");
 console.log("template bytes", body.length);
 
-const dir = "design/generated";
+const dir = "web/heroes";
 const heroes = existsSync(dir)
-  ? readdirSync(dir).filter((name) => /^plan-[a-z0-9-]+\.png$/.test(name))
+  ? readdirSync(dir).filter((name) => /^plan-[a-z0-9-]+\.jpg$/.test(name))
   : [];
-const entries = heroes.map((name) => [name.replace(/\.png$/, ""), readFileSync(`${dir}/${name}`).toString("base64")]);
+const entries = heroes.map((name) => [name.replace(/\.jpg$/, ""), readFileSync(`${dir}/${name}`).toString("base64")]);
 writeFileSync(
   "convex/web/heroes.ts",
   "export const HERO_IMAGES: Record<string, string> = {\n" +

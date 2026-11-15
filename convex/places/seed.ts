@@ -38,7 +38,7 @@ const fieldsOf = (place: (typeof BERKELEY_PLACES)[number]) => ({
 
 export const seedPlaces = internalMutation({
   args: {},
-  returns: v.object({ inserted: v.number(), updated: v.number() }),
+  returns: v.object({ inserted: v.number(), updated: v.number(), removed: v.number() }),
   handler: async (ctx) => {
     let inserted = 0;
     let updated = 0;
@@ -56,6 +56,14 @@ export const seedPlaces = internalMutation({
         inserted += 1;
       }
     }
-    return { inserted, updated };
+    const keep = new Set(BERKELEY_PLACES.map((place) => place.slug));
+    const stored = await ctx.db.query("places").take(500);
+    let removed = 0;
+    for (const row of stored) {
+      if (keep.has(row.slug)) continue;
+      await ctx.db.delete("places", row._id);
+      removed += 1;
+    }
+    return { inserted, updated, removed };
   },
 });

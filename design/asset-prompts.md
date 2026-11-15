@@ -34,3 +34,31 @@ Four friendly fictional college students, natural light, candid smiling headshot
 
 ## 6. Launch screen art (1290 x 2796, portrait)
 A soft meadow at the bottom third with a row of six small daisies in the palette colors swaying, the sky gradient above, lots of empty sky for the app name to sit over.
+
+## Round 2: variance (paste the style block first)
+
+Ask for each image on its own, 1600 x 1200 landscape unless noted, no text, no faces, tiny figures from behind at most.
+
+### More plan heroes (name each file plan-<name>.png)
+- coffee-walk: two paper coffee cups on a low wall above a leafy street, morning light.
+- beach: a wide sandy beach at late afternoon, a frisbee mid-air, long shadows.
+- bowling: a retro bowling alley lane glowing under neon, pins in pastel colors.
+- museum: a big airy museum hall with a giant colorful sculpture, soft daylight.
+- farmers-market: striped market stalls with flowers, peaches and bread, morning.
+- boba: a cozy boba shop counter with colorful drinks lined up, evening glow.
+- stargazing: a hilltop at night with blankets laid out under a sky full of stars and a crescent moon.
+- thrift: a sunny thrift store aisle with racks of colorful clothes and a vintage mirror.
+- rainy-board-cafe: a warm board game cafe window with rain streaking the glass, games stacked inside.
+- picnic: a picnic in a meadow with a gingham blanket, a basket, lemonade, wildflowers.
+- ice-cream: an ice cream window at golden hour, cones with pastel scoops on the counter.
+- karaoke: a small karaoke room with string lights and a glowing screen, mics on a table.
+
+### Time-of-day sky for the Today header (1290 x 900, portrait-friendly, sky only with a soft hill at the bottom edge, no flowers)
+- sky-morning: pale sky, soft peach sunrise glow low on the horizon.
+- sky-afternoon: clear bright blue with two small clouds.
+- sky-golden: warm golden-hour sky, apricot to pink.
+- sky-night: deep navy with soft stars and a crescent moon.
+- sky-rain: soft grey-blue sky with gentle painted rain and one break of light.
+
+### Weather swap card (1200 x 900)
+- weather-swap: a little umbrella sheltering a daisy from painted rain, while a sunny window glows warmly beside it. For "Rain at 4, so we moved it inside."

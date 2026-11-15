@@ -37,10 +37,6 @@ function apiKey(): string | null {
   return key ? key : null;
 }
 
-export function hasOpenAI(): boolean {
-  return apiKey() !== null;
-}
-
 export function structuredBody(call: Pick<StructuredCall, "schemaName" | "schema" | "system" | "user">): StructuredBody {
   return {
     model: OPENAI_MODEL,

@@ -33,6 +33,7 @@ export const charge = internalAction({
     if (!begun.ok) return begun;
     const cfg = whopConfig();
     const isHold = begun.kind === "deposit";
+    const startedAt = Date.now();
     try {
       const payment = await whop.createPayment(
         {
@@ -57,9 +58,53 @@ export const charge = internalAction({
       await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId: begun.shareId });
       return { ok: true as const, status: payment.substatus ?? payment.status ?? "pending", clientSecret: payment.client_secret ?? null };
     } catch (e) {
+      const unknown = !(e instanceof WhopError) || !e.status;
+      const lost = unknown ? await findLost(begun.shareId, isHold ? cfg.holdProductId : cfg.plansProductId, startedAt) : null;
+      if (lost) {
+        const { signal } = await readSignal(lost);
+        await ctx.runMutation(internal.whop.money.recordCharge, { shareId: begun.shareId, whopPaymentId: lost.id, signal });
+        await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId: begun.shareId });
+        return { ok: true as const, status: lost.substatus ?? lost.status ?? "pending", clientSecret: lost.client_secret ?? null };
+      }
       await ctx.runMutation(internal.whop.money.chargeFailed, { shareId: begun.shareId, message: errorText(e) });
+      if (unknown) {
+        await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.adoptLost, {
+          shareId: begun.shareId,
+          productId: isHold ? cfg.holdProductId : cfg.plansProductId,
+          since: startedAt,
+        });
+      }
       return { ok: false as const, message: "That didn't go through. Try again." };
     }
+  },
+});
+
+const LIVE = new Set(["authorized", "succeeded"]);
+
+async function findLost(shareId: Id<"shares">, productId: string, since: number): Promise<WhopPayment | null> {
+  try {
+    const found = await whop.listPayments({
+      account_id: whopConfig().accountId,
+      product_id: productId,
+      created_after: new Date(since - 60 * 1000).toISOString(),
+      first: "50",
+    });
+    return found.find((p) => p.metadata?.shareId === shareId && LIVE.has(signalFrom(p.status, p.substatus))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export const adoptLost = internalAction({
+  args: { shareId: v.id("shares"), productId: v.string(), since: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { shareId, productId, since }): Promise<null> => {
+    const lost = await findLost(shareId, productId, since);
+    if (!lost) return null;
+    const { signal } = await readSignal(lost);
+    await ctx.runMutation(internal.whop.money.recordCharge, { shareId, whopPaymentId: lost.id, signal });
+    await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId });
+    return null;
   },
 });
 

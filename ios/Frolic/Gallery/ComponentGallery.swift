@@ -153,7 +153,7 @@ struct ComponentGallery: View {
     private var packet: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "Seed packet")
-            SeedPacket(label: "TODAY · SATURDAY", number: "Crew frolic No. 13", image: "hills_sunset", imageDescription: "Sunset at Indian Rock") {
+            SeedPacket(label: "TODAY · SATURDAY", number: "Crew frolic No. 13", image: "plan-sunsets", imageDescription: "Sunset at Indian Rock") {
                 Text("Sunset at Indian Rock")
                     .frolicFont(.title)
                     .foregroundStyle(FrolicColor.ink)

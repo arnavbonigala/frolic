@@ -44,10 +44,18 @@ export function parseOpenMeteo(body: unknown): DayWeather {
   };
 }
 
-export async function fetchWeather(day: string, fetcher: typeof fetch = fetch): Promise<DayWeather> {
-  const res = await fetcher(openMeteoUrl(day));
-  if (!res.ok) throw new Error("weather: http " + res.status);
-  return parseOpenMeteo(await res.json());
+export const WEATHER_TIMEOUT_MS = 6000;
+
+export async function fetchWeather(day: string, fetcher: typeof fetch = fetch, timeoutMs = WEATHER_TIMEOUT_MS): Promise<DayWeather> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetcher(openMeteoUrl(day), { signal: controller.signal });
+    if (!res.ok) throw new Error("weather: http " + res.status);
+    return parseOpenMeteo(await res.json());
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function hourAt(weather: DayWeather | null, ms: number): HourWeather | null {

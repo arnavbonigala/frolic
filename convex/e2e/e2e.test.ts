@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import { HERO_KEYS } from "../places/data";
 import { NOON, flipDue, makeT, type T } from "../tests/setup.helpers";
 
 const SECRET = "e2e-secret-for-tests";
@@ -207,6 +208,7 @@ describe("demo scenario", () => {
     expect(first.frolic?.plan?.title).toBe("Sunset at Indian Rock");
     expect(first.frolic?.day).toBe("2026-11-15");
     expect(first.frolic?.plan?.startsAt).toBe(Date.UTC(2026, 10, 16, 0, 30));
+    expect(first.frolic?.plan?.heroKey).toBe("plan-sunsets");
     expect(first.phase).toBe("open");
 
     const advanced = await post(t, "/e2e/advance", { run: RUN });
@@ -218,6 +220,7 @@ describe("demo scenario", () => {
       deviceToken: body.users.maya.deviceToken,
       groupId: body.groupId,
     });
+    expect(HERO_KEYS).toContain(paid.frolic!.plan!.heroKey);
     expect(paid.frolic!.plan!.cost).toBe(8);
     expect(paid.frolic!.plan!.costLabel).toBe("$8");
     expect(paid.frolic!.plan!.payUpFront).toBe(true);

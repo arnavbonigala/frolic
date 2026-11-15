@@ -15,6 +15,11 @@ export const card = v.object({
   imageUrl: v.union(v.string(), v.null()),
 });
 
+const mate = v.object({
+  name: v.string(),
+  avatarUrl: v.union(v.string(), v.null()),
+});
+
 export const view = v.object({
   phase: v.union(
     v.literal("invalid"),
@@ -28,17 +33,55 @@ export const view = v.object({
   group: v.union(v.string(), v.null()),
   card: v.union(card, v.null()),
   me: v.union(v.string(), v.null()),
+  avatar: v.union(v.string(), v.null()),
   revealAt: v.union(v.number(), v.null()),
-  mates: v.array(v.string()),
+  mates: v.array(mate),
   meet: v.union(v.string(), v.null()),
   time: v.union(v.string(), v.null()),
 });
+
+type View = {
+  phase: "invalid" | "expired" | "drifted" | "open" | "planted" | "on";
+  host: string | null;
+  group: string | null;
+  card: { label: string; no: string; title: string; chips: string[]; why: string | null; imageUrl: string | null } | null;
+  me: string | null;
+  avatar: string | null;
+  revealAt: number | null;
+  mates: { name: string; avatarUrl: string | null }[];
+  meet: string | null;
+  time: string | null;
+};
+
+type Today = {
+  phase: string;
+  myTap: { kind: string } | null;
+  reveal: { revealAt: number; going: { userId: string; name: string }[] } | null;
+};
+
+const dead: View = {
+  phase: "invalid",
+  host: null,
+  group: null,
+  card: null,
+  me: null,
+  avatar: null,
+  revealAt: null,
+  mates: [],
+  meet: null,
+  time: null,
+};
 
 async function inviteFor(ctx: QueryCtx | MutationCtx, code: string) {
   return await ctx.db
     .query("invites")
     .withIndex("by_code", (q) => q.eq("code", code.trim().toUpperCase()))
     .unique();
+}
+
+async function avatarOf(ctx: QueryCtx, user: Doc<"users"> | null): Promise<string | null> {
+  if (!user?.photoId) return null;
+  return await ctx.storage.getUrl(user.photoId);
 }
 
 function timeIn(ms: number, timezone: string): string {
@@ -83,26 +126,22 @@ async function cardFor(ctx: QueryCtx, frolic: Doc<"frolics">) {
   };
 }
 
-const dead = {
-  phase: "invalid" as const,
-  host: null,
-  group: null,
-  card: null,
-  me: null,
-  revealAt: null,
-  mates: [],
-  meet: null,
-  time: null,
-};
+function prequel(frolic: Doc<"frolics">): "open" | "drifted" | "expired" {
+  if (frolic.status === "done") return "expired";
+  if (frolic.status === "faded" || (frolic.status === "open" && Date.now() > frolic.deadline)) {
+    return "drifted";
+  }
+  return "open";
+}
 
 export const watch = query({
   args: { code: v.string(), deviceToken: v.string() },
   returns: view,
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<View> => {
     const invite = await inviteFor(ctx, args.code);
     if (!invite || invite.revoked) return dead;
     if (invite.expiresAt !== undefined && invite.expiresAt < Date.now()) {
-      return { ...dead, phase: "expired" as const };
+      return { ...dead, phase: "expired" };
     }
     const frolic = invite.frolicId ? await ctx.db.get(invite.frolicId) : null;
     if (!frolic) {
@@ -111,74 +150,50 @@ export const watch = query({
     }
     const group = await ctx.db.get(frolic.groupId);
     const host = await ctx.db.get(invite.createdBy);
-    const built = await cardFor(ctx, frolic);
     const plan = frolic.planId ? await ctx.db.get(frolic.planId) : null;
     const base = {
       host: host?.name ?? null,
       group: group?.name ?? null,
-      card: built,
+      card: await cardFor(ctx, frolic),
       meet: plan?.meetingPoint?.label ?? null,
-      time: plan ? timeIn(plan.startsAt, group!.timezone) : null,
+      time: plan && group ? timeIn(plan.startsAt, group.timezone) : null,
     };
     const user = await findUserByToken(ctx, args.deviceToken);
     if (!user || !(await findMembership(ctx, frolic.groupId, user._id))) {
-      return { ...base, ...prequel(frolic), me: null, revealAt: null, mates: [] };
+      return { ...base, ...blank(prequel(frolic)), me: null, avatar: null, revealAt: null, mates: [] };
     }
 
     const today = (await ctx.runQuery(api.frolics.today, {
       deviceToken: args.deviceToken,
       groupId: frolic.groupId,
       frolicId: frolic._id,
-    })) as {
-      phase: string;
-      groupName: string;
-      frolic: { frolicId: string } | null;
-      myTap: { kind: string } | null;
-      reveal: {
-        revealAt: number;
-        going: { userId: string; name: string }[];
-      } | null;
-    };
+    })) as Today;
 
-    const me = today.myTap?.kind === "down" ? user.name : null;
+    const mine = today.myTap?.kind === "down";
+    const me = mine ? user.name : null;
+    const avatar = await avatarOf(ctx, user);
+
     if (today.reveal) {
-      const now = Date.now();
-      if (now < today.reveal.revealAt) {
-        return {
-          ...base,
-          phase: "planted" as const,
-          me,
-          revealAt: today.reveal.revealAt,
-          mates: [],
-        };
+      if (Date.now() < today.reveal.revealAt) {
+        return { ...base, ...blank("planted"), me, avatar, revealAt: today.reveal.revealAt, mates: [] };
       }
-      return {
-        ...base,
-        phase: "on" as const,
-        me,
-        revealAt: today.reveal.revealAt,
-        mates: today.reveal.going
-          .filter((p) => p.userId !== user._id)
-          .map((p) => p.name)
-          .filter((name, i, all) => all.indexOf(name) === i),
-      };
+      const mates: { name: string; avatarUrl: string | null }[] = [];
+      for (const person of today.reveal.going) {
+        if (person.userId === user._id) continue;
+        if (mates.some((m) => m.name === person.name)) continue;
+        const other = await ctx.db.get(person.userId as Id<"users">);
+        mates.push({ name: person.name, avatarUrl: await avatarOf(ctx, other) });
+      }
+      return { ...base, ...blank("on"), me, avatar, revealAt: today.reveal.revealAt, mates };
     }
     if (today.phase === "waiting" || today.myTap) {
-      return { ...base, phase: "planted" as const, me, revealAt: null, mates: [] };
+      return { ...base, ...blank("planted"), me, avatar, revealAt: null, mates: [] };
     }
-    if (today.phase === "faded") return { ...base, phase: "drifted" as const, me: null, revealAt: null, mates: [] };
-    if (today.phase === "done") return { ...base, phase: "expired" as const, me: null, revealAt: null, mates: [] };
-    return { ...base, phase: "open" as const, me: null, revealAt: null, mates: [] };
+    if (today.phase === "faded") return { ...base, ...blank("drifted"), me: null, avatar: null, revealAt: null, mates: [] };
+    if (today.phase === "done") return { ...base, ...blank("expired"), me: null, avatar: null, revealAt: null, mates: [] };
+    return { ...base, ...blank("open"), me: null, avatar: null, revealAt: null, mates: [] };
   },
 });
-
-function prequel(frolic: Doc<"frolics">): { phase: "open" | "drifted" | "expired" } {
-  if (frolic.status === "done") return { phase: "expired" };
-  if (frolic.status === "faded" || (frolic.status === "open" && Date.now() > frolic.deadline)) {
-    return { phase: "drifted" };
-  }
-  return { phase: "open" };
-}
 
 export const peek = internalQuery({
   args: { code: v.string() },
@@ -198,7 +213,7 @@ export const peek = internalQuery({
     const group = await ctx.db.get(invite.groupId);
     const host = await ctx.db.get(invite.createdBy);
     return {
-      phase: frolic ? prequel(frolic).phase : "open",
+      phase: frolic ? prequel(frolic) : "open",
       host: host?.name ?? null,
       group: group?.name ?? null,
       card: frolic ? await cardFor(ctx, frolic) : null,
@@ -229,6 +244,12 @@ export const join = mutation({
     if (name.length < 1) throw new ConvexError({ code: "BAD_NAME", message: "A first name is required" });
     const invite = await inviteFor(ctx, args.code);
     if (!invite || invite.revoked || !invite.frolicId) return { ok: false, phase: "invalid" };
+    const frolic = await ctx.db.get(invite.frolicId);
+    if (!frolic) return { ok: false, phase: "invalid" };
+    if (frolic.status === "done") return { ok: false, phase: "expired" };
+    if (frolic.status === "faded" || (frolic.status === "open" && Date.now() > frolic.deadline)) {
+      return { ok: false, phase: "drifted" };
+    }
     let joined: { userId: Id<"users"> };
     try {
       joined = await ctx.runMutation(api.users.joinGroup, {
@@ -252,8 +273,13 @@ export const join = mutation({
     } catch (error) {
       const code = error instanceof ConvexError ? (error.data as { code?: string }).code : undefined;
       if (code === "CLOSED") return { ok: false, phase: "drifted" };
+      if (code === "RATE_LIMITED") throw new ConvexError({ code: "SLOW_DOWN", message: "One tap at a time" });
       throw error;
     }
     return { ok: true, phase: "planted" };
   },
 });
+
+function blank(phase: View["phase"]): Pick<View, "phase"> {
+  return { phase };
+}
