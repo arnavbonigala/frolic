@@ -36,7 +36,7 @@ struct CrewPersonRowView: View {
     var onTap: (() -> Void)?
 
     var body: some View {
-        let label = "\(row.name), \(row.detail)\(row.lookingNow ? ", looking now" : "")"
+        let label = "\(row.name)\(row.detail.isEmpty ? "" : ", \(row.detail)")\(row.lookingNow ? ", looking now" : "")"
         Group {
             if let onTap {
                 Button(action: onTap) {
@@ -61,12 +61,14 @@ struct CrewPersonRowView: View {
                 Text(row.name)
                     .frolicFont(.bodyEmphasis)
                     .foregroundStyle(FrolicColor.ink)
-                HStack(spacing: 6) {
-                    StatusDot(isFree: row.isFree)
-                    Text(row.detail)
-                        .frolicFont(.subheadline)
-                        .foregroundStyle(FrolicColor.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
+                if !row.detail.isEmpty {
+                    HStack(spacing: 6) {
+                        StatusDot(isFree: row.isFree)
+                        Text(row.detail)
+                            .frolicFont(.subheadline)
+                            .foregroundStyle(FrolicColor.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             Spacer(minLength: 0)

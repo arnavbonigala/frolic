@@ -64,17 +64,15 @@ enum CrewCopy {
     }
 
     static func freeLine(_ free: CrewFreeWire?, now: Double) -> String {
-        guard let free else { return "Not said yet" }
+        guard let free else { return "" }
         switch free.state {
         case "busy":
             return "Busy now"
         case "window":
-            guard let window = free.window else { return "Free now" }
-            if window.start <= now { return "Free till \(hour(window.end))" }
+            guard let window = free.window, window.start > now else { return "Free now" }
             return "Free \(hour(window.start)) to \(hour(window.end))"
         default:
-            guard let window = free.window else { return "Free now" }
-            return "Free till \(hour(window.end))"
+            return "Free now"
         }
     }
 
