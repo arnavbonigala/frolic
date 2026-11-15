@@ -182,7 +182,7 @@ struct PortraitBloom: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [tint.petal.opacity(0.55), tint.deep.opacity(0.4)],
+                    colors: [tint.petal.opacity(0.7), tint.deep.opacity(0.5)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
