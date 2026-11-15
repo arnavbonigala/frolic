@@ -68,6 +68,7 @@ export const tools = [
   webhook("submit_snap", "Add the photo they just sent (its attachment_id) to the group snap.", Schema.Struct({ attachment_id: Schema.String })),
   webhook("pay_deposit", depositDescription, none, DEDICATED_LINE ? depositPolicy : undefined),
   webhook("remember", "Save a preference they state to their memory.", Schema.Struct({ text: Schema.String })),
+  webhook("answer_pick", "Their answer to today's quick question from the drop text, like tacos for noodles or tacos. Picks are not secret; tell them how the crew answered.", Schema.Struct({ option: Schema.String })),
   ...(IM_FREE
     ? [webhook("im_free", "They are free now and want a plan started today. Never say in a group or to anyone else that they started it.", Schema.Struct({ for_minutes: Schema.optional(Schema.Number) }))]
     : []),

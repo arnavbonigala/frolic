@@ -149,7 +149,7 @@ describe("garden health", () => {
     const t = makeT();
     const crew = await setupCrew(t, NAMES);
     const view = await overview(t, crew);
-    expect(view.health).toEqual({ state: "thriving", daysSince: 0, line: "Your first frolic plants the first flower", cta: null });
+    expect(view.health).toEqual({ state: "thriving", daysSince: 0, line: "Your first frolic plants the first flower", cta: null, todayWatered: false });
     expect(view.collection.flowers).toEqual([]);
   });
 });
