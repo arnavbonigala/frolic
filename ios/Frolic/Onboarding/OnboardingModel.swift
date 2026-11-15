@@ -6,7 +6,7 @@ import UIKit
 @Observable
 final class OnboardingModel {
     enum Step: String {
-        case join, name, taste, reading, calendar
+        case join, name, share, taste, reading, calendar
     }
 
     enum InvitePhase: Equatable {
@@ -73,6 +73,13 @@ final class OnboardingModel {
     var showsPhotoSheet = false
     var showsInviteEntry = false
     var groupId: String?
+    var createdInviteCode: String?
+
+    var shareURL: URL? {
+        guard let code = createdInviteCode else { return nil }
+        if let site = ConvexConfig.siteURL, let url = URL(string: site + "/p/" + code) { return url }
+        return URL(string: "frolic://join/" + code)
+    }
 
     var onFinish: () -> Void = {}
 
@@ -244,15 +251,15 @@ final class OnboardingModel {
         isSubmitting = true
         failure = nil
         do {
-            if isSolo {
-                let outcome = try await backend.createGroup(firstName: name)
-                groupId = outcome.groupId
-            } else if let link {
+            var creating = isSolo
+            if !creating, let link {
                 let outcome = try await backend.join(code: link.code, firstName: name)
                 groupId = outcome.groupId
             } else {
+                creating = true
                 let outcome = try await backend.createGroup(firstName: name)
                 groupId = outcome.groupId
+                createdInviteCode = outcome.inviteCode
             }
             if let photoData = photo {
                 try? await backend.uploadPhoto(photoData)
@@ -260,8 +267,13 @@ final class OnboardingModel {
             OnboardingIdentity.firstName = name
             OnboardingIdentity.groupId = groupId
             OnboardingIdentity.inviteCode = link?.code
-            step = .taste
-            await loadPhotos()
+            isSubmitting = false
+            if creating {
+                step = .share
+            } else {
+                await finish()
+            }
+            return
         } catch {
             failure = OnboardingBackend.classify(error)
         }

@@ -9,6 +9,7 @@ struct OnboardingView: View {
             switch model.step {
             case .join: JoinScreen(model: model)
             case .name: NameScreen(model: model)
+            case .share: ShareScreen(model: model)
             case .taste: TasteScreen(model: model)
             case .reading: ReadingScreen(model: model)
             case .calendar: CalendarScreen(model: model)

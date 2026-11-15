@@ -15,6 +15,10 @@ struct JoinScreen: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             OnboardingBottomBar { bar }
         }
+        .sheet(isPresented: $model.showsInviteEntry) {
+            InviteEntrySheet(model: model)
+                .presentationDetents([.height(260)])
+        }
     }
 
     private var backdrop: some View {
@@ -112,17 +116,59 @@ struct JoinScreen: View {
     private var bar: some View {
         switch model.invitePhase {
         case .ready:
-            Button(model.preview.map { "Join \($0.groupName)" } ?? (model.link == nil ? "Get started" : "Join your crew")) {
+            Button(model.preview.map { "Join \($0.groupName)" } ?? (model.link == nil ? "Start a crew" : "Join your crew")) {
                 if model.link == nil { model.startSolo() } else { model.acceptInvite() }
             }
             .buttonStyle(.frolicPrimary)
             .accessibilityIdentifier("join.join")
+            if model.link == nil {
+                Button("I have an invite link") { model.showsInviteEntry = true }
+                    .buttonStyle(.frolicText)
+                    .accessibilityIdentifier("join.haveLink")
+            }
         case .offline, .expired, .invalid:
             Button("Start on your own") { model.startSolo() }
                 .buttonStyle(.frolicPrimary)
                 .accessibilityIdentifier("join.join")
+            Button("I have an invite link") { model.showsInviteEntry = true }
+                .buttonStyle(.frolicText)
+                .accessibilityIdentifier("join.haveLink")
         default:
             EmptyView()
         }
+    }
+}
+
+struct InviteEntrySheet: View {
+    @Bindable var model: OnboardingModel
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Paste your invite link")
+                .frolicFont(.sheetTitle)
+                .foregroundStyle(FrolicColor.ink)
+                .accessibilityAddTraits(.isHeader)
+            TextField("Invite link", text: $text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+                .focused($focused)
+                .padding(.horizontal, 16)
+                .frame(height: 56)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(FrolicColor.paper))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(FrolicColor.line, lineWidth: 1))
+                .accessibilityIdentifier("join.linkField")
+            Button("Find my crew") { model.submitInviteLink(text) }
+                .buttonStyle(.frolicPrimary)
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityIdentifier("join.findCrew")
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(FrolicColor.cream.ignoresSafeArea())
+        .onAppear { focused = true }
     }
 }
