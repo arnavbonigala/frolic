@@ -183,6 +183,7 @@ final class YouModel {
             group.addTask { await self.trackProfile(client: client, token: token) }
             group.addTask { await self.trackCard(client: client, token: token) }
             group.addTask { await self.trackCount(client: client, token: token) }
+            group.addTask { await self.watchLoad() }
         }
     }
 
@@ -338,6 +339,12 @@ final class YouModel {
         } catch {
             card = cardOverride ?? YouCard.none
         }
+    }
+
+    private func watchLoad() async {
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
+        guard !Task.isCancelled, loadPhase == .loading else { return }
+        loadPhase = .error("Check your connection and try again.")
     }
 
     private func trackCount(client: ConvexClient, token: String) async {
