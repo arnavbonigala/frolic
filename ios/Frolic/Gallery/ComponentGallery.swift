@@ -237,7 +237,7 @@ struct ComponentGallery: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "Spacing and radii")
             HStack(alignment: .bottom, spacing: 6) {
-                ForEach(Self.spacingSamples, id: \.name) { sample in
+                ForEach(Self.spacingSamples) { sample in
                     VStack(spacing: 4) {
                         RoundedRectangle(cornerRadius: 3, style: .continuous)
                             .fill(FrolicColor.sun)
@@ -249,7 +249,7 @@ struct ComponentGallery: View {
                 }
             }
             HStack(spacing: 8) {
-                ForEach(Self.radiusSamples, id: \.name) { sample in
+                ForEach(Self.radiusSamples) { sample in
                     VStack(spacing: 4) {
                         RoundedRectangle(cornerRadius: sample.value, style: .continuous)
                             .fill(FrolicColor.chip)
@@ -263,11 +263,22 @@ struct ComponentGallery: View {
             }
             .padding(.top, 8)
             SectionHeader(title: "Pressable")
-            Button("I'm down") {}.buttonStyle(.frolicPrimary).buttonStyle(.frolicPressable)
-            Button("See the garden") {
+            Button {
                 showSheet = true
+            } label: {
+                FrolicCard {
+                    HStack(spacing: FrolicSpacing.sm) {
+                        FlowerView(person: SampleData.maya, radius: 20, stem: 0)
+                        Text("Tap a row, it presses in")
+                            .frolicFont(.bodyEmphasis)
+                            .foregroundStyle(FrolicColor.ink)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(FrolicColor.ink.opacity(0.4))
+                            .accessibilityHidden(true)
+                    }
+                }
             }
-            .buttonStyle(.frolicSecondaryWide)
             .buttonStyle(.frolicPressable)
             .accessibilityIdentifier("gallery.polish.sheet")
             SectionHeader(title: "Staggered entrance")
@@ -302,13 +313,22 @@ struct ComponentGallery: View {
         }
     }
 
-    private static let spacingSamples: [(name: String, value: CGFloat)] = [
-        ("4", FrolicSpacing.xxs), ("8", FrolicSpacing.xs), ("12", FrolicSpacing.sm), ("16", FrolicSpacing.md),
-        ("20", FrolicSpacing.lg), ("24", FrolicSpacing.xl), ("32", FrolicSpacing.xxl), ("40", FrolicSpacing.xxxl),
+    private struct Sample: Identifiable {
+        var name: String
+        var value: CGFloat
+        var id: String { name }
+    }
+
+    private static let spacingSamples = [
+        Sample(name: "4", value: FrolicSpacing.xxs), Sample(name: "8", value: FrolicSpacing.xs),
+        Sample(name: "12", value: FrolicSpacing.sm), Sample(name: "16", value: FrolicSpacing.md),
+        Sample(name: "20", value: FrolicSpacing.lg), Sample(name: "24", value: FrolicSpacing.xl),
+        Sample(name: "32", value: FrolicSpacing.xxl), Sample(name: "40", value: FrolicSpacing.xxxl),
     ]
 
-    private static let radiusSamples: [(name: String, value: CGFloat)] = [
-        ("14", FrolicRadius.chip), ("18", FrolicRadius.tile), ("22", FrolicRadius.group), ("28", FrolicRadius.packet),
+    private static let radiusSamples = [
+        Sample(name: "14", value: FrolicRadius.chip), Sample(name: "18", value: FrolicRadius.tile),
+        Sample(name: "22", value: FrolicRadius.group), Sample(name: "28", value: FrolicRadius.packet),
     ]
 
     private static let entranceSamples = ["Maya is free till 8", "Jordan is busy now", "Dev is free till 6"]
