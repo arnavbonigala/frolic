@@ -352,7 +352,8 @@ describe("join_crew", () => {
       crew: "Sunset Crew",
       name: "Kai",
       friends: ["Maya", "Dev", "Sam", "Ana"],
-      say: "Welcome them in one line, then call get_today.",
+      welcome: "Be the friend who says yes.",
+      say: 'Open with "Be the friend who says yes.", then call get_today.',
     });
     expect(await membershipsOf(t, seed.groupId)).toHaveLength(5);
     expect((await linksOf(t)).some((link) => link.phone === "+15105550198")).toBe(true);
