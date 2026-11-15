@@ -41,7 +41,13 @@ import type * as reveal from "../reveal.js";
 import type * as snaps from "../snaps.js";
 import type * as taps from "../taps.js";
 import type * as users from "../users.js";
+import type * as web_devSeed from "../web/devSeed.js";
+import type * as web_hero from "../web/hero.js";
+import type * as web_heroes from "../web/heroes.js";
+import type * as web_ogImage from "../web/ogImage.js";
+import type * as web_pageTemplate from "../web/pageTemplate.js";
 import type * as web_routes from "../web/routes.js";
+import type * as web_share from "../web/share.js";
 import type * as whop_money from "../whop/money.js";
 import type * as whop_routes from "../whop/routes.js";
 
@@ -85,7 +91,13 @@ declare const fullApi: ApiFromModules<{
   snaps: typeof snaps;
   taps: typeof taps;
   users: typeof users;
+  "web/devSeed": typeof web_devSeed;
+  "web/hero": typeof web_hero;
+  "web/heroes": typeof web_heroes;
+  "web/ogImage": typeof web_ogImage;
+  "web/pageTemplate": typeof web_pageTemplate;
   "web/routes": typeof web_routes;
+  "web/share": typeof web_share;
   "whop/money": typeof whop_money;
   "whop/routes": typeof whop_routes;
 }>;
