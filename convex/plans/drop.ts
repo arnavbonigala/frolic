@@ -27,6 +27,7 @@ import {
 import { vDropInputs, type DropInputs } from "./inputs";
 import { EMPTY_MEMORY, type MemoryContext } from "./memoryContext";
 import { addDays, localParts, weekdayOf } from "./time";
+import { tripTo } from "./travel";
 import { fetchWeather, hourAt, isRainy, type DayWeather } from "./weather";
 
 declare const process: { env: Record<string, string | undefined> };
@@ -653,9 +654,15 @@ async function attachFree(
     await dropFree(ctx, args.frolicId);
     return null;
   }
-  const leaveAt = args.plan.startsAt - DEFAULT_WALK_MINUTES * 60 * 1000;
-  const deadline = Math.min(frolic.deadline, Math.max(leaveAt, frolic.window.start + FREE_MIN_ANSWER_MS, Date.now() + 60 * 1000));
-  await ctx.db.patch("frolics", args.frolicId, { planId, durationMinutes: args.plan.durationMinutes, deadline });
+  const place = PLACE_BY_SLUG.get(args.plan.placeSlug);
+  const travel = place ? tripTo(null, place).minutes : DEFAULT_WALK_MINUTES;
+  const leaveAt = args.plan.startsAt - travel * 60 * 1000;
+  const deadline = Math.min(frolic.deadline, Math.max(leaveAt, frolic._creationTime + FREE_MIN_ANSWER_MS, Date.now() + 60 * 1000));
+  const window = {
+    start: Math.max(frolic.window.start, args.plan.startsAt),
+    end: Math.max(frolic.window.end, args.plan.startsAt + args.plan.durationMinutes * 60 * 1000),
+  };
+  await ctx.db.patch("frolics", args.frolicId, { planId, durationMinutes: args.plan.durationMinutes, deadline, window });
   if (deadline < frolic.deadline) await ctx.scheduler.runAt(deadline, internal.reveal.fade, { frolicId: args.frolicId });
   await ctx.runMutation(internal.keiki.outbound.onFree, { frolicId: args.frolicId });
   return planId;
