@@ -18,6 +18,7 @@ struct SeedPacket<Content: View>: View {
     var image: String?
     var imageDescription: String?
     var bandColor: Color = FrolicColor.band
+    var hostedBy: String?
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -52,6 +53,12 @@ struct SeedPacket<Content: View>: View {
             }
             VStack(alignment: .leading, spacing: 10) {
                 content
+                if let hostedBy {
+                    Text("Hosted by \(hostedBy)")
+                        .frolicFont(.footnote)
+                        .foregroundStyle(FrolicColor.secondaryText)
+                        .accessibilityIdentifier("plan.hostedBy")
+                }
             }
             .padding(.horizontal, 18)
             .padding(.top, 12)
