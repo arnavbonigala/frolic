@@ -185,9 +185,9 @@ describe("stats and context", () => {
       });
     });
     const skippers = skips >= 2 ? [ids.maya, ids.dev] : skips === 1 ? [ids.maya] : [];
-    await t.run(async (ctx) => {
-      for (const userId of skippers) await ctx.db.insert("taps", { frolicId, groupId: ids.groupId, userId, kind: "notToday", onlyIf: [], source: "app", updatedAt: 0 });
-    });
+    for (const userId of skippers) {
+      await t.mutation(internal.memory.events.recordEvent, { eventKey: "skip:" + day + ":" + userId, kind: "skip", groupId: ids.groupId, userId, frolicId, payload: { title: "Boba run", tags: ["boba"], day } });
+    }
     return t.mutation(internal.memory.stats.closeDay, { groupId: ids.groupId, day });
   }
 

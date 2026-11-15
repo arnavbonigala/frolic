@@ -53,7 +53,10 @@ export async function bumpTagStat(ctx: MutationCtx, groupId: Id<"groups">, tag: 
 export async function enqueue(ctx: MutationCtx, args: EventInput & { eventKey: string; groupId: Id<"groups">; userId?: Id<"users">; frolicId?: Id<"frolics">; source?: Doc<"memoryEvents">["source"] }) {
   const existing = await ctx.db.query("memoryEvents").withIndex("by_eventKey", (q) => q.eq("eventKey", args.eventKey)).unique();
   if (existing) return { queued: false as const, eventId: existing._id };
-  const { notBefore } = planWrites(args.eventKey, args);
+  const placeId = typeof args.payload?.placeId === "string" ? ctx.db.normalizeId("places", args.payload.placeId) : null;
+  const slug = placeId ? (await ctx.db.get("places", placeId))?.slug : undefined;
+  const payload = slug ? { ...args.payload, placeId: slug } : args.payload;
+  const { notBefore } = planWrites(args.eventKey, { ...args, payload });
   const now = Date.now();
   const nextAttemptAt = Math.max(now, notBefore);
   const eventId = await ctx.db.insert("memoryEvents", {
@@ -62,7 +65,7 @@ export async function enqueue(ctx: MutationCtx, args: EventInput & { eventKey: s
     groupId: args.groupId,
     userId: args.userId,
     frolicId: args.frolicId,
-    payload: args.payload,
+    payload,
     revealAt: args.revealAt,
     source: args.source,
     status: "queued",
