@@ -64,10 +64,75 @@ struct YouToday: Decodable {
 struct YouOverview: Decodable {
     var memories: [Memory]
     var yourCount: Int?
+    var collection: GardenCollection?
 
     struct Memory: Decodable {
         var youWent: Bool
     }
+
+    enum CodingKeys: String, CodingKey { case memories, yourCount, collection }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        memories = (try? container.decodeIfPresent([Memory].self, forKey: .memories)) ?? []
+        yourCount = try? container.decodeIfPresent(Int.self, forKey: .yourCount)
+        collection = (try? container.decodeIfPresent(GardenCollection.self, forKey: .collection)) ?? nil
+    }
+
+    init(memories: [Memory], yourCount: Int?, collection: GardenCollection?) {
+        self.memories = memories
+        self.yourCount = yourCount
+        self.collection = collection
+    }
+}
+
+struct YouTotals: Equatable, Encodable {
+    var frolics: Int
+    var crews: Int
+    var flowers: [GardenVariety]
+
+    init(frolics: Int, crews: Int, flowers: [GardenVariety] = []) {
+        self.frolics = frolics
+        self.crews = max(crews, 1)
+        self.flowers = flowers
+    }
+}
+
+extension YouTotals: Decodable {
+    enum CodingKeys: String, CodingKey {
+        case frolics, crews, count, crewCount, flowers, varieties
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        guard let frolics = Self.number(container, .frolics) ?? Self.number(container, .count) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.frolics,
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "You totals has no frolic count")
+            )
+        }
+        self.init(
+            frolics: frolics,
+            crews: Self.number(container, .crews) ?? Self.number(container, .crewCount) ?? 1,
+            flowers: Self.list(container, .flowers) ?? Self.list(container, .varieties) ?? []
+        )
+    }
+
+    private static func number(_ container: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> Int? {
+        guard let value = try? container.decodeIfPresent(Double.self, forKey: key) else { return nil }
+        return Int(value)
+    }
+
+    private static func list(_ container: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> [GardenVariety]? {
+        guard let value = try? container.decodeIfPresent([GardenVariety].self, forKey: key) else { return nil }
+        return value
+    }
+}
+
+enum YouTotalsPhase: Equatable {
+    case loading
+    case ready
+    case failed
 }
 
 struct YouCardPerson: Codable, Equatable {
@@ -137,18 +202,26 @@ final class YouModel {
     var homeBy: YouHomeBy?
     var readCalendar = YouPreferences.readCalendar
     var tasteTags: [String] = []
-    var wentCount: Int?
+    var totals: YouTotals?
+    var totalsPhase: YouTotalsPhase = .loading
     var savePhase: YouSavePhase = .idle
     var accountPhase: YouAccountPhase = .idle
 
     @ObservationIgnored private var hasLoaded = false
     @ObservationIgnored private var cardOverride: YouCard?
+    @ObservationIgnored private var totalsPinned = false
+    @ObservationIgnored private var personalTotals = false
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private var totalsTask: Task<Void, Never>?
 
     init() {
         tasteTags = YouPreferences.tasteTags
         if let cached = YouPreferences.cachedLimits() {
             apply(cached)
+        }
+        if let cached = YouPreferences.cachedTotals() {
+            totals = cached
+            totalsPhase = .ready
         }
         if profile != nil || YouPreferences.cachedLimits() != nil {
             loadPhase = .ready
@@ -159,8 +232,11 @@ final class YouModel {
         profile?.groups.first?.groupId ?? FrolicIdentity.shared.groupId
     }
 
-    var crewName: String? {
-        profile?.crewName
+    var crewLine: String? {
+        let groups = profile?.groups ?? []
+        guard let first = groups.first else { return nil }
+        if groups.count == 1 { return first.name }
+        return "\(first.name) and \(groups.count - 1) more"
     }
 
     var myColor: FlowerColor {
@@ -186,6 +262,7 @@ final class YouModel {
             group.addTask { await self.trackLimits(client: client, token: token) }
             group.addTask { await self.trackProfile(client: client, token: token) }
             group.addTask { await self.trackCard(client: client, token: token) }
+            group.addTask { await self.trackTotals(client: client, token: token) }
             group.addTask { await self.trackCount(client: client, token: token) }
             group.addTask { await self.watchLoad() }
         }
@@ -244,6 +321,9 @@ final class YouModel {
             try await client.mutation("users:deleteAccount", with: args)
             profile = nil
             card = YouCard.none
+            totals = nil
+            totalsPhase = .loading
+            personalTotals = false
             hasLoaded = false
             loadPhase = .empty
             accountPhase = .idle
@@ -353,7 +433,10 @@ final class YouModel {
     }
 
     private func trackCount(client: ConvexClient, token: String) async {
-        guard let groupId = await resolvedGroupId() else { return }
+        guard let groupId = await resolvedGroupId() else {
+            failTotals()
+            return
+        }
         let publisher = client.subscribe(
             to: "garden:overview",
             with: ["deviceToken": token, "groupId": groupId],
@@ -361,11 +444,64 @@ final class YouModel {
         )
         do {
             for try await overview in publisher.values {
-                wentCount = overview.yourCount ?? overview.memories.filter(\.youWent).count
+                guard !totalsPinned, !personalTotals else { continue }
+                let count = overview.yourCount ?? overview.memories.filter(\.youWent).count
+                let totals = YouTotals(frolics: count, crews: 1, flowers: overview.collection?.varieties ?? [])
+                self.totals = totals
+                totalsPhase = .ready
+                YouPreferences.save(totals: totals)
             }
+        } catch is CancellationError {
+            return
+        } catch {
+            failTotals()
+        }
+    }
+
+    private func trackTotals(client: ConvexClient, token: String) async {
+        let publisher = client.subscribe(
+            to: "you:totals",
+            with: ["deviceToken": token],
+            yielding: YouTotals.self
+        )
+        do {
+            for try await totals in publisher.values {
+                guard !totalsPinned else { continue }
+                self.totals = totals
+                personalTotals = true
+                totalsPhase = .ready
+                YouPreferences.save(totals: totals)
+            }
+        } catch is CancellationError {
+            return
         } catch {
             return
         }
+    }
+
+    func retryTotals(backend: FrolicBackend) {
+        guard !totalsPinned else { return }
+        totalsTask?.cancel()
+        totals = nil
+        totalsPhase = .loading
+        personalTotals = false
+        guard let client = try? backend.requireClient() else {
+            totalsPhase = .failed
+            return
+        }
+        let token = FrolicIdentity.shared.deviceToken
+        totalsTask = Task { [weak self] in
+            guard let self else { return }
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await self.trackTotals(client: client, token: token) }
+                group.addTask { await self.trackCount(client: client, token: token) }
+            }
+        }
+    }
+
+    private func failTotals() {
+        guard !totalsPinned, !personalTotals, totals == nil else { return }
+        totalsPhase = .failed
     }
 
     private func resolvedGroupId() async -> String? {
@@ -440,8 +576,31 @@ final class YouModel {
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
         }
+        if let state = route.query["totals"] {
+            totalsPinned = true
+            if state == "loading" {
+                totals = nil
+                totalsPhase = .loading
+            } else if state == "failed" {
+                totals = nil
+                totalsPhase = .failed
+            } else if let frolics = Int(state) {
+                let crews = max(Int(route.query["crews"] ?? "") ?? 1, 1)
+                let flowers = route.query["flowers"] == "0" ? [] : Self.sampleFlowers
+                totals = YouTotals(frolics: frolics, crews: crews, flowers: frolics > 0 ? flowers : [])
+                totalsPhase = .ready
+            }
+        }
         #endif
     }
+
+    #if DEBUG || E2E
+    private static let sampleFlowers = [
+        GardenVariety(key: "golden-poppy", name: "Golden poppy", count: 3, unlocked: true, hint: nil),
+        GardenVariety(key: "lupine", name: "Lupine", count: 1, unlocked: true, hint: nil),
+        GardenVariety(key: "daisy", name: "Daisy", count: 2, unlocked: true, hint: nil),
+    ]
+    #endif
 
     private static func travelValue(_ minutes: Double) -> Double {
         let clamped = min(max(minutes, 5), 45)

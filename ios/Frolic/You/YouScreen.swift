@@ -115,6 +115,7 @@ private struct YouContent: View {
             }
             card
                 .padding(.top, 18)
+            flowers
             SectionHeader(title: "Only you see these", systemImage: "lock.fill")
                 .accessibilityIdentifier("you.privateHeader")
             limitsGroup
@@ -151,13 +152,6 @@ private struct YouContent: View {
         }
     }
 
-    private var identityLine: String? {
-        guard let crew = model.crewName else { return nil }
-        guard let count = model.wentCount else { return crew }
-        if count == 0 { return "Your first frolic is one tap away." }
-        return "\(count) \(count == 1 ? "frolic" : "frolics") with \(crew)"
-    }
-
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             YouFlowerHead(
@@ -174,7 +168,7 @@ private struct YouContent: View {
                     .minimumScaleFactor(0.6)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("you.title")
-                if let line = identityLine {
+                if let line = model.crewLine {
                     Text(line)
                         .frolicFont(.subheadline)
                         .foregroundStyle(FrolicColor.secondaryText)
@@ -184,14 +178,31 @@ private struct YouContent: View {
         }
     }
 
-    private var hasWent: Bool {
-        (model.wentCount ?? 0) > 0
+    private var cardCopy: (title: String, detail: String) {
+        if offline, model.totalsPhase != .ready {
+            return ("Your frolics", "Your count loads when you're back online.")
+        }
+        switch model.totalsPhase {
+        case .loading:
+            return ("Your frolics", "Counting them up.")
+        case .failed:
+            return ("Couldn't load your frolics", "Tap to try again.")
+        case .ready:
+            guard let totals = model.totals else { return ("Your frolics", "Counting them up.") }
+            let frolics = max(totals.frolics, model.card.went ? 1 : 0)
+            let count = frolics == 1 ? "1 frolic" : "\(frolics) frolics"
+            let title = totals.crews > 1 ? "\(count) across \(totals.crews) crews" : count
+            if model.card.went { return (title, model.card.friendLine) }
+            if frolics == 0 { return (title, "Your first flower grows the first time you go.") }
+            return (title, "It blooms again the next time you go.")
+        }
     }
 
-    private var card: some View {
-        FrolicCard {
+    private var cardBody: some View {
+        let copy = cardCopy
+        return FrolicCard {
             HStack(spacing: 12) {
-                if model.card.went {
+                if model.card.went, model.totalsPhase == .ready {
                     HStack(spacing: 0) {
                         ForEach(model.card.people.indices, id: \.self) { index in
                             let person = model.card.people[index]
@@ -203,15 +214,13 @@ private struct YouContent: View {
                             )
                         }
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text((model.wentCount ?? 1) <= 1 ? "Your first frolic" : "Today's frolic")
-                            .font(.system(size: cardTitleSize, weight: .semibold))
-                            .foregroundStyle(FrolicColor.ink)
-                        Text(model.card.friendLine)
-                            .frolicFont(.subheadline)
-                            .foregroundStyle(FrolicColor.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                } else if model.totalsPhase == .ready, let totals = model.totals, totals.frolics > 0 {
+                    YouFlowerHead(
+                        name: model.profile?.name ?? "You",
+                        color: model.myColor,
+                        photoURL: model.profile?.photoUrl,
+                        radius: 19
+                    )
                 } else {
                     YouFlowerHead(
                         name: model.profile?.name ?? "You",
@@ -220,21 +229,44 @@ private struct YouContent: View {
                         radius: 16,
                         state: .bud
                     )
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(hasWent ? "Your flower is growing" : "No frolics yet")
-                            .font(.system(size: cardTitleSize, weight: .semibold))
-                            .foregroundStyle(FrolicColor.ink)
-                        Text(hasWent ? "It blooms again the next time you go." : "Your first flower grows the first time you go.")
-                            .frolicFont(.subheadline)
-                            .foregroundStyle(FrolicColor.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(copy.title)
+                        .font(.system(size: cardTitleSize, weight: .semibold))
+                        .foregroundStyle(FrolicColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(copy.detail)
+                        .frolicFont(.subheadline)
+                        .foregroundStyle(FrolicColor.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("you.card")
+    }
+
+    @ViewBuilder
+    private var card: some View {
+        if model.totalsPhase == .failed, !offline {
+            Button {
+                model.retryTotals(backend: backend)
+            } label: {
+                cardBody
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Tries loading your frolics again")
+        } else {
+            cardBody
+        }
+    }
+
+    @ViewBuilder
+    private var flowers: some View {
+        if let totals = model.totals, !totals.flowers.isEmpty {
+            GardenCollectionShelf(collection: GardenCollection(varieties: totals.flowers))
+        }
     }
 
     private var limitsGroup: some View {
