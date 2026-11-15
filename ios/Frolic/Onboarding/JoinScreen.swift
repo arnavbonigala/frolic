@@ -88,20 +88,17 @@ struct JoinScreen: View {
     }
 
     private var header: some View {
-        HStack {
-            Wordmark(width: 92)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 6)
-        .padding(.bottom, 28)
+        Wordmark(width: 92)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 10)
+            .padding(.bottom, 30)
     }
 
     private var welcomeCopy: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 12) {
             Text("Be the friend who says yes.")
-                .font(.system(size: 46, weight: .heavy, design: .rounded))
-                .tracking(-1)
+                .font(.system(size: 42, weight: .heavy, design: .serif))
+                .multilineTextAlignment(.center)
                 .foregroundStyle(FrolicColor.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("join.title")
@@ -109,10 +106,11 @@ struct JoinScreen: View {
             Text("Your crew, outside, more often.")
                 .frolicFont(.body)
                 .foregroundStyle(FrolicColor.secondaryText)
+                .multilineTextAlignment(.center)
                 .accessibilityIdentifier("join.blurb")
         }
-        .padding(.horizontal, 22)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 26)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder

@@ -99,6 +99,7 @@ struct TodayScreen: View {
         }
         .onAppear { store.takePendingAction() }
         .task(id: store.meMember?.photoUrl) { await MyAvatar.shared.load(store.meMember?.photoUrl) }
+        .onChange(of: store.meMember?.name, initial: true) { _, name in MyAvatar.shared.name = name }
         .onReceive(NotificationCenter.default.publisher(for: TodayInbox.openOnlyIfNotification)) { _ in
             store.takePendingAction()
         }

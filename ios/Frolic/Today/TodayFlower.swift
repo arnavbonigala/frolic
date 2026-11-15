@@ -123,7 +123,7 @@ struct TodayFlower: View {
     private func initial(_ person: TodayPerson) -> some View {
         ZStack {
             FrolicColor.cream
-            Text(String(person.name.prefix(1)).uppercased())
+            Text(String((person.name == "You" ? MyAvatar.shared.name ?? person.name : person.name).prefix(1)).uppercased())
                 .font(.system(size: radius * 0.5, weight: .heavy, design: .rounded))
                 .foregroundStyle(person.flower.deep)
         }

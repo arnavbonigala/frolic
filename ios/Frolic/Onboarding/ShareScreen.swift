@@ -1,7 +1,9 @@
 import SwiftUI
+import UIKit
 
 struct ShareScreen: View {
     @Bindable var model: OnboardingModel
+    @State private var copied = false
 
     var body: some View {
         OnboardingPage(onBack: { model.backToName() }) {
@@ -11,22 +13,36 @@ struct ShareScreen: View {
                 identifier: "share.title"
             )
             if let code = model.shareCode {
-                HStack(spacing: 12) {
-                    FlowerView(state: .folded, color: .marigold, radius: 20, stem: 26)
-                        .accessibilityHidden(true)
-                    Text(code)
-                        .frolicFont(.bodyEmphasis)
-                        .foregroundStyle(FrolicColor.ink)
-                        .textSelection(.enabled)
-                    Spacer(minLength: 0)
+                VStack(spacing: 22) {
+                    HStack(alignment: .bottom, spacing: -6) {
+                        FlowerView(color: .pink, radius: 22, stem: 40)
+                        FlowerView(color: .marigold, radius: 30, stem: 64)
+                        FlowerView(color: .cobalt, radius: 22, stem: 46)
+                    }
+                    .accessibilityHidden(true)
+                    Button {
+                        UIPasteboard.general.string = code
+                        copied = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text(code)
+                                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                                .foregroundStyle(FrolicColor.ink)
+                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(copied ? Color(hex: 0x34A160) : FrolicColor.secondaryText)
+                        }
+                        .padding(.horizontal, 22)
+                        .frame(minHeight: 56)
+                        .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(copied ? "Code \(code), copied" : "Code \(code). Copy")
+                    .accessibilityIdentifier("share.link")
                 }
-                .padding(16)
-                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(FrolicColor.paper))
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.line, lineWidth: 1))
-                .padding(.top, 26)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(code)
-                .accessibilityIdentifier("share.link")
+                .frame(maxWidth: .infinity)
+                .padding(.top, 48)
+                .sensoryFeedback(.success, trigger: copied)
             }
         } bar: {
             if let url = model.shareURL {

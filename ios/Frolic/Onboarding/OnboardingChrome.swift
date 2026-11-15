@@ -28,9 +28,10 @@ struct OnboardingTitle: View {
     var titleSize: CGFloat = 34
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 10) {
             Text(title)
-                .frolicFont(.largeTitle)
+                .font(.system(.largeTitle, design: .serif, weight: .heavy))
+                .multilineTextAlignment(.center)
                 .foregroundStyle(FrolicColor.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier(identifier ?? "")
@@ -39,10 +40,11 @@ struct OnboardingTitle: View {
                 Text(subcopy)
                     .frolicFont(.subheadline)
                     .foregroundStyle(FrolicColor.secondaryText)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
 }
 

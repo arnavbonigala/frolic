@@ -13,8 +13,8 @@ struct OnboardingBeat: View {
     var body: some View {
         VStack(spacing: 0) {
             Text("One plan a day")
-                .frolicFont(.footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(hex: 0x8EE3A8))
             stage
                 .frame(height: 92)
                 .padding(.top, 2)
@@ -33,8 +33,6 @@ struct OnboardingBeat: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
-        .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("One plan a day. Friends who are free bloom. Your yes is a secret bud. Both yes, it is on.")
         .accessibilityIdentifier("join.beat")

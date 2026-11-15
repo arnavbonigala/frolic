@@ -6,6 +6,7 @@ import UIKit
 final class MyAvatar {
     static let shared = MyAvatar()
     private(set) var image: UIImage?
+    var name: String?
     private var loaded: String?
 
     func load(_ raw: String?) async {
