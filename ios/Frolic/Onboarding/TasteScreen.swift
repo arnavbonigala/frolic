@@ -82,7 +82,7 @@ struct TasteScreen: View {
                 }
                 .overlay(alignment: .bottomTrailing) {
                     ZStack {
-                        Circle().fill(index == nil ? Color.black.opacity(0.15) : Color(hex: 0x2C6BF0))
+                        Circle().fill(index == nil ? Color.black.opacity(0.15) : Color(hex: 0x34A160))
                         Circle().stroke(.white, lineWidth: 2)
                         if let index {
                             Text("\(index)")

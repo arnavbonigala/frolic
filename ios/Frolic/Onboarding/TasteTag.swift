@@ -19,6 +19,16 @@ enum TasteTag: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    var planTag: String {
+        switch self {
+        case .sunsets: "sunsets"
+        case .outdoors: "outdoors"
+        case .lateNightFood: "late_night_food"
+        case .games: "games"
+        case .freeStuff: "free"
+        }
+    }
+
     var label: String {
         switch self {
         case .sunsets: "Sunsets"

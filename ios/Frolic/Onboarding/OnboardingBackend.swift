@@ -212,6 +212,15 @@ final class OnboardingBackend {
         }
     }
 
+    func saveTaste(groupId: String, tags: [String]) async throws {
+        guard let client else { throw OnboardingFailure.notConnected }
+        try await client.mutation("taste:addMine", with: [
+            "deviceToken": OnboardingIdentity.deviceToken,
+            "groupId": groupId,
+            "tags": tags.map { $0 as ConvexEncodable? },
+        ])
+    }
+
     func setFreeToday(groupId: String, state: String, window: DateInterval?) async throws {
         guard let client else { throw OnboardingFailure.notConnected }
         var args: [String: ConvexEncodable?] = [

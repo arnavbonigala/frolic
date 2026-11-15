@@ -325,11 +325,8 @@ final class OnboardingModel {
             OnboardingIdentity.groupId = groupId
             OnboardingIdentity.inviteCode = link?.code
             isSubmitting = false
-            if creating {
-                step = .share
-            } else {
-                await finish()
-            }
+            step = .taste
+            if photos.isEmpty { Task { await loadPhotos() } }
             return
         } catch {
             failure = OnboardingBackend.classify(error)
@@ -424,8 +421,15 @@ final class OnboardingModel {
 
     func confirmTaste() async {
         failure = nil
-        step = .calendar
-        readCalendar()
+        YouPreferences.tasteTags = tags.map(\.label)
+        if let groupId = groupId ?? OnboardingIdentity.groupId, !tags.isEmpty {
+            try? await backend.saveTaste(groupId: groupId, tags: tags.map(\.planTag))
+        }
+        if createdInviteCode != nil {
+            step = .share
+        } else {
+            await finish()
+        }
     }
 
     func readCalendar() {
