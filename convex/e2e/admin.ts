@@ -280,7 +280,7 @@ export const seed = internalMutation({
       costLabel: "Free",
       payUpFront: false,
       priceVerified: true,
-      tags: ["sunset", "views", "outdoors"],
+      tags: ["sunsets", "views", "outdoors"],
       hours: [],
       bestTime: "goldenHour",
       indoor: false,

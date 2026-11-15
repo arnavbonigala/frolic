@@ -18,6 +18,12 @@ async function finish(t: T, crew: Crew) {
   await t.mutation(internal.reveal.complete, { frolicId: crew.frolicId });
 }
 
+async function checkIn(t: T, crew: Crew, name: string) {
+  await t.run(async (ctx) =>
+    ctx.db.insert("checkins", { frolicId: crew.frolicId, userId: crew.ids[name], method: "manual", at: Date.now() }),
+  );
+}
+
 async function snap(t: T, crew: Crew, name: string) {
   const storageId = await t.run(async (ctx) => ctx.storage.store(new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0x01])])));
   await t.run(async (ctx) =>
@@ -57,13 +63,17 @@ describe("garden overview", () => {
     ).rejects.toThrow(/not in this crew/);
   });
 
-  test("a frolic nobody joined never appears, and a live one does", async () => {
+  test("a frolic nobody joined never appears, and a live one does once someone checks in", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
     await tap(t, crew, "Maya");
     await tap(t, crew, "Dev");
     await tap(t, crew, "Jordan", { kind: "notToday" });
     await flipDue(t);
+    const upcoming = await t.query(api.garden.overview, { deviceToken: token("Jordan"), groupId: crew.groupId });
+    expect(upcoming.count).toBe(0);
+    expect(upcoming.memories).toEqual([]);
+    await checkIn(t, crew, "Maya");
     const live = await t.query(api.garden.overview, { deviceToken: token("Jordan"), groupId: crew.groupId });
     expect(live.count).toBe(1);
     expect(live.memories).toHaveLength(1);
@@ -83,6 +93,7 @@ describe("garden overview", () => {
     await tap(t, crew, "Maya");
     await tap(t, crew, "Dev");
     await flipDue(t);
+    await checkIn(t, crew, "Maya");
     await snap(t, crew, "Maya");
 
     const before = await t.query(api.garden.memory, { deviceToken: token("Dev"), frolicId: crew.frolicId });
@@ -119,6 +130,7 @@ describe("garden overview", () => {
     expect(memory.fundLine).toBe("The Frolic Fund covered $8 of this one.");
     expect(memory.place).toBeNull();
     expect(memory.caption?.length ?? 0).toBeGreaterThan(0);
+    await checkIn(t, crew, "Dev");
     const overview = await t.query(api.garden.overview, { deviceToken: token("Maya"), groupId: crew.groupId });
     expect(overview.fund?.line).toBe("The Frolic Fund covered $8 of this one.");
     expect(overview.fund?.frolicTitle.length ?? 0).toBeGreaterThan(0);
