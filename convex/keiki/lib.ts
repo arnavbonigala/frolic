@@ -118,6 +118,13 @@ export function localDay(ms: number, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
 
+const LATE_PLAN_GRACE_MS = 4 * 60 * 60 * 1000;
+
+function stillRunning(frolic: Doc<"frolics">, now: number): boolean {
+  if (frolic.status !== "on") return false;
+  return now <= (frolic.endsAt ?? frolic.window.end) + LATE_PLAN_GRACE_MS;
+}
+
 export async function currentFrolic(ctx: QueryCtx, groupId: Id<"groups">, now: number, timeZone: string) {
   const frolics = await ctx.db
     .query("frolics")
@@ -125,17 +132,10 @@ export async function currentFrolic(ctx: QueryCtx, groupId: Id<"groups">, now: n
     .order("desc")
     .take(8);
   const today = localDay(now, timeZone);
+  const live = frolics.filter((f) => f.day === today || stillRunning(f, now));
   const find = (status: Doc<"frolics">["status"], day?: string) =>
-    frolics.find((f) => f.status === status && (day === undefined || f.day === day));
-  return (
-    find("open", today) ??
-    find("open") ??
-    find("on", today) ??
-    find("on") ??
-    frolics.find((f) => f.day === today) ??
-    frolics[0] ??
-    null
-  );
+    live.find((f) => f.status === status && (day === undefined || f.day === day));
+  return find("open", today) ?? find("open") ?? find("on", today) ?? find("on") ?? live.find((f) => f.day === today) ?? null;
 }
 
 export function isRevealed(frolic: Doc<"frolics">, now: number): boolean {
