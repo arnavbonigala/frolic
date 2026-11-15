@@ -6,6 +6,7 @@ import Observation
 @MainActor
 @Observable
 final class GardenStore {
+    private static var cachedOverview: [String: GardenOverview] = [:]
     private(set) var overview: GardenOverview?
     private(set) var phase: ScreenPhase = .loading
     private(set) var memory: GardenMemory?
@@ -38,7 +39,12 @@ final class GardenStore {
             phase = .empty
             return
         }
-        phase = .loading
+        if overview == nil, let cached = GardenStore.cachedOverview[identity.groupId] {
+            overview = cached
+            phase = cached.isEmpty ? .empty : .ready
+        } else if overview == nil {
+            phase = .loading
+        }
         let args: [String: ConvexEncodable?] = ["deviceToken": identity.deviceToken, "groupId": identity.groupId]
         meTask?.cancel()
         meTask = Task { [weak self] in
@@ -69,6 +75,7 @@ final class GardenStore {
                     guard !Task.isCancelled, let self else { return }
                     guard let value else { continue }
                     overview = value
+                    GardenStore.cachedOverview[identity.groupId] = value
                     phase = value.isEmpty ? .empty : .ready
                 }
             } catch {
