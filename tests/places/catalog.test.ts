@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { BERKELEY_PLACES, PLACE_BY_SLUG, type BestTime, type Place } from "../../convex/places/data";
 import { PLACES as ANIMALS_NIGHTS_MUSEUMS } from "../../convex/places/sets/animals-nights-museums";
 import { PLACES as CLASSES } from "../../convex/places/sets/classes";
+import { PLACES as EMERYVILLE_ALAMEDA_GAMES } from "../../convex/places/sets/emeryville-alameda-games";
 import { PLACES as ESCAPE_KARAOKE_DANCE } from "../../convex/places/sets/escape-karaoke-dance";
 import { PLACES as GAMES_AND_SKATING } from "../../convex/places/sets/games-and-skating";
 import { EMPTY_MEMORY } from "../../convex/plans/memoryContext";
@@ -12,6 +13,7 @@ const SETS: { name: string; places: Place[] }[] = [
   { name: "animals-nights-museums", places: ANIMALS_NIGHTS_MUSEUMS },
   { name: "escape-karaoke-dance", places: ESCAPE_KARAOKE_DANCE },
   { name: "games-and-skating", places: GAMES_AND_SKATING },
+  { name: "emeryville-alameda-games", places: EMERYVILLE_ALAMEDA_GAMES },
   { name: "classes", places: CLASSES },
 ];
 
@@ -112,6 +114,7 @@ describe("the place sets are in the catalog", () => {
     expect(ANIMALS_NIGHTS_MUSEUMS).toHaveLength(8);
     expect(ESCAPE_KARAOKE_DANCE).toHaveLength(5);
     expect(GAMES_AND_SKATING).toHaveLength(7);
+    expect(EMERYVILLE_ALAMEDA_GAMES).toHaveLength(5);
     expect(CLASSES).toHaveLength(8);
   });
 

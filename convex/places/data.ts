@@ -1,5 +1,6 @@
 import { PLACES as ANIMALS_NIGHTS_MUSEUMS } from "./sets/animals-nights-museums";
 import { PLACES as CLASSES } from "./sets/classes";
+import { PLACES as EMERYVILLE_ALAMEDA_GAMES } from "./sets/emeryville-alameda-games";
 import { PLACES as ESCAPE_KARAOKE_DANCE } from "./sets/escape-karaoke-dance";
 import { PLACES as GAMES_AND_SKATING } from "./sets/games-and-skating";
 
@@ -165,6 +166,7 @@ export const BERKELEY_PLACES: Place[] = [
   ...ANIMALS_NIGHTS_MUSEUMS,
   ...ESCAPE_KARAOKE_DANCE,
   ...GAMES_AND_SKATING,
+  ...EMERYVILLE_ALAMEDA_GAMES,
   ...CLASSES,
 ];
 
