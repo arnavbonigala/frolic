@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
+import { noticeToken } from "../keiki/notice";
 import { ANA_PHONE, SAM_PHONE, linkChat, linkPhone, nowFor, seedCrew, seat } from "../../keiki/test/seed";
 import type { Seed, SeedOptions, T } from "../../keiki/test/seed";
 import {
@@ -60,7 +61,8 @@ describe("onDrop", () => {
 
     await advance(t, 0);
     expect(fetchMock.notices.map((notice) => notice.phone).sort()).toEqual([SAM_PHONE, ANA_PHONE, CHAT].sort());
-    expect(fetchMock.notices[0].text.startsWith("Frolic drop event.")).toBe(true);
+    expect(fetchMock.notices[0].text.startsWith("FROLIC-OPS " + noticeToken(API_KEY) + "\n")).toBe(true);
+    expect(fetchMock.notices[0].text).not.toContain("get_member");
 
     await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
     expect(await outboxOf(t)).toHaveLength(3);
@@ -68,7 +70,7 @@ describe("onDrop", () => {
     expect(fetchMock.notices).toHaveLength(3);
   });
 
-  it("retries a failing notice three times then marks it failed", async () => {
+  it("retries a failing notice three times with a growing delay, then marks it failed", async () => {
     const { t, seed } = await seeded();
     const fetchMock = installFetch({ noticeStatus: 500 });
 
@@ -77,16 +79,46 @@ describe("onDrop", () => {
     expect((await outboxOf(t)).every((row) => row.attempts === 1 && row.status === "queued")).toBe(true);
     await advance(t, 2000);
     expect((await outboxOf(t)).every((row) => row.attempts === 2 && row.status === "queued")).toBe(true);
-    await advance(t, 2000);
-
+    await advance(t, 4000);
     const rows = await outboxOf(t);
     expect(rows).toHaveLength(2);
     expect(rows.every((row) => row.status === "failed" && row.attempts === 3)).toBe(true);
     expect(rows.every((row) => row.error === "http_500")).toBe(true);
     expect(fetchMock.stub).toHaveBeenCalledTimes(6);
 
-    await advance(t, 2000);
+    await advance(t, 8000);
     expect(fetchMock.stub).toHaveBeenCalledTimes(6);
+  });
+
+  it("keeps a missing conversation apart from a retry", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch({ noticeStatus: 404 });
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    await advance(t, 0);
+    const rows = await outboxOf(t);
+    expect(rows.every((row) => row.status === "failed" && row.attempts === 1 && row.error === "lost_404")).toBe(true);
+    expect(fetchMock.stub).toHaveBeenCalledTimes(2);
+    await advance(t, 2000);
+    expect(fetchMock.stub).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats a notice the agent could not run as a retry", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch({ noticeBody: { results: [{ outcome: "unavailable" }] } });
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    await advance(t, 0);
+    expect((await outboxOf(t)).every((row) => row.status === "queued" && row.attempts === 1 && row.error === "unavailable")).toBe(true);
+    await advance(t, 2000);
+    expect((await outboxOf(t)).every((row) => row.attempts === 2)).toBe(true);
+    expect(fetchMock.notices).toHaveLength(4);
+  });
+
+  it("treats a queued notice as sent", async () => {
+    const { t, seed } = await seeded();
+    installFetch({ noticeBody: { results: [{ outcome: "queued" }] } });
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    await advance(t, 0);
+    expect((await outboxOf(t)).every((row) => row.status === "sent")).toBe(true);
   });
 });
 
@@ -284,7 +316,7 @@ describe("onFaded", () => {
 
     await advance(t, 0);
     expect(fetchMock.notices.map((notice) => notice.phone).sort()).toEqual([SAM_PHONE, ANA_PHONE].sort());
-    expect(fetchMock.notices[0].text).toContain("Today's plan faded.");
+    expect(fetchMock.notices[0].text).toContain("This one drifted off. Nobody knows you said yes.");
   });
 });
 
