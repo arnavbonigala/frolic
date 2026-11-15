@@ -108,7 +108,7 @@ const fresh = async () => {
     name: "Dev",
   });
   const t0 = Date.now();
-  await page.waitForFunction(() => document.body.innerText.includes("It\u2019s on."), {
+  await page.waitForFunction(() => document.body.innerText.includes("It's on."), {
     timeout: 12000,
     polling: 16,
   });

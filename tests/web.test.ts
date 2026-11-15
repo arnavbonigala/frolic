@@ -251,21 +251,23 @@ describe("secrecy until revealAt", () => {
     expect(revealed.revealAt).toBeLessThanOrEqual(NOON + 1600);
   });
 
-  test("a mate's flower carries their avatar when they have one", async () => {
+  test("a mate's flower carries their absolute portrait url when they have one", async () => {
     const t = makeT();
     const crew = await planned(t, await setupCrew(t, ["Maya", "Dev", "Jordan"]));
     const link = await shareLink(t, crew);
-    const storageId = await t.run(
-      async (ctx) => await ctx.storage.store(new Blob([new Uint8Array([137, 80, 78, 71])])),
-    );
-    await t.run(async (ctx) => await ctx.db.patch(crew.ids.Dev, { photoId: storageId }));
+    await t.run(async (ctx) => await ctx.db.patch(crew.ids.Dev, { avatarUrl: "/p/avatar/dev.jpg" }));
     await t.mutation(api.web.share.join, { code: link.code, deviceToken: token("Priya"), name: "Priya" });
+    await t.run(async (ctx) => {
+      const priya = (await ctx.db.query("users").collect()).find((u) => u.name === "Priya")!;
+      await ctx.db.patch(priya._id, { avatarUrl: "/p/avatar/priya.jpg" });
+    });
     await tap(t, crew, "Dev");
     await flipDue(t);
     const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Priya") });
     expect(view.mates).toHaveLength(1);
     expect(view.mates[0].name).toBe("Dev");
-    expect(view.mates[0].avatarUrl).toContain("http");
+    expect(view.mates[0].avatarUrl?.endsWith("/p/avatar/dev.jpg")).toBe(true);
+    expect(view.avatar?.endsWith("/p/avatar/priya.jpg")).toBe(true);
   });
 
   test("nothing in the page's own facts exposes another guest's yes", async () => {

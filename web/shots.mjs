@@ -16,6 +16,7 @@ const run = (fn, args, attempt = 0) => {
     encoding: "utf8",
   });
   const trimmed = out.trim();
+  if (trimmed === "null") return null;
   if (trimmed.startsWith('"')) return JSON.parse(trimmed);
   const from = out.indexOf("{");
   if (from === -1) {
@@ -90,12 +91,19 @@ if (only === "all" || only === "card") {
   const other = new ConvexClient(CLOUD);
   await other.mutation(anyApi.web.share.join, { code, deviceToken: "device-dev-0123456789abcdefghijklmnopq", name: "Dev" });
   const t1 = Date.now();
-  await page.waitForFunction(() => document.body.innerText.includes("It\u2019s on."), { timeout: 12000, polling: 16 });
+  await page.waitForFunction(() => document.body.innerText.includes("It's on."), { timeout: 12000, polling: 16 });
   console.log("flip ms after the second yes", Date.now() - t1);
   await sleep(90);
   await shot("05-its-on-bloom", "the instant revealAt passes, petals and the bloom");
-  await sleep(1800);
-  await shot("06-its-on", "it's on, settled");
+  await sleep(1200);
+  run("web/devSeed:setAvatar", { name: "Maya", key: "maya" });
+  run("web/devSeed:setAvatar", { name: "Dev", key: "dev" });
+  await page.waitForFunction(
+    () => [...document.querySelectorAll(".card image")].length === 2,
+    { timeout: 5000 },
+  );
+  await sleep(700);
+  await shot("06-its-on", "it's on, settled, with the demo portraits in the flowers");
   await other.close();
   await page.close();
   page = null;
@@ -147,18 +155,36 @@ if (only === "all" || only === "offline") {
 
 if (only === "all" || only === "error") {
   const { code } = newLink();
+  const html = await (await fetch(`${SITE}/p/${code}`)).text();
+  const dead = html
+    .replace(/"cloudUrl":"[^"]*"/, '"cloudUrl":"http://127.0.0.1:9/"')
+    .replace("<head>", `<head><base href="${SITE}/">`);
+  if (dead === html) throw new Error("could not point the page at a dead backend");
+  const file = `${process.env.HOME}/.capy/work/frolic-error.html`;
+  writeFileSync(file, dead);
   await newPage();
-  await page.goto(`${SITE}/p/${code}`, { waitUntil: "networkidle0" });
+  await page.goto(`file://${file}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#f");
-  await page.setRequestInterception(true);
-  page.on("request", (req) => {
-    if (req.url().startsWith(CLOUD) && !req.url().includes("/version")) req.abort();
-    else req.continue();
-  });
   await page.type("#wn", "Maya");
   await page.click(".btn");
-  await sleep(9500);
-  await shot("12-error", "the yes did not go through, said plainly");
+  await page.waitForFunction(
+    () => document.body.innerText.includes("Your yes did not reach Frolic. Check your connection and try again."),
+    { timeout: 20000 },
+  );
+  const visible = await page.evaluate(() => {
+    const err = document.querySelector(".err");
+    const btn = document.querySelector(".btn");
+    return {
+      err: err ? err.getBoundingClientRect().height > 0 : false,
+      retry: btn ? btn.textContent.trim() === "Try again" && btn.getBoundingClientRect().height >= 44 : false,
+      planted: document.body.innerText.includes("Waiting for a friend"),
+    };
+  });
+  if (!visible.err || !visible.retry || visible.planted) {
+    throw new Error("error state is not visibly an error: " + JSON.stringify(visible));
+  }
+  await sleep(300);
+  await shot("12-error", "the yes did not reach the backend, so the page says so with a retry");
   await page.close();
   page = null;
 }
@@ -174,7 +200,7 @@ if (only === "all" || only === "a11y") {
   await page.waitForSelector(".card .row");
   const other = new ConvexClient(CLOUD);
   await other.mutation(anyApi.web.share.join, { code, deviceToken: "device-dev-0123456789abcdefghijklmnopq", name: "Dev" });
-  await page.waitForFunction(() => document.body.innerText.includes("It\u2019s on."), { timeout: 12000, polling: 16 });
+  await page.waitForFunction(() => document.body.innerText.includes("It's on."), { timeout: 12000, polling: 16 });
   await sleep(300);
   const petals = await page.evaluate(() => document.querySelectorAll(".petal").length);
   console.log("reduced motion petals", petals);
