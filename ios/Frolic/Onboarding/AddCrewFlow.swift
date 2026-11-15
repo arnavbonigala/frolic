@@ -35,6 +35,7 @@ struct AddCrewFlow: View {
             created.onCancel = onClose
             created.step = .join
             created.link = link
+            created.showsInviteEntry = link == nil
             model = created
         }
     }

@@ -71,6 +71,7 @@ struct CrewSwitchMenu<Label: View>: View {
     @Environment(FrolicBackend.self) private var backend
     @State private var naming = false
     @State private var newName = ""
+    @State private var joining = false
 
     var body: some View {
         Menu {
@@ -94,6 +95,11 @@ struct CrewSwitchMenu<Label: View>: View {
             } label: {
                 SwiftUI.Label("Start a new crew", systemImage: "plus")
             }
+            Button {
+                joining = true
+            } label: {
+                SwiftUI.Label("Join with a link", systemImage: "link")
+            }
         } label: {
             label
         }
@@ -103,6 +109,9 @@ struct CrewSwitchMenu<Label: View>: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Then invite friends to it.")
+        }
+        .fullScreenCover(isPresented: $joining) {
+            AddCrewFlow(link: nil, onClose: { joining = false })
         }
     }
 }
