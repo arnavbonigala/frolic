@@ -412,7 +412,9 @@ export function rankCandidates(
     if (!slot) continue;
     const hour = hourAt(input.weather, slot.startMs);
     const rainy = isRainy(hour);
-    const maxTrip = Object.values(trips).reduce((m, t) => (t.minutes > m.minutes ? t : m));
+    const maxTrip = Object.values(trips).reduce((m, t) =>
+      t.minutes > m.minutes || (t.minutes === m.minutes && t.mode > m.mode) ? t : m,
+    );
     const golden =
       !rainy && (input.weather === null || isClear(hour)) && p_golden(place) &&
       slot.startMs <= ctx.sunsetMs &&
@@ -432,7 +434,12 @@ export function rankCandidates(
     out.push({ ...base, ...scoreCandidate(base, ctx) });
   }
   if (out.length === 0 && input.kind === "free" && relax && !ctx.relaxed) return rankCandidates(input, { ...ctx, relaxed: true }, pool);
-  return out.sort((a, b) => (ctx.relaxed ? a.startMs - b.startMs : 0) || b.score - a.score || (a.place.slug < b.place.slug ? -1 : 1));
+  return out.sort(
+    (a, b) =>
+      (ctx.relaxed ? a.startMs - b.startMs : b.freeCount - a.freeCount) ||
+      b.score - a.score ||
+      (a.place.slug < b.place.slug ? -1 : 1),
+  );
 }
 
 const p_golden = (p: Place) => p.tags.includes("sunsets") && !p.indoor;
@@ -592,7 +599,11 @@ function toPlan(c: Candidate, ctx: Ctx, candidates: Candidate[], source: Plan["s
     weather: c.hour ? conditionLabel(c.hour) + ", " + c.hour.tempF + "\u00b0" : null,
     source,
     candidates: candidates.map((x) => x.place.slug),
-    minutesAway: Object.fromEntries(Object.entries(c.trips).map(([u, t]) => [u, t.minutes])),
+    minutesAway: Object.fromEntries(
+      Object.entries(c.trips)
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([u, t]) => [u, t.minutes]),
+    ),
     drop: p.drop ? { dropId: p.drop.dropId, sellerName: p.drop.sellerName, priceCents: p.costPerPersonCents } : null,
   };
 }
