@@ -7,6 +7,17 @@ struct GardenBed: View {
     var colors: [FlowerColor] = []
     var health: GardenHealthState = .fine
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var flowers: [FlowerColor] = []
+
+    private var entrance: AnyTransition {
+        reduceMotion ? .opacity : .scale(scale: 0.2, anchor: .bottom).combined(with: .opacity)
+    }
+
+    private var motion: Animation {
+        reduceMotion ? .easeOut(duration: 0.35) : .spring(response: 0.35, dampingFraction: 1.0)
+    }
+
     @ScaledMetric(relativeTo: .title3) private var countSize: CGFloat = 20
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
 
@@ -37,11 +48,12 @@ struct GardenBed: View {
                 endPoint: .bottom
             )
             HStack(alignment: .bottom, spacing: -10) {
-                ForEach(colors.indices, id: \.self) { index in
-                    FlowerView(color: colors[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
+                ForEach(flowers.indices, id: \.self) { index in
+                    FlowerView(color: flowers[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
                         .scaleEffect(health.flowerScale, anchor: .bottom)
                         .saturation(health.saturation)
                         .rotationEffect(.degrees(health.droop * (index.isMultiple(of: 2) ? 1 : -1) * (0.6 + Double(index % 3) * 0.25)), anchor: .bottom)
+                        .transition(entrance)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -64,6 +76,21 @@ struct GardenBed: View {
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
         .accessibilityElement(children: .contain)
+        .onAppear { grow(colors) }
+        .onChange(of: colors) { _, next in grow(next) }
+    }
+
+    private func grow(_ next: [FlowerColor]) {
+        guard !flowers.isEmpty else {
+            flowers = next
+            return
+        }
+        guard next != flowers else { return }
+        let planted = next.count > flowers.count
+        withAnimation(motion) { flowers = next }
+        if planted {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
     }
 }
 
