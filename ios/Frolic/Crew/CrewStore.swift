@@ -305,7 +305,10 @@ final class CrewStore {
     }
 
     func inviteCode() async -> String? {
-        guard let client, let groupId, case let token = FrolicIdentity.shared.deviceToken else { return nil }
+        guard let client, let groupId, case let token = FrolicIdentity.shared.deviceToken else {
+            inviteError = "Start a crew first, then invite."
+            return nil
+        }
         do {
             inviteError = nil
             let code: String = try await client.mutation(

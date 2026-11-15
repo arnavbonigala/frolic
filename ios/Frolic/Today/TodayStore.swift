@@ -55,6 +55,7 @@ final class TodayStore {
     private(set) var isFixture = false
     private(set) var startingPlan = false
     private(set) var startError: String?
+    private(set) var planStalled = false
     private(set) var drop: TodayDrop?
     private(set) var etas: [TodayEta] = []
     private var etaFrolic: String?
@@ -74,6 +75,7 @@ final class TodayStore {
     private var noticeTask: Task<Void, Never>?
     private var paymentFrolic: String?
     private var bloomedFrolic: String?
+    private var planStallTask: Task<Void, Never>?
     private var routeKey: String?
     private var dropFrolic: String?
     private var activeGroup: String?
@@ -256,6 +258,9 @@ final class TodayStore {
         paymentFrolic = nil
         drop = nil
         dropFrolic = nil
+        planStalled = false
+        planStallTask?.cancel()
+        planStallTask = nil
     }
 
     func becameActive() {
@@ -720,6 +725,13 @@ final class TodayStore {
             self.pending = nil
         }
         if view.frolic?.plan != nil { startingPlan = false }
+        if view.frolic != nil, view.frolic?.plan == nil {
+            watchPlanStall()
+        } else {
+            planStalled = false
+            planStallTask?.cancel()
+            planStallTask = nil
+        }
         if let frolicId = view.frolic?.frolicId, dropFrolic != frolicId {
             dropFrolic = frolicId
             subscribeDrop(frolicId: frolicId)
@@ -742,6 +754,16 @@ final class TodayStore {
             TodayMedia.url(person.photoUrl).map { PortraitRef(id: person.id, url: $0) }
         }
         Task { await PortraitCache.shared.warm(refs) }
+    }
+
+    private func watchPlanStall() {
+        guard planStallTask == nil else { return }
+        planStallTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 25_000_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.planStallTask = nil
+            if self.plan == nil { self.planStalled = true }
+        }
     }
 
     private func applyFixture(_ fixture: TodayFixture, route: E2ERoute) {

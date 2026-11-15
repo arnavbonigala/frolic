@@ -46,7 +46,13 @@ struct OnboardingGate<Content: View>: View {
         }
         .onChange(of: router.e2eRoute) { _, _ in rebuild() }
         .onChange(of: identity.groupId) { _, group in
-            if group != nil, !(model?.isMidFlow ?? false) { finished = true }
+            guard !(model?.isMidFlow ?? false) else { return }
+            if group != nil {
+                finished = true
+            } else {
+                finished = false
+                rebuild()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, !showsContent, router.e2eRoute == nil else { return }

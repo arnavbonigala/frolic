@@ -894,10 +894,25 @@ private struct TodayDoneView: View {
 private struct TodayNoPlanStart: View {
     var store: TodayStore
     @Environment(AppRouter.self) private var router
+    @Environment(FrolicBackend.self) private var backend
     @Environment(\.todayOnline) private var online
 
     var body: some View {
-        if store.startingPlan || (store.frolic != nil && store.plan == nil) {
+        if store.planStalled {
+            TodayStoryPage(
+                hero: "plan-outdoors",
+                caption: nil,
+                kicker: store.today?.groupName ?? "Your crew",
+                title: "Still finding something good",
+                line: "That took longer than it should."
+            ) {
+                StoryPrimaryButton(title: "Try again", systemImage: "arrow.clockwise") {
+                    store.retry(backend: backend, route: router.e2eRoute)
+                }
+                .accessibilityIdentifier("today.planStalled.retry")
+            }
+            .accessibilityIdentifier("state.error")
+        } else if store.startingPlan || (store.frolic != nil && store.plan == nil) {
             VStack(spacing: 0) {
                 TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson])
                 TodayCaption(text: "Finding something good…", identifier: "today.planning", showsDots: true)
@@ -905,7 +920,7 @@ private struct TodayNoPlanStart: View {
                 TodayPainting(name: "state-waiting", height: 170)
                     .padding(.top, 18)
             }
-        } else if (store.today?.memberCount ?? 2) <= 1 {
+        } else if (store.today?.memberCount ?? 1) <= 1 {
             TodayStoryPage(
                 hero: "plan-outdoors",
                 people: [store.mePerson],
