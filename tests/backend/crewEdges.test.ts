@@ -292,7 +292,7 @@ describe("limits", () => {
     );
 
     expect((await t.query(api.limits.mine, { deviceToken: token("Maya") })).budgetCap).toBe(5);
-    const forUsers = await t.query(api.limits.forUsers, { userIds: [crew.ids.Maya, crew.ids.Maya] });
+    const forUsers = await t.query(internal.limits.forUsers, { userIds: [crew.ids.Maya, crew.ids.Maya] });
     expect(forUsers).toHaveLength(2);
     expect(forUsers.map((l) => l.budgetCap)).toEqual([5, 5]);
 
