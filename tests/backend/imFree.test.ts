@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { HOUR, NOON, token } from "./setup.helpers";
 import { freeCrew, imFree, later, settle } from "./imFree.helpers";
+import { DAY } from "@convex-dev/rate-limiter";
+import { DAILY_RESET_AT } from "../../convex/lib/rateLimits";
 import { PLACE_BY_SLUG } from "../../convex/places/data";
 import { freeEarliestStart } from "../../convex/plans/engine";
 import { tripTo } from "../../convex/plans/travel";
@@ -116,6 +118,9 @@ describe("I'm free", () => {
     }
     const fourth = await errorOf(imFree(c, "Maya", 60));
     expect(fourth?.kind).toBe("RateLimited");
+    const retryAfter = fourth?.retryAfter as number;
+    expect(retryAfter).toBeGreaterThan(0);
+    expect((Date.now() + retryAfter - DAILY_RESET_AT) % DAY).toBe(0);
     const dev = await imFree(c, "Dev", 60);
     expect(dev.started).toBe(true);
   });
