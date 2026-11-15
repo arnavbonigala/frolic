@@ -52,7 +52,7 @@ struct TodayFixture {
             phase = solo ? .solo : .open
         }
 
-        let members = [CrewMember(userId: Self.you.userId, name: "Ari", color: "tomato", photoUrl: nil, isMe: true, free: free)]
+        let members = [CrewMember(userId: Self.you.userId, name: "Ari", color: "tomato", photoUrl: Self.you.photoUrl, isMe: true, free: free)]
             + (solo ? [] : Self.friends.map {
                 CrewMember(userId: $0.userId, name: $0.name, color: $0.color, photoUrl: $0.photoUrl, isMe: false,
                            free: CrewFree(state: "now", window: TodayWindow(start: now, end: TodayCopy.todayAt(hour: 20)), minutesAway: 6, updatedAt: now))
@@ -113,7 +113,7 @@ struct TodayFixture {
         "https://frolic.local/p/avatar/\(key)"
     }
 
-    static let you = TodayPerson(userId: "you", name: "You", color: "tomato", photoUrl: nil, role: nil)
+    static let you = TodayPerson(userId: "you", name: "You", color: "tomato", photoUrl: avatar("you"), role: nil)
     static let maya = TodayPerson(userId: "maya", name: "Maya", color: "pink", photoUrl: avatar("maya"), role: nil)
     static let dev = TodayPerson(userId: "dev", name: "Dev", color: "cobalt", photoUrl: avatar("dev"), role: nil)
     static let jordan = TodayPerson(userId: "jordan", name: "Jordan", color: "moss", photoUrl: avatar("jordan"), role: nil)
