@@ -14,12 +14,12 @@ Four people on stage, three real phones, one laptop driving the projector.
 | - | - | - | - |
 | Speaker | Arnav | nothing | Says every line, calls the taps, drives the reveal by asking the room |
 | Operator | second person at the laptop | laptop | Switches the projector panes on cue, fires the fallback, watches the Convex dashboard |
-| Maya | phone 1 on the podium | iPhone | Taps "I'm down", then "only if Dev". Pays the hold. Checks in. |
-| Dev | phone 2 on the podium | iPhone | Taps "I'm down". Walks to the geofence marker on the floor. |
-| Jordan | phone 3 on the podium | iPhone | Watches, hops in, then pockets the phone and never shows |
-| Priya | her own phone, off the podium | iPhone with iMessage | Never installs Frolic. Says yes in a text thread. |
+| Maya | phone 1 on the podium | iPhone | Taps "I'm down", then "only if Dev". Pays the hold. Taps again for tomorrow's kayaks. |
+| Dev | phone 2 on the podium | iPhone | Taps "I'm down". Checks in. Answers tomorrow's plan from the lock screen. |
+| Jordan | phone 3 on the podium | iPhone | Watches, hops in, pays a hold, then pockets the phone and never shows |
+| Priya | her own phone, off the podium | iPhone with iMessage | Never installs Frolic. Says yes in a text thread, twice. |
 
-If it is only Arnav in the room, he taps phones 1 and 2 himself and reads Jordan's line. The judge called taps variant is in beat 3.
+If it is only Arnav in the room, he taps phones 1 and 2 himself and reads Jordan's line. The judge-calls-the-taps variant is beat 3.
 
 **The projector** is one laptop screen showing four panes, never more:
 
@@ -35,42 +35,57 @@ The mock is on a fifth tab, `design/mock/index.html`, ready to take the whole sc
 Ten minutes out, in this order. Every item is a check, not a setup step.
 
 1. All three phones on the shared backend, signed in as Maya, Dev and Jordan in Sunset Crew, today's plan on screen, `revealAt` not yet set.
-2. The seeded run id is fresh: `FROLIC_E2E_RUN=demo-$(date +%s)`, reset, seed, and the three sign-in links used. Exact commands in `e2e/three-phone-run.md`.
-3. The Convex dashboard is open on `taps` and `frolics`, and the Whop dashboard is on today's payments. Both logged in, both scoped to the Frolic company, nothing typed in the URL bar live.
-4. The three-phone recording is already downloaded, two files, named `flip-maya.mp4` and `flip-dev.mp4`, in a folder on the laptop. Do not rely on the dashboard playing video.
-5. The mock is open at `design/mock/index.html#today:on` in Chrome, and at `#today` in a second tab.
-6. Cloud phones are asleep. Only the three podium phones and Priya's are awake. Phone time is budgeted at $5.40 an hour and three awake phones is the crew limit.
-7. Jordon's hold is already placed before he pockets the phone. A capture needs a hold that exists.
+2. Two frolics seeded for the run: today's at Indian Rock, open, with the deadline far enough out that the run controls when the match happens, and tomorrow's kayaks at the marina, open, for the Keiki beat. The seed script covers the first; the second is the gap named in the last list of this section.
+3. The seeded run id is fresh: `FROLIC_E2E_RUN=demo-$(date +%s)`, reset, seed, and the three sign-in links used. Exact commands in `e2e/three-phone-run.md`.
+4. The Convex dashboard is open on `taps` and `frolics`, and the Whop dashboard is on today's payments. Both logged in, both scoped to the Frolic company, nothing typed in the URL bar live.
+5. The three-phone recording is already downloaded, two files, named `flip-maya.mp4` and `flip-dev.mp4`, in a folder on the laptop. Do not rely on the dashboard playing video.
+6. The mock is open at `design/mock/index.html#today:on` in Chrome, and at `#today` in a second tab.
+7. Dev's phone has the lock screen notification for tomorrow's kayaks, with the three action buttons, so beat 9 has something to press. Priya's thread has "down" typed and unsent.
+8. Cloud phones are asleep. Only the three podium phones and Priya's are awake. Phone time is budgeted at $5.40 an hour and three awake phones is the crew limit.
+9. Jordan's card is already on file from a rehearsal payment, so his hold at beat 7 takes one tap rather than a card entry. If the card is not saved, place his hold from his pay link before the run and say so, because a capture needs a hold that exists.
+10. If the room is not the venue, Dev's check-in is the manual "I'm here" button, which calls the same mutation the geofence calls. Do not claim the geofence fired.
 
 ## Run of show
 
 Times are seconds from the first word. Line is what the room hears. Fallback keys are in the next section.
 
-| t | Projector | Room | Line | If it fails |
-| - | - | - | - | - |
-| 0 | Three Today screens, free flowers, the seed packet for Indian Rock at 4:30 | Arnav at the podium, hands off the phones | Three of us are free this afternoon. Frolic made one plan for all of us. | F1 |
-| 6 | Convex dashboard slides in on the right, `taps` empty | Operator confirms the pane | Every phone reads one Convex query. This is the database behind the screens. | F7 |
-| 12 | Dashboard still empty. Phones 1 and 2 change to a bud: "Planted. Nobody can see it." | A judge calls the taps, or Arnav does: Maya picks "only if Dev", Dev taps "I'm down". Two rows appear in `taps`, 0.3 seconds apart. | Maya, only if Dev. Dev, I'm down. Both taps are already in the database. | F2 |
-| 18 | Phones 3 and Maya's still read as an open plan. Nothing says anyone is down. | Arnav holds one hand up, everyone waits | Every phone still shows nothing. Nobody can read a tap. | F3 |
-| 24 | Both phones flip to "It's on." in the same frame, confetti, haptic. Jordan's phone gets "Jordan, it's happening". | Jordan hops in with one tap | Both flip from one server timestamp. Same frame. | F4 |
-| 28 | Overlay: the two cloud iPhone flips, frozen, with "Maya +0.31 s, Dev +0.34 s from one server release" burned in | Operator drops the overlay for four seconds, then clears it | Two cloud iPhones in two places in Berkeley, flipped by the same release. | F5 |
-| 32 | Whop pane: "Hold $3 to lock it in" on Maya's phone, then the Apple Pay sheet | Maya pays. Her payment appears as Authorized. | Whop puts a three dollar hold on her card. It comes back when she arrives. | F6 |
-| 38 | Dev's phone: "You made it. Your $3 is back." The Whop pane flips that payment to Voided | Dev walks to the tape marker on the floor | Dev walked in. Whop released it. | F6 |
-| 42 | Jordan's hold moves to Captured. Crew tab: the Frolic Fund ticks from $0 to $3, "toward the next one" | Jordan's phone is face down in his pocket | Jordan didn't show. His three dollars is the crew's Frolic Fund now. | F6 |
-| 46 | Priya's iMessage thread, full pane: her message "down" and the agent's reply "Got it. Secret's safe." | Priya types on her own phone. Maya's phone stays on the app, Dev's phone locks to the lock screen. | Priya has never installed Frolic. She's texting our Keiki agent. | F8 |
-| 54 | All three surfaces at once: the app flips, the lock screen notification becomes "It's on. Indian Rock at 4:30", the iMessage thread gets the same line | Nobody touches anything | Same reveal, same second, in a text thread. | F8 |
-| 58 | Garden pane: two skipped days for boba, then today's plan on the pier. "Why this" cites the skip and the last sunset | Arnav steps back so the screen is the only thing moving | We skipped boba twice. It stopped suggesting boba, and it says why. | F9 |
-| 70 | GitHub pull requests, each with a Revyl replay link. Then the Captain's Drive, the crew's reports for today | Operator scrolls slowly once | Every screen here arrived as a pull request with a recording of it on a real iPhone. Capy agents wrote them today. | F10 |
-| 82 | Back to the three phones, all on "It's on.", with the fund visible on Crew | Arnav at the podium | Frolic. Your friend group's plans, actually happening. | none |
+| # | t | Projector | Room | Line | If it fails |
+| - | - | - | - | - | - |
+| 1 | 0 | Three Today screens, free flowers, the seed packet for Indian Rock at 4:30 | Arnav at the podium, hands off the phones | Three of us are free this afternoon. Frolic made one plan for all of us. | F1 |
+| 2 | 6 | Convex dashboard slides in on the right, `taps` empty | Operator confirms the pane | Every phone reads one Convex query. This is the database behind the screens. | F7 |
+| 3 | 12 | Two rows land in `taps`, 0.3 seconds apart. Maya's phone becomes a bud: "You're down, if Dev". Dev's becomes a bud: "Your bud is planted. Waiting for a friend." | A judge calls the taps, or Arnav does: Maya picks "only if Dev", Dev taps "I'm down". | Maya picked only if Dev. Dev picked anyone. Both taps are in the database. | F2 |
+| 4 | 18 | Jordan's phone is unchanged: an open plan, free flowers, no count. Neither bud shows who is in. | Arnav holds one hand up, everyone waits | Neither phone can read the other's answer. The server is the only thing that knows. | F3 |
+| 5 | 24 | Both phones flip to "It's on." in the same frame, confetti, haptic. Jordan's phone gets "Jordan, it's happening". | Jordan hops in with one tap | One server timestamp, both phones, same frame. | F4 |
+| 6 | 28 | Overlay: the two cloud iPhone flips, frozen, with "Maya +0.31 s, Dev +0.34 s from one server release" burned in | Operator drops the overlay for four seconds, then clears it | Two cloud iPhones in two places in Berkeley, flipped by the same release. | F5 |
+| 7 | 32 | Whop pane: "Hold $3 to lock it in" on Maya's phone, then the Apple Pay sheet. Jordan pays his hold from the pay page on his hop-in. | Maya pays | Whop puts a three dollar hold on her card. It comes back when she arrives. | F6 |
+| 8 | 38 | Dev's phone: "You made it. Your $3 is back." The Whop pane flips that payment to Voided | Dev taps "I'm here" on his phone, the same mutation the geofence calls | Dev checked in. Whop released it. | F6 |
+| 9 | 42 | Jordan's hold moves to Captured. Crew tab: the Frolic Fund ticks from $0 to $3, "toward the next one". Tomorrow's kayaks card now reads "Frolic Fund covers $3, your share $7". | Jordan's phone is face down in his pocket | Jordan didn't show, so his three dollars is the crew's Frolic Fund, and it comes off tomorrow's kayaks before the split. | F6 |
+| 10 | 46 | Tomorrow's kayaks on three surfaces: Maya's app, Dev's lock screen notification with its three buttons, Priya's iMessage thread. Priya's "down" is typed and unsent. | Priya holds her phone up | Priya has never installed Frolic. She's texting our Keiki agent. | F8 |
+| 11 | 50 | Maya taps "I'm down". Dev taps "I'm down" on the lock screen notification. Priya sends "down". | Three taps in four seconds, nobody narrating | Three yeses, three surfaces. | F8 |
+| 12 | 54 | All three reveal in the same second. The iMessage thread gets "It's on. Kayaks at the marina. Meet at 10:45." | Nobody touches anything | Same reveal, same second, in a text thread. | F8 |
+| 13 | 58 | Garden pane: two skipped days for boba, then today's plan on the pier. "Why this" cites the skip and the last sunset | Arnav steps back so the screen is the only thing moving | We skipped boba twice. It stopped suggesting boba, and it says why. | F9 |
+| 14 | 70 | GitHub pull requests, each with a Revyl replay link. Then the Captain's Drive, the crew's reports for today | Operator scrolls slowly once | Every screen here arrived as a pull request with a recording of it on a real iPhone. Capy agents wrote them today. | F10 |
+| 15 | 82 | Back to the three phones, all on "It's on.", with the fund visible on Crew | Arnav at the podium | Frolic. Your friend group's plans, actually happening. | none |
 
-That is 88 seconds spoken and 2 seconds of silence. If the room is running long, cut beat 6 (t58 to 70) and its line, and the run lands at 78 seconds with every sponsor still represented except Supermemory, which must then be one sentence at t44: "It also remembers what we skip, and it writes that into the plan."
+The lines total 182 words, about 66 seconds of speech, which leaves 22 seconds of deliberate silence for the taps, the flip and the Apple Pay sheet. Do not fill that silence. If the room is running long, cut the Supermemory beat and its line, and the run lands at 78 seconds with every other sponsor still represented.
+
+## What the script needs that does not exist yet
+
+Read this before promising the run to anyone. Each item is a beat that has no path today.
+
+1. **Tomorrow's kayaks frolic in the seed.** The seed contract in `e2e/three-phone-run.md` creates one open plan for today. The Keiki beat needs a second frolic, tomorrow, open, with its own reveal. Ask the backend lane for it, or run the seed twice with a different day.
+2. **The lock screen notification for tomorrow's plan.** Dev's half of beat 10 presses a real notification action. That needs the notification category the e2e README lists as blocked on the iOS lane. Without it, Dev taps in the app and the beat loses one surface, so cut to two surfaces and say two.
+3. **A reachable pay page.** Beats 7 to 9 need `GET /pay/<token>` live and one hidden Frolic product with a hold variant. Nothing of that is built.
+4. **The three-phone recording.** Beat 6 is the only beat with no substitute. It needs an iOS build on `main`, the three `/e2e/*` routes, and a Revyl run. If it is 5:30 and there is no recording, the Revyl moment is the replay links at beat 12 and the demo says so.
+5. **A live Supermemory read in plan generation.** The memory layer is tested, but no plan calls it yet. Until plan generation reads `getMemoryContext`, beat 13 shows the garden and the quoted memory from a seeded record, which is honest if the presenter says "seeded" once.
+6. **A no-show on cue.** Capture runs 45 minutes after the start, so beat 9 needs a seeded frolic whose start has already passed, and the sweep run once from the dashboard while Jordan's phone is face down. If the sweep is not the demo's to run, the fund tick is a screenshot and the presenter says so.
 
 ## The taps
 
 The order matters and it is the one thing a rehearsal gets wrong. Maya's condition has to be held before Dev's tap commits, because the matcher has to reveal on Dev's tap against a secret it cannot read from the client.
 
-- Maya: "I'm down" then "only if Dev". Her phone reads "You're down. Only if Dev · nobody can see this". It never counts taps.
-- Dev: "I'm down". His phone reads "Planted. Nobody can see it."
+- Maya: "I'm down" then "only if Dev". Her phone reads "You're down, if Dev". It never counts taps.
+- Dev: "I'm down". His phone reads "Your bud is planted. Waiting for a friend."
 - Jordan: does nothing until the reveal. His phone reads an open plan with free flowers and no count of who is down.
 
 If a judge calls the taps, hand them the two phones and say the two words once: "only if Dev". Do not hand them Jordan's phone, his beat comes later.
@@ -79,23 +94,23 @@ If a judge calls the taps, hand them the two phones and say the two words once: 
 
 Each key names the failure, the recovery, and the exact words. Never say "let me try that again". Say what happened and move.
 
-**F1, a phone is not on today's plan.** The app is open on the wrong group or the wrong day. Recovery: show the mock at `#today` full screen and say "This is the same screen, running off the seeded backend. The phones are on the demo build." Then re-open the app on the right group in beat 2 while the dashboard holds attention.
+**F1, a phone is not on today's plan.** The app is open on the wrong group or the wrong day. Recovery: show the mock at `#today` full screen and say "This is the same screen, running off the seeded backend. The phones are on the demo build." Then re-open the app on the right group while the dashboard holds attention.
 
 **F2, a tap does not land.** No row appears in `taps` inside two seconds. Recovery: Arnav taps the same phone himself. If the row still does not appear, say "the second tap is the one that decides it" and go to F4 early, showing the dashboard rows from the seeded rehearsal.
 
 **F3, a phone shows a count or a name before the reveal.** This is the one failure that cannot be talked past, because it breaks the product's central promise. Recovery: kill the beat. Say "That is a bug and we are not going to pretend it is a feature. Here is the test that exists to catch it." Switch to the convex-test output for the privacy test, or the mock. Then continue at beat 5. Do not continue the live reveal.
 
-**F4, the reveal does not flip.** Phones stay on the bud for more than three seconds after Dev's tap. Recovery: play the recorded flip overlay from beat 5 and say "That is the same seed, recorded ten minutes ago, with one server release driving both phones." Continue at beat 6 with the recordings still on screen. The demo survives; the live claim does not, so do not say "same frame" about the room.
+**F4, the reveal does not flip.** Phones stay on the bud for more than three seconds after Dev's tap. Recovery: play the recorded flip overlay from beat 6 and say "That is the same seed, recorded ten minutes ago, with one server release driving both phones." Continue at beat 7 with the recordings still on screen. The demo survives; the live claim does not, so do not say "same frame" about the room.
 
-**F5, no cloud recording.** Recovery: drop the overlay and go straight to the Whop pane. The two phone panes already showed the flip. Say nothing about Revyl here; Revyl's moment moves to beat 12 with the replays.
+**F5, no cloud recording.** Recovery: drop the overlay and go straight to the Whop pane. The two phone panes already showed the flip. Say nothing about Revyl here; Revyl's moment moves to beat 14 with the replays.
 
-**F6, Whop jams.** Either the Apple Pay sheet does not appear or the dashboard does not move. Recovery: switch the projector to the Whop dashboard on the rehearsal's payments and narrate the state machine while pointing: "Hold, arrive, void. No show, capture, fund." Then say "This ran against real cards a hour ago; the recording is on the pull request." Never enter card details on stage.
+**F6, Whop jams.** Either the Apple Pay sheet does not appear or the dashboard does not move. Recovery: switch the projector to the Whop dashboard on the rehearsal's payments and narrate the state machine while pointing: "Hold, arrive, void. No show, capture, fund." Then say "This ran on real cards an hour ago and the recording is on the pull request." Never enter card details on stage.
 
 **F7, the dashboard is blank.** Recovery: it is one tab. Switch to the `frolics` table and the reveal timestamp instead of `taps`. If the whole backend is unreachable, the phones are also dead, which means F4.
 
-**F8, Keiki does not answer.** Recovery: show the recorded iMessage thread from the rehearsal as a static screenshot, and say "That thread is Priya's, from the rehearsal, with the same reveal second as the phones." Then run the app and lock screen halves live, which need no Keiki.
+**F8, Keiki does not answer.** Priya sends "down" and nothing comes back, or the agent's reply never arrives. Recovery: the match does not need her, so let Maya's and Dev's two taps carry the reveal and keep it live. Put the rehearsal thread beside the phones and say "Priya's thread is from the rehearsal, and her yes went into the same tap table." Do not type into the thread on stage.
 
-**F9, Supermemory is not in the live path.** Recovery: open a terminal running the live script and show one real memory coming back with its related edges, then the plan line that quotes it. If that also fails, cut to the mock's Garden, and keep the sentence "It remembers what we skip" as the only claim.
+**F9, Supermemory is not in the live path.** Recovery: open a terminal running the live script from the memory lane and show one real memory coming back with its related edges, then the plan line that quotes it. If that also fails, cut to the mock's Garden, and keep the sentence "It remembers what we skip" as the only claim.
 
 **F10, GitHub is not loading.** Recovery: the pull requests are also in the Captain's Drive as reports with the replay links pasted in. Show the Drive.
 
@@ -111,7 +126,7 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 | Sponsor | Tier | Demo beat | Status today | Evidence |
 | - | - | - | - | - |
-| Convex | required | The dashboard has both taps while every phone shows nothing, then both flip from one server timestamp | Schema, components, routers on `schema-matcher` (PR #1, draft). Matcher, reveal and tests pending. | `convex/schema.ts` review, `e2e/` assertions written against it |
+| Convex | required | Both taps in the dashboard while every phone shows a private bud, then both flip from one server timestamp | 23 tables, Workflow, Presence and Rate Limiter mounted, and the router wiring, on `schema-matcher` (PR #1, draft). Matcher, reveal and tests pending. | `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts` on that branch, read by this thread |
 | Whop | Tier 1 | The $3 hold at the reveal, released by arrival, the no-show feeding the Frolic Fund, the paid plan split with the fund first | Spec only (PR #3, draft). Nothing built. | `docs/specs/whop.md` on the spec branch |
 | Keiki | Tier 1 | One friend on the app, one on the lock screen, one only in iMessage, all revealing together | Agent prompt on `main`. Routes and agent number pending. | `docs/keiki-system-prompt.md` |
 | Supermemory | required | Two skips and boba stops being suggested, and the "why this" line quotes a memory | Code and tests on branch `memory`, not merged. | `convex/memory/*` on that branch |
@@ -133,7 +148,7 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 **Where it lives.** `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts`, `convex/matcher.ts`, `convex/reveal.ts`, `convex/taps.ts`, `convex/frolics.ts`, `convex/plans/`, `convex/memory/`, `convex/whop/`, `convex/keiki/`, `convex/web/`.
 
-**The moment.** At t6 the dashboard shows both taps landing while every phone still shows a bud, and at t24 both phones flip from one server timestamp. A judge can check the timestamps themselves. Nothing else in this stack can make two phones agree to a millisecond while the server holds the secret.
+**The moment.** At t12 both taps are rows in the dashboard while every phone shows a private bud with no count, and at t24 both phones flip from one server timestamp. A judge can check the timestamps themselves. Nothing else in this stack can make two phones agree to a millisecond while the server holds the secret.
 
 **If it is not ready.** The mock plus the recorded flip. The dashboard is still worth showing, because the reveal timestamps are in `frolics` and a judge can see one row per frolic.
 
@@ -152,9 +167,11 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 **Where it lives.** `convex/whop/` (payments, links, the state machine, the fund, the pay page), `convex/whop/routes.ts` for the webhook, `convex/schema.ts` for `shares`, `fundLedger`, `whopPlans` and `webhookEvents`.
 
-**The moment.** At t32 a hold is placed the second the plan is on, at t38 walking into a real place releases it, and at t42 the friend who never came funds tomorrow's plan. Money that commits a friend and is released by a physical arrival is Whop's money logic running on Frolic's location signal. A pay button cannot express it.
+**The moment.** At t32 a hold is placed the second the plan is on, at t38 the check-in releases it, at t42 the friend who never came funds tomorrow's plan, and the fund comes off tomorrow's bill before it splits. Money that commits a friend and is released by an arrival is Whop's money logic running on Frolic's location signal. A pay button cannot express it.
 
-**If it is not ready.** The dashboard and the state machine narrated, with the spec's four states on screen. Do not mime a payment.
+The hold amount is still a decision. The spec proposes $3, and the demo works the same at $1, so the number follows Arnav's call rather than the other way round.
+
+**If it is not ready.** The dashboard and the state machine narrated, with the spec's state diagram on screen. Do not mime a payment.
 
 ## Keiki
 
@@ -184,7 +201,7 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 **Where it lives.** `convex/memory/client.ts`, `events.ts` (the only place that decides what leaves the phone and for which namespace), `ingest.ts` (the outbox and its retries), `mapping.ts`, `context.ts` (the plan lane's read path), `read.ts`, `stats.ts`, `account.ts`. Tables `memoryContainers`, `memoryOutbox` and `tasteProfiles` in `convex/schema.ts`.
 
-**The moment.** At t58 the crew's two skipped days for boba stop boba from being suggested, and the "why this" line quotes the memory it learned from, with the graph chain visible in one search.
+**The moment.** At t58 the crew's two skipped days for boba stop boba from being suggested, and the "why this" line quotes the memory it learned from, with the graph chain visible in one search. It is the only beat where the app changes what it offers because of something nobody typed.
 
 **Status.** On branch `memory`, not merged. The suite passes: 42 tests in 4 files (`npx vitest run`, Nov 15 18:48) and `npx tsc --noEmit -p convex` is clean, run against that branch by this thread. The live half is not proven: no run against the real API here, which needs `SUPERMEMORY_LIVE=1` and the key, and the read path into plan generation is called by no lane yet. Until a live run lands, the Supermemory beat runs from the recorded thread or the live script (F9).
 
@@ -234,7 +251,7 @@ Two rules keep this honest.
 - `design/mock/index.html`, the copy and the states, read for every quoted line.
 - `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts` on `schema-matcher`, read for what exists and where.
 - `docs/specs/whop.md` on `capy/whop-spec-commitment-hold`, read for the money states and the script beat.
-- The Supermemory spec in the memory lane's report, read for namespaces, search, graph and deletion.
+- `docs/specs/supermemory.md` on branch `memory`, read for namespaces, search, graph, buckets and deletion.
 - `docs/keiki-system-prompt.md`, read for the agent's capabilities and its secrecy rule.
 - Whop current API reference, `docs.whop.com/api-reference/overview`, read Nov 15 2026.
 - Supermemory docs, `supermemory.ai/docs` and the API reference, read Nov 15 2026.
