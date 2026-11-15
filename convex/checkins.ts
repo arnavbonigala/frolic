@@ -1,7 +1,9 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { findAttendee, getFrolic } from "./lib/core";
+import { planFacts } from "./lib/hooks";
 import { userFromToken } from "./lib/identity";
 
 const method = v.union(v.literal("geofence"), v.literal("manual"), v.literal("imessage"));
@@ -22,7 +24,19 @@ async function checkIn(
     .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
     .unique();
   if (existing) return existing._id;
-  return await ctx.db.insert("checkins", { frolicId, userId, method: how, at: Date.now() });
+  const checkinId = await ctx.db.insert("checkins", { frolicId, userId, method: how, at: Date.now() });
+  const facts = await planFacts(ctx, frolic);
+  const user = await ctx.db.get("users", userId);
+  await ctx.runMutation(internal.memory.events.recordEvent, {
+    eventKey: `checkin:${checkinId}`,
+    kind: "checkin",
+    groupId: frolic.groupId,
+    userId,
+    frolicId,
+    revealAt: frolic.revealAt,
+    payload: { name: user?.name ?? "", placeName: facts.placeName, tags: facts.tags, day: facts.day },
+  });
+  return checkinId;
 }
 
 export const checkInMe = mutation({
@@ -36,6 +50,9 @@ export const checkInMe = mutation({
 
 export const checkInAs = internalMutation({
   args: { userId: v.id("users"), frolicId: v.id("frolics"), method },
-  returns: v.id("checkins"),
-  handler: async (ctx, args) => await checkIn(ctx, args.userId, args.frolicId, args.method),
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await checkIn(ctx, args.userId, args.frolicId, args.method);
+    return null;
+  },
 });

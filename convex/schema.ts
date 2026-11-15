@@ -73,7 +73,8 @@ export default defineSchema({
     revoked: v.boolean(),
   })
     .index("by_code", ["code"])
-    .index("by_groupId_and_kind", ["groupId", "kind"]),
+    .index("by_groupId_and_kind", ["groupId", "kind"])
+    .index("by_frolicId", ["frolicId"]),
 
   availability: defineTable({
     groupId: v.id("groups"),
@@ -375,6 +376,111 @@ export default defineSchema({
   })
     .index("by_status_and_createdAt", ["status", "createdAt"])
     .index("by_containerTag", ["containerTag"]),
+
+  memoryEvents: defineTable({
+    eventKey: v.string(),
+    kind: v.union(
+      v.literal("tap"),
+      v.literal("only_if"),
+      v.literal("skip"),
+      v.literal("limit"),
+      v.literal("plan_shown"),
+      v.literal("reveal"),
+      v.literal("checkin"),
+      v.literal("snap"),
+      v.literal("group_skip"),
+    ),
+    groupId: v.id("groups"),
+    userId: v.optional(v.id("users")),
+    frolicId: v.optional(v.id("frolics")),
+    payload: v.any(),
+    revealAt: v.optional(v.number()),
+    source: v.optional(tapSource),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("sending"),
+      v.literal("sent"),
+      v.literal("failed"),
+    ),
+    attempts: v.number(),
+    nextAttemptAt: v.number(),
+    lastError: v.optional(v.string()),
+  })
+    .index("by_eventKey", ["eventKey"])
+    .index("by_status_and_nextAttemptAt", ["status", "nextAttemptAt"])
+    .index("by_userId", ["userId"])
+    .index("by_groupId_and_kind", ["groupId", "kind"]),
+
+  memoryTagStats: defineTable({
+    groupId: v.id("groups"),
+    tag: v.string(),
+    liked: v.number(),
+    skipped: v.number(),
+    lastSkipDay: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_groupId_and_tag", ["groupId", "tag"]),
+
+  memoryContextCache: defineTable({
+    groupId: v.id("groups"),
+    day: v.string(),
+    context: v.any(),
+    builtAt: v.number(),
+  }).index("by_groupId_and_day", ["groupId", "day"]),
+
+  keikiLinks: defineTable({
+    phone: v.string(),
+    userId: v.id("users"),
+    paused: v.boolean(),
+    linkedAt: v.number(),
+  })
+    .index("by_phone", ["phone"])
+    .index("by_userId", ["userId"]),
+
+  keikiGroupChats: defineTable({
+    chatId: v.string(),
+    groupId: v.id("groups"),
+    linkedAt: v.number(),
+  })
+    .index("by_chatId", ["chatId"])
+    .index("by_groupId", ["groupId"]),
+
+  keikiOutbox: defineTable({
+    key: v.string(),
+    kind: v.union(
+      v.literal("drop"),
+      v.literal("reveal"),
+      v.literal("hopIn"),
+      v.literal("faded"),
+      v.literal("nudge"),
+      v.literal("snap"),
+      v.literal("collage"),
+    ),
+    frolicId: v.id("frolics"),
+    userId: v.optional(v.id("users")),
+    target: v.string(),
+    text: v.string(),
+    notBefore: v.number(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("skipped"),
+    ),
+    attempts: v.number(),
+    sentAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+  })
+    .index("by_key", ["key"])
+    .index("by_frolicId", ["frolicId"])
+    .index("by_status_and_notBefore", ["status", "notBefore"]),
+
+  keikiRequests: defineTable({
+    requestKey: v.string(),
+    tool: v.string(),
+    status: v.number(),
+    response: v.string(),
+    at: v.number(),
+  }).index("by_requestKey", ["requestKey"]),
 
   tasteProfiles: defineTable({
     groupId: v.id("groups"),

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { LEAVE_NUDGE_MS, deleteTaps } from "./lib/core";
+import { names, planFacts } from "./lib/hooks";
 
 export const flip = internalMutation({
   args: { frolicId: v.id("frolics") },
@@ -43,10 +44,27 @@ export const flip = internalMutation({
       endsAt,
     });
     await ctx.db.delete("reveals", pending._id);
-    await ctx.scheduler.runAfter(0, internal.keiki.outbound.onReveal, {
+    await ctx.runMutation(internal.keiki.outbound.onReveal, {
       frolicId,
       userIds: pending.userIds,
       bloomAt: pending.bloomAt,
+    });
+    const facts = await planFacts(ctx, frolic);
+    await ctx.runMutation(internal.memory.events.recordEvent, {
+      eventKey: `reveal:${frolicId}`,
+      kind: "reveal",
+      groupId: frolic.groupId,
+      frolicId,
+      revealAt: pending.revealAt,
+      payload: {
+        memberIds: pending.userIds,
+        memberNames: await names(ctx, pending.userIds),
+        title: facts.title,
+        placeName: facts.placeName,
+        tags: facts.tags,
+        placeId: facts.placeId,
+        day: facts.day,
+      },
     });
     const leaveAt = pending.startsAt - LEAVE_NUDGE_MS;
     if (leaveAt > Date.now()) {
@@ -73,6 +91,7 @@ export const fade = internalMutation({
     if (pending) return null;
     await deleteTaps(ctx, frolicId);
     await ctx.db.patch("frolics", frolicId, { status: "faded" });
+    await ctx.runMutation(internal.keiki.outbound.onFaded, { frolicId });
     return null;
   },
 });

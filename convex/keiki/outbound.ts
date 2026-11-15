@@ -20,3 +20,13 @@ export const onSnapWindow = internalMutation({
   args: { frolicId: v.id("frolics"), snapAt: v.number() },
   handler: async () => null,
 });
+
+export const onFaded = internalMutation({
+  args: { frolicId: v.id("frolics") },
+  handler: async () => null,
+});
+
+export const onCollage = internalMutation({
+  args: { frolicId: v.id("frolics"), storageId: v.id("_storage") },
+  handler: async () => null,
+});

@@ -5,6 +5,7 @@ import type { MutationCtx } from "../_generated/server";
 import { findMatch, type TimeWindow } from "./matcher";
 import { rateLimiter } from "./rateLimits";
 import { requireMember } from "./identity";
+import { recordTap } from "./hooks";
 
 export const REVEAL_DELAY_MS = 1500;
 export const BLOOM_LEAD_MS = 800;
@@ -83,21 +84,15 @@ export async function applyTap(
       q.eq("frolicId", frolic._id).eq("userId", userId),
     )
     .unique();
+  const doc = { frolicId: frolic._id, groupId: frolic.groupId, userId, ...fields };
+  let tapId;
   if (existing) {
-    await ctx.db.replace("taps", existing._id, {
-      frolicId: frolic._id,
-      groupId: frolic.groupId,
-      userId,
-      ...fields,
-    });
+    await ctx.db.replace("taps", existing._id, doc);
+    tapId = existing._id;
   } else {
-    await ctx.db.insert("taps", {
-      frolicId: frolic._id,
-      groupId: frolic.groupId,
-      userId,
-      ...fields,
-    });
+    tapId = await ctx.db.insert("taps", doc);
   }
+  await recordTap(ctx, frolic, { ...doc, _id: tapId, _creationTime: existing?._creationTime ?? now });
 
   if (frolic.status === "open") {
     await rematch(ctx, frolic, now);

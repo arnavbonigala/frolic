@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { userFromToken } from "./lib/identity";
@@ -54,8 +55,24 @@ export const set = mutation({
       homeBy: pick("homeBy") as number | undefined,
       updatedAt: Date.now(),
     };
+    const limitsId = existing ? existing._id : await ctx.db.insert("limits", doc);
     if (existing) await ctx.db.replace("limits", existing._id, doc);
-    else await ctx.db.insert("limits", doc);
+    const parts = [
+      doc.budgetCap !== undefined ? `budget up to ${doc.budgetCap}` : null,
+      doc.energy ? `energy: ${doc.energy}` : null,
+      doc.maxMinutes !== undefined ? `at most ${doc.maxMinutes} minutes away` : null,
+      doc.homeBy !== undefined ? `home by ${Math.floor(doc.homeBy / 60)}:${String(doc.homeBy % 60).padStart(2, "0")}` : null,
+    ].filter((p): p is string => p !== null);
+    const memberships = await ctx.db.query("memberships").withIndex("by_userId", (q) => q.eq("userId", user._id)).take(1);
+    if (memberships[0] && parts.length) {
+      await ctx.runMutation(internal.memory.events.recordEvent, {
+        eventKey: `limit:${limitsId}:${doc.updatedAt}`,
+        kind: "limit",
+        groupId: memberships[0].groupId,
+        userId: user._id,
+        payload: { text: `Private limits: ${parts.join(", ")}` },
+      });
+    }
     return null;
   },
 });

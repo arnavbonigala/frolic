@@ -225,13 +225,11 @@ export const generateUploadUrl = mutation({
 
 export const userByPhone = internalQuery({
   args: { phone: v.string() },
-  returns: v.union(v.id("users"), v.null()),
   handler: async (ctx, { phone }) => {
-    const user = await ctx.db
+    return await ctx.db
       .query("users")
       .withIndex("by_phone", (q) => q.eq("phone", phone))
       .unique();
-    return user?._id ?? null;
   },
 });
 
@@ -250,5 +248,18 @@ export const joinAs = internalMutation({
     if (!invite || invite.revoked) throw new ConvexError({ code: "BAD_INVITE", message: "This invite link expired" });
     await addMember(ctx, invite.groupId, args.userId, args.via);
     return invite.groupId;
+  },
+});
+
+export const createAs = internalMutation({
+  args: { name: v.string(), phone: v.string() },
+  returns: v.id("users"),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", args.phone))
+      .unique();
+    if (existing) return existing._id;
+    return await ctx.db.insert("users", { name: cleanName(args.name), phone: args.phone, source: "imessage" });
   },
 });

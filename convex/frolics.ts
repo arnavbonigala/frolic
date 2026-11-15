@@ -33,7 +33,7 @@ export const open = internalMutation({
     }
     const frolicId = await ctx.db.insert("frolics", { ...args, status: "open" });
     await ctx.scheduler.runAt(args.deadline, internal.reveal.fade, { frolicId });
-    await ctx.scheduler.runAfter(0, internal.keiki.outbound.onDrop, { frolicId });
+    await ctx.runMutation(internal.keiki.outbound.onDrop, { frolicId });
     return frolicId;
   },
 });
@@ -76,7 +76,12 @@ async function people(
 }
 
 export const today = query({
-  args: { deviceToken: v.string(), groupId: v.id("groups"), day: v.optional(v.string()) },
+  args: {
+    deviceToken: v.string(),
+    groupId: v.id("groups"),
+    day: v.optional(v.string()),
+    frolicId: v.optional(v.id("frolics")),
+  },
   returns: v.object({
     phase,
     groupName: v.string(),
@@ -150,7 +155,13 @@ export const today = query({
       .query("memberships")
       .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
       .take(100);
-    const frolic = args.day
+    const picked = args.frolicId ? await ctx.db.get("frolics", args.frolicId) : null;
+    if (picked && picked.groupId !== args.groupId) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
+    }
+    const frolic = picked
+      ? picked
+      : args.day
       ? (
           await ctx.db
             .query("frolics")
