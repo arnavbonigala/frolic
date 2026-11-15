@@ -6,6 +6,7 @@ struct CrewSummary: Decodable, Identifiable, Equatable {
     let name: String
     let memberCount: Double
     let planOpen: Bool
+    let joinedAt: Double?
     var id: String { groupId }
 }
 
@@ -36,7 +37,7 @@ final class CrewSwitcherModel {
                 do {
                     for try await crews in stream {
                         self?.crews = crews
-                        FrolicIdentity.shared.adopt(crews: crews.map { FrolicCrew(id: $0.groupId, name: $0.name, color: "") })
+                        FrolicIdentity.shared.adopt(crews: crews.map { FrolicCrew(id: $0.groupId, name: $0.name, color: "", joinedAt: $0.joinedAt) })
                     }
                 } catch {}
             },

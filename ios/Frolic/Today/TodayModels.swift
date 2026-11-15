@@ -200,6 +200,7 @@ struct IdentityGroup: Codable, Hashable {
     var groupId: String
     var name: String
     var color: String
+    var joinedAt: Double?
 }
 
 struct IdentityMe: Codable, Hashable {

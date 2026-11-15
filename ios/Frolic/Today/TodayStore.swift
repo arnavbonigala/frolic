@@ -568,12 +568,19 @@ final class TodayStore {
             do {
                 for try await me in client.subscribe(to: "users:me", with: ["deviceToken": token], yielding: IdentityMe?.self).values {
                     guard let self else { return }
-                    guard let group = me?.groups.first else {
+                    let chosen = CrewSelection.choose(
+                        pinned: ProcessInfo.processInfo.environment[FrolicIdentity.groupEnvironmentKey],
+                        persisted: FrolicIdentity.storedGroupChoice,
+                        memberships: (me?.groups ?? []).map { group in
+                            CrewSelection.Candidate(groupId: group.groupId, joinedAt: group.joinedAt ?? 0)
+                        }
+                    )
+                    guard let chosen else {
                         self.load = .empty
                         continue
                     }
-                    self.identity.setGroup(group.groupId)
-                    self.subscribe(groupId: group.groupId)
+                    self.identity.setGroup(chosen)
+                    self.subscribe(groupId: chosen)
                     return
                 }
             } catch {

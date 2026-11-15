@@ -103,7 +103,14 @@ final class CrewStore {
                     for try await me in stream {
                         guard let self else { return }
                         self.meWire = me
-                        if FrolicIdentity.shared.groupId == nil, let discovered = me?.groups.first?.groupId {
+                        if FrolicIdentity.shared.groupId == nil,
+                           let discovered = CrewSelection.choose(
+                               pinned: ProcessInfo.processInfo.environment[FrolicIdentity.groupEnvironmentKey],
+                               persisted: FrolicIdentity.storedGroupChoice,
+                               memberships: (me?.groups ?? []).map { group in
+                                   CrewSelection.Candidate(groupId: group.groupId, joinedAt: group.joinedAt ?? 0)
+                               }
+                           ) {
                             FrolicIdentity.shared.setGroup(discovered)
                         }
                         self.startGroup(client: client, token: token)

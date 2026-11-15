@@ -57,6 +57,7 @@ struct CrewMeWire: Decodable {
     struct Group: Decodable {
         let groupId: String
         let name: String
+        let joinedAt: Double?
     }
 
     let userId: String
