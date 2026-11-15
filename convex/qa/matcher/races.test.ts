@@ -91,8 +91,14 @@ describe("race: the reveal fires once", () => {
     const before = await readFrolic(t, f.frolicId);
     const attendeesBefore = await readAttendees(t, f.frolicId);
     const { ref } = await findFunction("flip");
-    await t.mutation(ref, { frolicId: f.frolicId });
-    await t.mutation(ref, { frolicId: f.frolicId });
+    await t.mutation(ref, {
+      frolicId: f.frolicId,
+      revealAt: before.revealAt as number,
+    });
+    await t.mutation(ref, {
+      frolicId: f.frolicId,
+      revealAt: before.revealAt as number,
+    });
     const after = await readFrolic(t, f.frolicId);
     expect(after.revealAt, "a second reveal must not move revealAt").toBe(before.revealAt);
     expect(after.matchedAt, "a second reveal must not rewrite matchedAt").toBe(before.matchedAt);

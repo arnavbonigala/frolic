@@ -175,3 +175,53 @@ describe("a match is not re-decided after it is revealed", () => {
     expect(after.length).toBe(before.length);
   });
 });
+
+describe("selection: capacity caps a match", () => {
+  it("a capped match still fills the cap when a valid set of that size exists", async () => {
+    const t = fresh();
+    const f = await seed(t, { durationMinutes: 60 });
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch("frolics", f.frolicId, { capacity: 3 });
+    });
+    await tapById(t, f, "Maya", { onlyIf: ["Sam"] });
+    await tapById(t, f, "Dev");
+    await tapById(t, f, "Jordan");
+    await tapById(t, f, "Sam");
+    await settle(t);
+    const { frolic, attendees } = await matchState(t, f.frolicId);
+    const going = attendees.filter((a: any) => a.status === "going").map((a: any) => a.userId);
+    expect(going.length, "a cap of three must fill three when three can go").toBe(3);
+    expect(going.length, "a cap must never be exceeded").toBeLessThanOrEqual(3);
+    expect(frolic.status).toBe("on");
+  });
+
+  it("a capped match never includes someone whose condition fails", async () => {
+    const t = fresh();
+    const f = await seed(t, { durationMinutes: 60 });
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch("frolics", f.frolicId, { capacity: 2 });
+    });
+    await tapById(t, f, "Maya", { onlyIf: ["Priya"] });
+    await tapById(t, f, "Dev");
+    await tapById(t, f, "Jordan");
+    await settle(t);
+    const { attendees } = await matchState(t, f.frolicId);
+    const going = attendees.filter((a: any) => a.status === "going").map((a: any) => a.userId);
+    expect(going.length).toBeLessThanOrEqual(2);
+    expect(going).not.toContain(f.users.Maya);
+  });
+
+  it("a cap of two takes two when three plain taps arrive", async () => {
+    const t = fresh();
+    const f = await seed(t, { durationMinutes: 60 });
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch("frolics", f.frolicId, { capacity: 2 });
+    });
+    await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    await tapById(t, f, "Jordan");
+    await settle(t);
+    const { attendees } = await matchState(t, f.frolicId);
+    expect(attendees.filter((a: any) => a.status === "going")).toHaveLength(2);
+  });
+});

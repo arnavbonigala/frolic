@@ -342,3 +342,80 @@ describe("matcher: membership", () => {
     expect(await readTaps(t, f.frolicId)).toHaveLength(0);
   });
 });
+
+describe("matcher: untap", () => {
+  async function untap(t: any, f: any, who: string) {
+    const { ref } = await (await import("./surface")).findFunction("untapAs");
+    return await t.mutation(ref, { frolicId: f.frolicId, userId: f.users[who] });
+  }
+
+  it("untapping removes the yes before a match", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await tapById(t, f, "Maya");
+    await untap(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    await settle(t);
+    await expectNoMatch(t, f.frolicId);
+    expect(await readTaps(t, f.frolicId)).toHaveLength(1);
+  });
+
+  it("untap then tap again matches", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await tapById(t, f, "Maya");
+    await untap(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    await settle(t);
+    await expectNoMatch(t, f.frolicId);
+    await tapById(t, f, "Maya");
+    await expectMatch(t, f.frolicId, [f.users.Maya, f.users.Dev], NOW);
+  });
+
+  it("untapping one yes collapses a pending match without leaving a reveal", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    await untap(t, f, "Dev");
+    await expectNoMatch(t, f.frolicId);
+    await settle(t);
+    await expectNoMatch(t, f.frolicId);
+  });
+
+  it("untapping twice is harmless", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await tapById(t, f, "Maya");
+    await untap(t, f, "Maya");
+    await untap(t, f, "Maya");
+    expect(await readTaps(t, f.frolicId)).toHaveLength(0);
+  });
+
+  it("a stranger cannot untap inside the crew", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    const outsider = await t.run(async (ctx: any) =>
+      await ctx.db.insert("users", { name: "Outsider", source: "app" }),
+    );
+    const { ref } = await (await import("./surface")).findFunction("untapAs");
+    await expect(
+      t.mutation(ref, { frolicId: f.frolicId, userId: outsider }),
+    ).rejects.toThrow();
+  });
+
+  it("untapping after the reveal does not remove a revealed attendee", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    await settle(t);
+    await untap(t, f, "Dev");
+    const { frolic, attendees } = await matchState(t, f.frolicId);
+    expect(frolic.status).toBe("on");
+    expect(
+      attendees.filter((a: any) => a.userId === f.users.Dev && a.status === "going"),
+      "taking a tap back after the reveal is not a silent way out of the plan",
+    ).toHaveLength(1);
+  });
+});
