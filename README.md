@@ -8,6 +8,17 @@ The daily plan is a real place with a real time, price and walk, fitted to every
 
 Built for the YC Consumer Mobile Hackathon, Nov 15 2026, on Convex with Revyl, Capy, Whop, Supermemory and Keiki.
 
+## Built with
+
+| Sponsor | What it does in Frolic | Where to look |
+|---|---|---|
+| Capy | Captains on Fable and Particle ran dozens of parallel threads that opened, tested and merged most of the 160+ pull requests shipped today | [Merged PRs](https://github.com/arnavbonigala/frolic/pulls?q=is%3Apr+is%3Amerged), each with a Capy badge linking to the thread that wrote it |
+| Revyl | Every iOS flow runs on a cloud iPhone: onboarding, the secret yes, the reveal, check in, garden | [`e2e/flows/`](e2e/flows) (48 flows), [`e2e/reports/`](e2e/reports) |
+| Convex | The whole backend: secret taps the client can never read, the matcher, the same second reveal, the daily plan drop, crons | [`convex/`](convex), [`convex/frolics.ts`](convex/frolics.ts), [`convex/reveal.ts`](convex/reveal.ts) |
+| Supermemory | The crew's memory of what it skipped and loved, which shapes each plan and its "why" | [`convex/memory/`](convex/memory) |
+| Whop | The $3 anti-flake hold: refunded when you show up, sent to the crew fund when you flake | [`convex/whop/`](convex/whop) |
+| Keiki | An iMessage agent, so a friend without the app can text "down" and get the same reveal | [`convex/keiki/`](convex/keiki) |
+
 `docs/brief.md` is the spec: features, data model, tiers and the bar for done. `design/mock/index.html` is the interactive mock of every screen, and it is the visual and copy reference. `docs/demo.md` is the 90 second demo script and the sponsor sheet, and its status table says what is built today, with the evidence beside each row.
 
 ## Architecture
