@@ -29,8 +29,9 @@ struct YouScreen: View {
             }
             .padding(.horizontal, 18)
             .padding(.top, 24)
-            .padding(.bottom, 120)
+            .padding(.bottom, 140)
         }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
         .background(SkyBackground())
         .accessibilityIdentifier("you.screen")
         .task(id: "\(router.e2eRoute?.screen ?? "")\(FrolicIdentity.shared.deviceToken)\(retries)") { await model.run(backend: backend, router: router) }
@@ -285,7 +286,7 @@ private struct YouContent: View {
                     }
                     Slider(
                         value: Binding(
-                            get: { model.travel ?? 20 },
+                            get: { model.travel ?? 5 },
                             set: { value in
                                 model.choose(travel: value)
                                 model.save(backend: backend)
@@ -295,6 +296,7 @@ private struct YouContent: View {
                         step: 5
                     )
                     .tint(FrolicColor.ink)
+                    .opacity(model.travel == nil ? 0.45 : 1)
                     .accessibilityLabel("Travel up to")
                     .accessibilityValue(travelLabel)
                     .accessibilityIdentifier("you.travel")

@@ -4,6 +4,7 @@ enum YouPreferences {
     enum Key {
         static let limits = "you.limits"
         static let card = "you.card"
+        static let profile = "you.profile"
         static let readCalendar = "you.readCalendar"
         static let tasteTags = "you.tasteTags"
     }
@@ -24,6 +25,19 @@ enum YouPreferences {
     static func cachedLimits() -> YouLimits? {
         guard let data = AppGroup.defaults.data(forKey: Key.limits) else { return nil }
         return try? JSONDecoder().decode(YouLimits.self, from: data)
+    }
+
+    static func cachedProfile() -> YouProfile? {
+        guard let data = AppGroup.defaults.data(forKey: Key.profile) else { return nil }
+        return try? JSONDecoder().decode(YouProfile.self, from: data)
+    }
+
+    static func save(profile: YouProfile?) {
+        guard let profile, let data = try? JSONEncoder().encode(profile) else {
+            AppGroup.defaults.removeObject(forKey: Key.profile)
+            return
+        }
+        AppGroup.defaults.set(data, forKey: Key.profile)
     }
 
     static func cachedCard() -> YouCard {
@@ -50,7 +64,7 @@ enum YouPreferences {
 
     @MainActor
     static func clearAll() {
-        for key in [Key.limits, Key.card, Key.tasteTags] {
+        for key in [Key.limits, Key.card, Key.profile, Key.tasteTags] {
             AppGroup.defaults.removeObject(forKey: key)
         }
         FrolicIdentity.shared.setGroup(nil)
