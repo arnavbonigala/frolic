@@ -1,0 +1,115 @@
+import SwiftUI
+
+enum FrolicTextStyle: CaseIterable {
+    case huge
+    case largeTitle
+    case title
+    case sheetTitle
+    case button
+    case headline
+    case body
+    case bodyEmphasis
+    case subheadline
+    case pill
+    case chip
+    case footnote
+    case flowerName
+    case countdown
+
+    var size: CGFloat {
+        switch self {
+        case .huge: 58
+        case .largeTitle: 34
+        case .title: 30
+        case .sheetTitle: 22
+        case .button: 17
+        case .headline: 17
+        case .body: 17
+        case .bodyEmphasis: 17
+        case .subheadline: 15
+        case .pill: 15
+        case .chip: 13
+        case .footnote: 13
+        case .flowerName: 12
+        case .countdown: 22
+        }
+    }
+
+    var weight: Font.Weight {
+        switch self {
+        case .huge, .largeTitle, .title, .sheetTitle, .countdown: .heavy
+        case .button, .headline: .bold
+        case .bodyEmphasis, .pill, .chip, .flowerName: .semibold
+        case .body, .subheadline, .footnote: .regular
+        }
+    }
+
+    var isRounded: Bool {
+        switch self {
+        case .huge, .largeTitle, .title, .sheetTitle, .button, .countdown: true
+        default: false
+        }
+    }
+
+    var tracking: CGFloat {
+        switch self {
+        case .huge: -1
+        case .largeTitle, .title: -0.3
+        default: 0
+        }
+    }
+
+    var relativeTo: Font.TextStyle {
+        switch self {
+        case .huge, .largeTitle: .largeTitle
+        case .title: .title
+        case .sheetTitle, .countdown: .title2
+        case .button, .headline: .headline
+        case .body, .bodyEmphasis: .body
+        case .subheadline, .pill: .subheadline
+        case .chip, .footnote: .footnote
+        case .flowerName: .caption
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .huge: "Huge"
+        case .largeTitle: "Large title"
+        case .title: "Title"
+        case .sheetTitle: "Sheet title"
+        case .button: "Button"
+        case .headline: "Headline"
+        case .body: "Body"
+        case .bodyEmphasis: "Body emphasis"
+        case .subheadline: "Subheadline"
+        case .pill: "Pill"
+        case .chip: "Chip"
+        case .footnote: "Footnote"
+        case .flowerName: "Flower name"
+        case .countdown: "Countdown"
+        }
+    }
+}
+
+private struct FrolicFontModifier: ViewModifier {
+    let style: FrolicTextStyle
+    @ScaledMetric private var size: CGFloat
+
+    init(style: FrolicTextStyle) {
+        self.style = style
+        _size = ScaledMetric(wrappedValue: style.size, relativeTo: style.relativeTo)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: size, weight: style.weight, design: style.isRounded ? .rounded : .default))
+            .tracking(style.tracking)
+    }
+}
+
+extension View {
+    func frolicFont(_ style: FrolicTextStyle) -> some View {
+        modifier(FrolicFontModifier(style: style))
+    }
+}
