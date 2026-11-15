@@ -11,6 +11,7 @@ enum TodayScene: Equatable {
     case open
     case waiting(onlyIf: [String])
     case on
+    case arrived
     case hopIn
     case faded
     case done
@@ -55,6 +56,8 @@ final class TodayStore {
     private(set) var startingPlan = false
     private(set) var startError: String?
     private(set) var drop: TodayDrop?
+    private(set) var etas: [TodayEta] = []
+    private var etaFrolic: String?
     private(set) var tomorrow: TodayView?
     private(set) var gardenHealth: TodayGardenHealth?
     private(set) var onThisDay: TodayOnThisDay?
@@ -124,6 +127,19 @@ final class TodayStore {
         return friends.filter { !ids.contains($0.userId) }.map(\.name)
     }
 
+    var arrivedIds: Set<String> {
+        Set(etas.filter { $0.minutes == 0 && !$0.onTheWay }.map(\.userId))
+    }
+
+    var iArrived: Bool {
+        guard let me = meMember?.userId else { return false }
+        return arrivedIds.contains(me)
+    }
+
+    var arrivedFriendNames: [String] {
+        goingPeople.filter { $0.userId != mePerson.userId && arrivedIds.contains($0.userId) }.map(\.name)
+    }
+
     var iAmGoing: Bool {
         guard let reveal else { return false }
         if pending == .sitOut { return false }
@@ -157,7 +173,8 @@ final class TodayStore {
             if solo { return .solo(waiting: isDown) }
             return isDown ? .waiting(onlyIf: tapOnlyIf.map(\.name)) : .open
         case .on:
-            return iAmGoing ? .on : .hopIn
+            guard iAmGoing else { return .hopIn }
+            return iArrived ? .arrived : .on
         case .faded:
             return .faded
         case .done:
@@ -206,6 +223,7 @@ final class TodayStore {
         tasks.removeAll()
         bloomTask?.cancel()
         paymentFrolic = nil
+        etaFrolic = nil
     }
 
     func becameActive() {
@@ -601,6 +619,20 @@ final class TodayStore {
         })
     }
 
+    private func subscribeEtas(frolicId: String) {
+        guard let client, let token = identity.deviceToken as String? else { return }
+        tasks.append(Task { [weak self] in
+            do {
+                let args: [String: ConvexEncodable?] = ["deviceToken": token, "frolicId": frolicId]
+                for try await rows in client.subscribe(to: "etas:forFrolic", with: args, yielding: [TodayEta].self).values {
+                    self?.etas = rows
+                }
+            } catch {
+                self?.etas = []
+            }
+        })
+    }
+
     private func subscribePayment(frolicId: String) {
         guard let client, let token = identity.deviceToken as String? else { return }
         tasks.append(Task { [weak self] in
@@ -646,6 +678,10 @@ final class TodayStore {
             dropFrolic = frolicId
             subscribeDrop(frolicId: frolicId)
         }
+        if let frolicId = view.frolic?.frolicId, etaFrolic != frolicId, view.phase == .on {
+            etaFrolic = frolicId
+            subscribeEtas(frolicId: frolicId)
+        }
         if let frolicId = view.frolic?.frolicId, paymentFrolic != frolicId, view.phase == .on || view.phase == .done {
             paymentFrolic = frolicId
             subscribePayment(frolicId: frolicId)
@@ -669,6 +705,7 @@ final class TodayStore {
         gardenHealth = route.query["garden"] != nil ? TodayGardenHealth(state: "thirsty", line: "Your garden's getting thirsty", cta: "I'm free") : nil
         onThisDay = route.query["garden"] != nil ? TodayOnThisDay(frolicId: "fixture-past", label: "1 week ago today", title: "Cheese Board pizza", heroKey: "plan-late-night-food", photoUrl: nil) : nil
         if route.query["hint"] != nil { hintSeen = false }
+        etas = route.query["arrived"] != nil ? [TodayFixture.you, TodayFixture.maya].map { TodayEta(userId: $0.userId, minutes: 0, onTheWay: false, updatedAt: 0) } : []
         if fixture.sheet == .onlyIf {
             picks = Set(route.query["picks"].map { $0.split(separator: ",").map(String.init) } ?? [])
         }
