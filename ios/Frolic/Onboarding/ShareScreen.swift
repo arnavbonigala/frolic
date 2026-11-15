@@ -7,7 +7,7 @@ struct ShareScreen: View {
         OnboardingPage(onBack: { model.backToName() }) {
             OnboardingTitle(
                 title: "Your crew is ready",
-                subcopy: "Send this link to your friends.",
+                subcopy: "Anyone with this code can join.",
                 identifier: "share.title"
             )
             if let code = model.shareCode {

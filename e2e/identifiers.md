@@ -42,7 +42,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `name.title` | What do your friends call you? |
 | `name.photo` | Add a photo, then Change photo |
 | `name.field` | First name |
-| `name.counter` | the typed count against the 40 character limit |
+| `name.counter` | appears past 30 characters, reads 31/40 and up |
 | `name.foot` | Your crew sees your name and photo. |
 | `name.continue` | Continue (disabled while empty) |
 | `photo.sheet.title` | Add a photo |

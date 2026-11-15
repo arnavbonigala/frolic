@@ -41,6 +41,9 @@ struct JoinScreen: View {
             switch model.invitePhase {
             case .ready:
                 welcomeCopy
+                OnboardingBeat()
+                    .padding(.horizontal, 18)
+                    .padding(.top, 22)
             case .loading:
                 HStack(spacing: 10) {
                     OnboardingSpinner()

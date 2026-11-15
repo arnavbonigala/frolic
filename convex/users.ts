@@ -21,9 +21,8 @@ import {
 import { isPortraitKey } from "./avatars/portraits";
 import { photoUrlOf } from "./lib/photo";
 import { rateLimiter } from "./lib/rateLimits";
-import { removeTap, sitOutAndRefill } from "./lib/core";
-
-export const FLOWER_COLORS = ["pink", "cobalt", "moss", "marigold", "tomato", "lilac"] as const;
+import { FLOWER_COLORS, removeTap, sitOutAndRefill } from "./lib/core";
+import { happened } from "./garden";
 
 async function findInvite(ctx: QueryCtx, inviteCode: string): Promise<Doc<"invites"> | null> {
   const rows = await ctx.db
@@ -360,10 +359,16 @@ async function leaveLiveFrolics(ctx: MutationCtx, userId: Id<"users">): Promise<
     }
   }
   const attendees = await ctx.db.query("attendees").withIndex("by_userId", (q) => q.eq("userId", userId)).take(PURGE_BATCH);
+  const now = Date.now();
   for (const attendee of attendees) {
     if (attendee.status !== "going") continue;
     const frolic = await ctx.db.get("frolics", attendee.frolicId);
-    if (frolic?.status === "on") await sitOutAndRefill(ctx, frolic, attendee, Date.now());
+    if (frolic?.status !== "on") continue;
+    if (await happened(ctx, frolic, now)) {
+      await ctx.scheduler.runAfter(0, internal.whop.money.onBail, { frolicId: frolic._id, userId });
+      continue;
+    }
+    await sitOutAndRefill(ctx, frolic, attendee, now);
   }
 }
 
@@ -393,13 +398,25 @@ async function purgeRows(ctx: MutationCtx, user: Doc<"users">): Promise<boolean>
     for (const frolic of frolics) await purgeFrolic(ctx, frolic._id, userId);
     await ctx.db.delete("memberships", membership._id);
   }
-  for (const table of ["taps", "attendees", "limits", "keikiLinks", "dailyPickAnswers"] as const) {
+  for (const table of ["taps", "limits", "keikiLinks", "dailyPickAnswers"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .take(PURGE_BATCH);
     if (rows.length === PURGE_BATCH) finished = false;
     for (const row of rows) await ctx.db.delete(table, row._id);
+  }
+  const now = Date.now();
+  let dropped = 0;
+  for await (const attendee of ctx.db.query("attendees").withIndex("by_userId", (q) => q.eq("userId", userId))) {
+    if (dropped === PURGE_BATCH) {
+      finished = false;
+      break;
+    }
+    const frolic = await ctx.db.get("frolics", attendee.frolicId);
+    if (frolic && (await happened(ctx, frolic, now))) continue;
+    await ctx.db.delete("attendees", attendee._id);
+    dropped++;
   }
   return finished;
 }
