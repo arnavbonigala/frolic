@@ -66,7 +66,6 @@ struct CheckInFlowScreen: View {
         .animation(.easeInOut(duration: 0.3), value: store.step)
         .sheet(isPresented: $showsBail) {
             BailSheet(
-                names: store.otherNames,
                 onKeepGoing: { showsBail = false },
                 onSitOut: {
                     showsBail = false

@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct BailSheet: View {
-    var names: String
     var onKeepGoing: () -> Void
     var onSitOut: () -> Void
 
@@ -19,7 +18,7 @@ struct BailSheet: View {
                 .padding(.top, 18)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("bail.sheet.title")
-            Text(subcopy)
+            Text("Your crew will see a spot open up.")
                 .frolicFont(.subheadline)
                 .foregroundStyle(FrolicColor.secondaryText)
                 .padding(.top, 8)
@@ -42,11 +41,5 @@ struct BailSheet: View {
         .background(FrolicColor.cream)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("bail.sheet")
-    }
-
-    private var subcopy: String {
-        names.isEmpty
-            ? "Your crew will just see one fewer. The others get a chance to hop in."
-            : "\(names) will just see one fewer. The others get a chance to hop in."
     }
 }
