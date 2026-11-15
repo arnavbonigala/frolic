@@ -15,8 +15,12 @@ final class GardenImageCache: @unchecked Sendable {
         images.countLimit = 120
     }
 
+    func cached(for urlString: String, pixels: CGSize) -> UIImage? {
+        images.object(forKey: Self.key(for: urlString, pixels: pixels))
+    }
+
     func image(for urlString: String, pixels: CGSize) async -> UIImage? {
-        let key = "\(urlString)#\(Int(pixels.width))x\(Int(pixels.height))" as NSString
+        let key = Self.key(for: urlString, pixels: pixels)
         if let hit = images.object(forKey: key) { return hit }
         guard let url = URL(string: urlString) else { return nil }
         do {
@@ -28,6 +32,10 @@ final class GardenImageCache: @unchecked Sendable {
         } catch {
             return nil
         }
+    }
+
+    private static func key(for urlString: String, pixels: CGSize) -> NSString {
+        "\(urlString)#\(Int(pixels.width))x\(Int(pixels.height))" as NSString
     }
 
     private static func downsample(_ data: Data, to pixels: CGSize) -> UIImage? {
@@ -50,6 +58,7 @@ struct GardenRemoteImage: View {
     var heroKey: String?
     @Environment(\.displayScale) private var displayScale
     @State private var image: UIImage?
+    @State private var shownURL: String?
     @State private var failed = false
 
     var body: some View {
@@ -79,9 +88,15 @@ struct GardenRemoteImage: View {
             return
         }
         let pixels = CGSize(width: size.width * displayScale, height: size.height * displayScale)
+        if shownURL != url {
+            image = GardenImageCache.shared.cached(for: url, pixels: pixels)
+            shownURL = image == nil ? nil : url
+            failed = false
+        }
         if let loaded = await GardenImageCache.shared.image(for: url, pixels: pixels) {
             image = loaded
-        } else {
+            shownURL = url
+        } else if image == nil {
             failed = true
         }
     }
@@ -99,7 +114,7 @@ struct GardenArtwork: View {
     }
 
     var body: some View {
-        if let key, UIImage(named: key) != nil {
+        if let key, FrolicAssetNames.shared.exists(key) {
             Color.clear
                 .overlay {
                     Image(key)
@@ -160,5 +175,23 @@ struct GardenFlower: View {
             status: nil,
             swayDelay: swayDelay
         )
+    }
+}
+
+final class FrolicAssetNames: @unchecked Sendable {
+    static let shared = FrolicAssetNames()
+
+    private let known = NSCache<NSString, NSNumber>()
+
+    private init() {
+        known.countLimit = 400
+    }
+
+    func exists(_ name: String) -> Bool {
+        let key = name as NSString
+        if let hit = known.object(forKey: key) { return hit.boolValue }
+        let found = UIImage(named: name) != nil
+        known.setObject(NSNumber(value: found), forKey: key)
+        return found
     }
 }
