@@ -31,7 +31,7 @@ struct YouScreen: View {
         }
         .background(SkyBackground())
         .accessibilityIdentifier("you.screen")
-        .task { await model.run(backend: backend, router: router) }
+        .task(id: router.e2eRoute) { await model.run(backend: backend, router: router) }
         .sheet(isPresented: $showsPrivacy) {
             YouPrivacyScreen(model: model)
         }
