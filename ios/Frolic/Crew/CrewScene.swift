@@ -18,6 +18,9 @@ struct CrewRow: Identifiable, Equatable {
     var status: Status
     var minutesAway: Int?
     var lookingNow: Bool = false
+    var togetherCount: Int?
+    var togetherPlace: String?
+    var togetherDateLine: String?
 
     var detail: String {
         switch status {
@@ -124,7 +127,7 @@ struct CrewScene: Equatable {
     var holdCents: Int = 300
     var fundLoaded: Bool = true
 
-    var showsHold: Bool { wentToday || !lately.isEmpty }
+    var showsHold: Bool { wentToday || !lately.isEmpty || (me.togetherCount ?? 0) > 0 }
 
     var showsFund: Bool { fundLoaded && (holdEnabled || !fund.isEmpty) }
 

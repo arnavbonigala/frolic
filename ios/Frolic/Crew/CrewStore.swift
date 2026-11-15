@@ -388,7 +388,10 @@ final class CrewStore {
                     isMe: member.isMe,
                     status: status,
                     minutesAway: member.free?.minutesAway.map { Int($0) },
-                    lookingNow: online.contains(member.userId)
+                    lookingNow: online.contains(member.userId),
+                    togetherCount: member.together?.count.map { Int($0) },
+                    togetherPlace: member.together?.lastPlace,
+                    togetherDateLine: member.together?.lastDateLine
                 )
             )
         }

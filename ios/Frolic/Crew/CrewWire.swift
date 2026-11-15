@@ -21,6 +21,12 @@ struct CrewFreeWire: Decodable, Hashable {
     let updatedAt: Double?
 }
 
+struct CrewTogetherWire: Decodable, Hashable {
+    let count: Double?
+    let lastPlace: String?
+    let lastDateLine: String?
+}
+
 struct CrewMemberWire: Decodable, Identifiable, Hashable {
     let userId: String
     let name: String
@@ -28,12 +34,13 @@ struct CrewMemberWire: Decodable, Identifiable, Hashable {
     let photoUrl: String?
     let isMe: Bool
     let free: CrewFreeWire?
+    var together: CrewTogetherWire?
 
     var id: String { userId }
     var flowerColor: FlowerColor { FlowerColor(rawValue: color) ?? .marigold }
 
     func with(free: CrewFreeWire) -> CrewMemberWire {
-        CrewMemberWire(userId: userId, name: name, color: color, photoUrl: photoUrl, isMe: isMe, free: free)
+        CrewMemberWire(userId: userId, name: name, color: color, photoUrl: photoUrl, isMe: isMe, free: free, together: together)
     }
 }
 
