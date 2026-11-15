@@ -18,6 +18,7 @@ import type * as frolics from "../frolics.js";
 import type * as http from "../http.js";
 import type * as keiki_outbound from "../keiki/outbound.js";
 import type * as keiki_routes from "../keiki/routes.js";
+<<<<<<< HEAD
 import type * as lib_core from "../lib/core.js";
 import type * as lib_hooks from "../lib/hooks.js";
 import type * as lib_identity from "../lib/identity.js";
@@ -26,6 +27,15 @@ import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as limits from "../limits.js";
 import type * as memory_events from "../memory/events.js";
 import type * as memory_ingest from "../memory/ingest.js";
+=======
+import type * as memory_account from "../memory/account.js";
+import type * as memory_client from "../memory/client.js";
+import type * as memory_context from "../memory/context.js";
+import type * as memory_events from "../memory/events.js";
+import type * as memory_ingest from "../memory/ingest.js";
+import type * as memory_mapping from "../memory/mapping.js";
+import type * as memory_read from "../memory/read.js";
+>>>>>>> 57d9918 (Add Supermemory memory layer: ingest, privacy mapping, context, taste, deletion)
 import type * as memory_stats from "../memory/stats.js";
 import type * as plans_crons from "../plans/crons.js";
 import type * as reveal from "../reveal.js";
@@ -53,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "keiki/outbound": typeof keiki_outbound;
   "keiki/routes": typeof keiki_routes;
+<<<<<<< HEAD
   "lib/core": typeof lib_core;
   "lib/hooks": typeof lib_hooks;
   "lib/identity": typeof lib_identity;
@@ -61,6 +72,15 @@ declare const fullApi: ApiFromModules<{
   limits: typeof limits;
   "memory/events": typeof memory_events;
   "memory/ingest": typeof memory_ingest;
+=======
+  "memory/account": typeof memory_account;
+  "memory/client": typeof memory_client;
+  "memory/context": typeof memory_context;
+  "memory/events": typeof memory_events;
+  "memory/ingest": typeof memory_ingest;
+  "memory/mapping": typeof memory_mapping;
+  "memory/read": typeof memory_read;
+>>>>>>> 57d9918 (Add Supermemory memory layer: ingest, privacy mapping, context, taste, deletion)
   "memory/stats": typeof memory_stats;
   "plans/crons": typeof plans_crons;
   reveal: typeof reveal;
