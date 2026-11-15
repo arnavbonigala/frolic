@@ -157,7 +157,7 @@ describe("the pick is deterministic", () => {
     expect(plan.startsAt).toBe(at(17));
     expect(plan.endsAt).toBe(at(17, 45));
     expect(plan.favoredUserId).toBe("dev");
-    expect(plan.chips).toEqual(["Free to browse", "4 min walk", "Open until 9:00"]);
+    expect(plan.chips).toEqual(["Free to browse", "4 min walk", "Starts 5:00"]);
   });
 
   test("two people the same distance away always get the same walk chip", () => {
