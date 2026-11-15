@@ -78,13 +78,14 @@ final class OnboardingModel {
 
     private(set) var backend: OnboardingBackend
     private var seed: Seed?
-    private var recentFrolics: [String] = []
     private var didStart = false
 
     init(backend: OnboardingBackend, seed: Seed? = nil) {
         self.backend = backend
         self.seed = seed
     }
+
+    var isSeeded: Bool { seed != nil }
 
     var pickedPhotos: [TastePhoto] {
         pickedIds.compactMap { id in photos.first(where: { $0.id == id }) }
@@ -256,7 +257,6 @@ final class OnboardingModel {
             if let photoData = photo {
                 try? await backend.uploadPhoto(photoData)
             }
-            recentFrolics = await backend.todayPlanTitle(groupId: groupId ?? "")
             OnboardingIdentity.firstName = name
             OnboardingIdentity.groupId = groupId
             OnboardingIdentity.inviteCode = link?.code

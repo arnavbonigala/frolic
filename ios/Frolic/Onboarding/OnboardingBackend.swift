@@ -152,30 +152,6 @@ final class OnboardingBackend {
         return storageId
     }
 
-    func todayPlanTitle(groupId: String) async -> [String] {
-        guard let client, !groupId.isEmpty else { return [] }
-        struct Peek: Decodable {
-            struct Frolic: Decodable {
-                struct Plan: Decodable { var title: String }
-                var plan: Plan?
-            }
-            var frolic: Frolic?
-        }
-        do {
-            let publisher = client.subscribe(to: "frolics:today", with: [
-                "deviceToken": OnboardingIdentity.deviceToken,
-                "groupId": groupId,
-            ], yielding: Peek?.self)
-            for try await value in publisher.values {
-                if let title = value?.frolic?.plan?.title { return [title] }
-                return []
-            }
-        } catch {
-            return []
-        }
-        return []
-    }
-
     func existingMembership() async -> String? {
         guard let client else { return nil }
         struct Me: Decodable {

@@ -102,7 +102,8 @@ struct NameScreen: View {
 struct PhotoSheet: View {
     @Bindable var model: OnboardingModel
     @Environment(\.dismiss) private var dismiss
-    @State private var items: [TastePhoto] = TasteLibrary.photoSheetDemo
+    @State private var items: [TastePhoto] = []
+    @State private var denied = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
 
@@ -136,11 +137,17 @@ struct PhotoSheet: View {
                     .accessibilityIdentifier("photo.sheet.item.\(index + 1)")
                 }
             }
-            Text("Recents from your photo library")
-                .frolicFont(.footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.horizontal, 4)
-                .accessibilityIdentifier("photo.sheet.caption")
+            if denied {
+                Button("Allow photos in Settings") { model.openSettings() }
+                    .buttonStyle(.frolicSecondary)
+            }
+            if !denied {
+                Text("Recents from your photo library")
+                    .frolicFont(.footnote)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .padding(.horizontal, 4)
+                    .accessibilityIdentifier("photo.sheet.caption")
+            }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 20)
@@ -148,7 +155,12 @@ struct PhotoSheet: View {
         .presentationDetents([.height(240)])
         .presentationBackground(FrolicColor.cream)
         .task {
-            guard TasteLibrary.access == .authorized || TasteLibrary.access == .limited else { return }
+            if model.isSeeded { items = TasteLibrary.photoSheetDemo; return }
+            if TasteLibrary.access == .undetermined { _ = await TasteLibrary.requestAccess() }
+            guard TasteLibrary.access == .authorized || TasteLibrary.access == .limited else {
+                denied = true
+                return
+            }
             let recent = await TasteLibrary.recent()
             var loaded: [TastePhoto] = []
             for item in recent.prefix(4) {

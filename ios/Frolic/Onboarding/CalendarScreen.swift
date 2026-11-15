@@ -177,8 +177,9 @@ struct FreeSheet: View {
     static func window(from hour: Int?) -> DateInterval {
         let calendar = Calendar.current
         let now = Date()
-        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now) ?? now.addingTimeInterval(3600)
+        let eight = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now) ?? now.addingTimeInterval(3600)
+        let end = eight > now.addingTimeInterval(1800) ? eight : now.addingTimeInterval(10800)
         let start = hour.flatMap { calendar.date(bySettingHour: $0, minute: 0, second: 0, of: now) } ?? now
-        return DateInterval(start: min(start, end.addingTimeInterval(-900)), end: end)
+        return DateInterval(start: min(max(start, now), end.addingTimeInterval(-900)), end: end)
     }
 }
