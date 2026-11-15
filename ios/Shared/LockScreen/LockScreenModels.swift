@@ -20,6 +20,7 @@ struct TodayResponse: Decodable {
         var deadline: Double
         var window: APIWindow
         var durationMinutes: Double
+        var notice: String?
         var plan: Plan?
     }
 
@@ -177,7 +178,7 @@ extension LockScreenSnapshot {
         groupName = today.groupName
         frolicId = today.frolic?.frolicId
         day = today.frolic?.day
-        planTitle = plan?.title
+        planTitle = plan?.title ?? today.frolic?.notice
         placeName = plan?.place?.name
         placeLat = plan?.place?.lat
         placeLng = plan?.place?.lng

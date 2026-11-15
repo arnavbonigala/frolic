@@ -42,12 +42,12 @@ final class LockScreenAppDelegate: NSObject, UIApplicationDelegate, UNUserNotifi
             LockScreenInbox.set(.imFree)
             return
         }
-        if url.host == "signin" {
+        if url.host == "signin" || query["token"] != nil {
             SharedSession.userId = nil
             SharedSession.name = nil
             LockScreenStore.snapshot = nil
             Task { await LockScreenSync.shared.refresh() }
-            return
+            if url.host == "signin" { return }
         }
         #if DEBUG || E2E
         guard url.host == "e2e" else { return }
