@@ -72,6 +72,8 @@ enum WidgetSamples {
             s.phase = .done
             s.going = [you, maya, dev]
             s.amGoing = true
+            s.tappedDown = true
+            s.revealAt = .now.addingTimeInterval(-3600)
         case "none":
             s.phase = .none
             s.planTitle = nil
