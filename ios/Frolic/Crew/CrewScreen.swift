@@ -20,7 +20,7 @@ struct CrewScreen: View {
                     subtitle: store.view?.subtitle,
                     identifier: "crew"
                 )
-                if let view = store.view, shown == .ready {
+                if let view = store.view, shown == .ready || shown == .empty {
                     CrewFreeControl(text: view.me.status == .notSaid ? "I'm free" : view.me.detail, isFree: view.me.isFree) {
                         store.showsFreeSheet = true
                     }
@@ -64,6 +64,7 @@ struct CrewScreen: View {
         .sheet(isPresented: $store.showsFreeSheet) {
             CrewFreeSheet(
                 current: store.view?.me.detail ?? "",
+                isBusy: store.view?.me.status == .busy,
                 options: CrewFreeOption.options(),
                 error: store.actionError,
                 onPick: { option in
@@ -88,6 +89,8 @@ struct CrewScreen: View {
         .sheet(isPresented: $store.showsInvite) {
             CrewInviteSheet(
                 link: inviteLink,
+                error: store.inviteError,
+                onRetry: { Task { await loadInvite() } },
                 onCopy: {
                     UIPasteboard.general.string = "https://\(inviteLink ?? "frolic.app")"
                     copied = true
@@ -99,12 +102,16 @@ struct CrewScreen: View {
             .presentationDragIndicator(.hidden)
             .task {
                 copied = false
-                if store.isStandIn {
-                    inviteLink = "frolic.app/j/sunset-crew"
-                } else if let code = await store.inviteCode() {
-                    inviteLink = "frolic.app/j/\(code)"
-                }
+                await loadInvite()
             }
+        }
+    }
+
+    private func loadInvite() async {
+        if store.isStandIn {
+            inviteLink = "frolic.app/j/sunset-crew"
+        } else if let code = await store.inviteCode() {
+            inviteLink = "frolic.app/j/\(code)"
         }
     }
 

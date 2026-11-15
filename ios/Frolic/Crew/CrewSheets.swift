@@ -32,6 +32,7 @@ struct CrewSheetShell<Content: View>: View {
 
 struct CrewFreeSheet: View {
     var current: String
+    var isBusy: Bool = false
     var options: [CrewFreeOption]
     var error: String?
     var onPick: (CrewFreeOption) -> Void
@@ -49,7 +50,7 @@ struct CrewFreeSheet: View {
                                 .frolicFont(.bodyEmphasis)
                                 .foregroundStyle(FrolicColor.ink)
                             Spacer(minLength: 0)
-                            if current == option.title {
+                            if option.kind == .busy ? isBusy : current == option.title {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(FrolicColor.free)
@@ -163,6 +164,8 @@ struct CrewFriendSheet: View {
 
 struct CrewInviteSheet: View {
     var link: String?
+    var error: String?
+    var onRetry: () -> Void
     var onCopy: () -> Void
     var copied: Bool
 
@@ -174,6 +177,17 @@ struct CrewInviteSheet: View {
                         .frolicFont(.bodyEmphasis)
                         .foregroundStyle(FrolicColor.ink)
                         .accessibilityIdentifier("crew.invite.link")
+                } else if let error {
+                    VStack(spacing: 8) {
+                        Text(error)
+                            .frolicFont(.subheadline)
+                            .foregroundStyle(FrolicColor.secondaryText)
+                            .multilineTextAlignment(.center)
+                        Button("Try again", action: onRetry)
+                            .buttonStyle(.frolicSecondary)
+                            .accessibilityIdentifier("crew.invite.retry")
+                    }
+                    .padding(.horizontal, 16)
                 } else {
                     HStack(spacing: 8) {
                         ProgressView().tint(FrolicColor.ink)

@@ -28,6 +28,9 @@ final class CrewStore {
     private var started = false
     private var groupStarted = false
     private var lastError: String?
+    private var hasFailed = false
+    private(set) var fundLoaded = false
+    private(set) var inviteError: String?
     private var siteURL: String?
 
     private static let historyDays = 7
@@ -80,6 +83,9 @@ final class CrewStore {
         fundWire = nil
         view = nil
         lastError = nil
+        hasFailed = false
+        fundLoaded = false
+        isStandIn = false
         phase = .loading
         start(router: router, backend: backend)
     }
@@ -144,6 +150,7 @@ final class CrewStore {
 
         subscribe("whop/pay:fund", args: base) { [weak self] (fund: FundWire) in
             self?.fundWire = fund
+            self?.fundLoaded = true
             self?.rebuild()
         }
 
@@ -154,15 +161,21 @@ final class CrewStore {
         guard let client else { return }
         tasks.append(
             Task { [weak self] in
-                do {
-                    for try await value in client.subscribe(to: name, with: args, yielding: T.self).values {
-                        guard let self else { return }
-                        apply(value)
-                        self.lastError = nil
-                        self.clearError()
+                while !Task.isCancelled {
+                    do {
+                        for try await value in client.subscribe(to: name, with: args, yielding: T.self).values {
+                            guard let self else { return }
+                            apply(value)
+                            if name == "crew:crew" {
+                                self.hasFailed = false
+                                self.lastError = nil
+                                self.clearError()
+                            }
+                        }
+                    } catch {
+                        self?.failClient(error)
                     }
-                } catch {
-                    self?.failClient(error)
+                    try? await Task.sleep(for: .seconds(3))
                 }
             }
         )
@@ -282,13 +295,14 @@ final class CrewStore {
     func inviteCode() async -> String? {
         guard let client, let groupId, case let token = FrolicIdentity.shared.deviceToken else { return nil }
         do {
+            inviteError = nil
             let code: String = try await client.mutation(
                 "users:createInvite",
                 with: ["deviceToken": token, "groupId": groupId]
             )
             return code.lowercased()
         } catch {
-            actionError = Self.message(for: error)
+            inviteError = Self.message(for: error)
             return nil
         }
     }
@@ -297,6 +311,7 @@ final class CrewStore {
         let message = Self.message(for: error)
         if lastError == message { return }
         lastError = message
+        hasFailed = true
         if view == nil { phase = .error(message) }
     }
 
@@ -331,7 +346,7 @@ final class CrewStore {
 
     private func rebuild() {
         guard let crew = crewWire else {
-            if view == nil, lastError == nil { phase = .loading }
+            if view == nil, !hasFailed { phase = .loading }
             return
         }
         let now = Date().timeIntervalSince1970 * 1000
@@ -459,6 +474,7 @@ final class CrewStore {
             wentToday: iWent && todayDone,
             todayTitle: todayTitle,
             holdEnabled: crew.holdEnabled ?? false,
+            fundLoaded: fundLoaded,
             holdCents: Int(crew.holdCents ?? 300)
         )
         phase = rows.count <= 1 ? .empty : .ready

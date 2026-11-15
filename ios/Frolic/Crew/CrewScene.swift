@@ -122,8 +122,9 @@ struct CrewScene: Equatable {
     var todayTitle: String?
     var holdEnabled: Bool = false
     var holdCents: Int = 300
+    var fundLoaded: Bool = true
 
-    var showsFund: Bool { holdEnabled || !fund.isEmpty }
+    var showsFund: Bool { fundLoaded && (holdEnabled || !fund.isEmpty) }
 
     var friendRows: [CrewRow] { rows.filter { !$0.isMe } }
     var lookingNames: [String] { rows.filter(\.lookingNow).map(\.name) }
