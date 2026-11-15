@@ -29,7 +29,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | Identifier | Visible label |
 | - | - |
 | `join.title` | Be the friend who says yes. |
-| `join.blurb` | Your crew, outside, more often. |
+| `join.blurb` | Frolic plans your hangouts. No asking, no deciding, no flaking. |
 | `join.join` | Start a crew, Join your crew, or Join <group> when the invite resolved |
 | `join.haveLink` | I have an invite link |
 | `join.linkField` | the Invite link field in the paste sheet |

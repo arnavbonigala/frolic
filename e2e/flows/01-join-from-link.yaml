@@ -16,7 +16,7 @@ test:
       step_type: "navigate"
       step_description: "frolic://e2e/join"
     - type: "validation"
-      step_description: "The headline \"Be the friend who says yes.\" is visible with the line \"Your crew, outside, more often.\" under it"
+      step_description: "The headline \"Be the friend who says yes.\" is visible with the line \"Frolic plans your hangouts. No asking, no deciding, no flaking.\" under it"
     - type: "validation"
       step_description: "A \"Start a crew\" button and an \"I have an invite link\" button are visible"
     - type: "validation"

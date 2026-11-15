@@ -103,7 +103,7 @@ struct JoinScreen: View {
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("join.title")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Your crew, outside, more often.")
+            Text("Frolic plans your hangouts. No asking, no deciding, no flaking.")
                 .frolicFont(.body)
                 .foregroundStyle(FrolicColor.secondaryText)
                 .multilineTextAlignment(.center)
