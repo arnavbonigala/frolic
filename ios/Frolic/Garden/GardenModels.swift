@@ -33,9 +33,13 @@ struct GardenMemoryRow: Decodable, Hashable, Identifiable {
 
     var id: String { frolicId }
 
-    var namesLine: String { GardenNames.line(going.map(\.name)) }
+    func namesLine(me: String?) -> String {
+        let others = going.filter { $0.userId != me }.map(\.name)
+        guard youWent, me != nil else { return GardenNames.line(going.map(\.name)) }
+        return others.isEmpty ? "you" : "you and " + GardenNames.line(others)
+    }
 
-    var subtitle: String { "\(dateLine) · \(namesLine)" }
+    func subtitle(me: String?) -> String { "\(dateLine) · \(namesLine(me: me))" }
 }
 
 struct GardenTasteLine: Decodable, Hashable {
@@ -95,6 +99,10 @@ struct GardenOverview: Decodable, Hashable {
     }
 
     var flowerCount: Int { Int(count) }
+
+    var cleanSinceLine: String {
+        sinceLine.hasPrefix("0 before you, ") ? String(sinceLine.dropFirst("0 before you, ".count)) : sinceLine
+    }
 
     var countLine: String { flowerCount == 1 ? "1 frolic" : "\(flowerCount) frolics" }
 

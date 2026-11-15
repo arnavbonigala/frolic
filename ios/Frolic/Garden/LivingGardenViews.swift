@@ -93,7 +93,8 @@ private struct GardenVarietyCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .frame(width: 128, minHeight: 150, alignment: .top)
+        .frame(width: 128)
+        .frame(minHeight: 150, alignment: .top)
         .background(FrolicColor.paper.opacity(variety.unlocked ? 1 : 0.6), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
         .accessibilityElement(children: .combine)

@@ -10,6 +10,8 @@ final class GardenStore {
     private(set) var phase: ScreenPhase = .loading
     private(set) var memory: GardenMemory?
     private(set) var onThisDay: GardenOnThisDay?
+    private(set) var myUserId: String?
+    @ObservationIgnored private var meTask: Task<Void, Never>?
     @ObservationIgnored private var onThisDayTask: Task<Void, Never>?
     private(set) var memoryPhase: ScreenPhase = .loading
 
@@ -23,6 +25,7 @@ final class GardenStore {
         if let seeded = GardenFixtures.overview(route: route) {
             overview = seeded
             onThisDay = GardenFixtures.onThisDay(route: route)
+            myUserId = "maya"
             phase = seeded.isEmpty ? .empty : .ready
             return
         }
@@ -37,6 +40,17 @@ final class GardenStore {
         }
         phase = .loading
         let args: [String: ConvexEncodable?] = ["deviceToken": identity.deviceToken, "groupId": identity.groupId]
+        meTask?.cancel()
+        meTask = Task { [weak self] in
+            struct Me: Decodable { let userId: String }
+            let meArgs: [String: ConvexEncodable?] = ["deviceToken": identity.deviceToken]
+            do {
+                for try await value in client.subscribe(to: "users:me", with: meArgs, yielding: Me?.self).values {
+                    guard !Task.isCancelled, let self else { return }
+                    myUserId = value?.userId
+                }
+            } catch {}
+        }
         onThisDayTask?.cancel()
         onThisDayTask = Task { [weak self] in
             do {

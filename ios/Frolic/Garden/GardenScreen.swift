@@ -76,7 +76,7 @@ struct GardenScreen: View {
                 GardenOnThisDayCard(card: card)
                     .padding(.top, 16)
             }
-            GardenBed(countLine: overview.countLine, sinceLine: overview.sinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { $0.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
+            GardenBed(countLine: overview.countLine, sinceLine: overview.cleanSinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { row in row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
                 .padding(.top, 16)
             if let health = overview.health {
                 GardenHealthRow(health: health) {
@@ -90,11 +90,11 @@ struct GardenScreen: View {
             Button {
                 showsStory = true
             } label: {
-                GardenWeekRow(line: overview.weekLine)
+                GardenWeekRow(line: String(overview.weekLine.prefix(1)).uppercased() + String(overview.weekLine.dropFirst()))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("garden.week")
-            .accessibilityLabel("Your crew this week: \(overview.weekLine)")
+            .accessibilityLabel(overview.weekLine)
             .padding(.top, 12)
             if let fund = overview.fund {
                 GardenFundRow(title: fund.frolicTitle, line: fund.line)
@@ -109,11 +109,11 @@ struct GardenScreen: View {
                     Button {
                         path.append(row)
                     } label: {
-                        GardenMemoryRowView(row: row)
+                        GardenMemoryRowView(row: row, me: store.myUserId)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("garden.memory.\(index + 1)")
-                    .accessibilityLabel("\(row.title), \(row.subtitle)")
+                    .accessibilityLabel("\(row.title), \(row.subtitle(me: store.myUserId))")
                 }
             }
         }
@@ -173,11 +173,8 @@ private struct GardenWeekRow: View {
 
     private var weekLine: Text {
         (
-            Text("Your crew this week: ")
-                .fontWeight(.bold)
+            Text(line)
                 .foregroundColor(FrolicColor.ink)
-            + Text(line)
-                .foregroundColor(FrolicColor.secondaryText)
         )
     }
 }
@@ -210,6 +207,7 @@ private struct GardenFundRow: View {
 
 private struct GardenMemoryRowView: View {
     var row: GardenMemoryRow
+    var me: String?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -229,7 +227,7 @@ private struct GardenMemoryRowView: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(FrolicColor.ink)
                     .lineLimit(2)
-                Text(row.subtitle)
+                Text(row.subtitle(me: me))
                     .frolicFont(.footnote)
                     .foregroundStyle(FrolicColor.secondaryText)
                     .lineLimit(2)

@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct MemoryDetailScreen: View {
@@ -9,6 +10,8 @@ struct MemoryDetailScreen: View {
     @Environment(FrolicBackend.self) private var backend
     @Environment(\.dismiss) private var dismiss
     @State private var share: GardenSharePayload?
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var uploading = false
 
     private var shown: ScreenPhase { router.resolve(store.memoryPhase, isOnline: connectivity.isOnline) }
 
@@ -30,6 +33,10 @@ struct MemoryDetailScreen: View {
         }
         .task {
             store.loadMemory(row, backend: backend, route: router.e2eRoute)
+        }
+        .onChange(of: pickedPhoto) { _, item in
+            guard let item else { return }
+            Task { await upload(item) }
         }
     }
 
@@ -88,12 +95,6 @@ struct MemoryDetailScreen: View {
                 }
                 SectionHeader(title: "Photos")
                     .accessibilityIdentifier("memory.photos")
-                if memory.photos.isEmpty {
-                    Text("Nobody snapped this one.")
-                        .frolicFont(.subheadline)
-                        .foregroundStyle(FrolicColor.secondaryText)
-                        .padding(.bottom, 8)
-                }
             }
             .padding(.horizontal, 18)
             .padding(.top, 18)
@@ -105,7 +106,7 @@ struct MemoryDetailScreen: View {
                 copy: PlaceholderCopy(
                     loading: "Fetching that night",
                     emptyTitle: "That night is gone",
-                    emptyMessage: "This frolic is no longer in the garden.",
+                    emptyMessage: "This frolic has faded.",
                     errorTitle: "Couldn't load that night"
                 ),
                 color: row.going.first?.color ?? .marigold,
@@ -115,11 +116,16 @@ struct MemoryDetailScreen: View {
         }
     }
 
+    private func displayed(_ person: GardenPerson) -> GardenPerson {
+        guard person.userId == store.myUserId else { return person }
+        return GardenPerson(userId: person.userId, name: "You", color: person.color, photoUrl: person.photoUrl)
+    }
+
     private func people(_ memory: GardenMemory) -> some View {
         HStack(alignment: .bottom, spacing: 4) {
-            ForEach(Array(memory.going.enumerated()), id: \.element.id) { index, person in
+            ForEach(Array(memory.going.sorted { $0.userId == store.myUserId && $1.userId != store.myUserId }.enumerated()), id: \.element.id) { index, person in
                 GardenFlower(
-                    person: person,
+                    person: displayed(person),
                     color: person.color,
                     radius: 20,
                     stem: [24, 34, 20, 30, 26][index % 5],
@@ -141,11 +147,6 @@ struct MemoryDetailScreen: View {
             FrolicCard {
                 VStack(alignment: .leading, spacing: 10) {
                     if let place = memory.place {
-                        GardenArtwork(key: place.heroKey ?? memory.heroKey, seed: place.name)
-                            .frame(height: 118)
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .accessibilityHidden(true)
                         Text(place.name)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(FrolicColor.ink)
@@ -184,6 +185,26 @@ struct MemoryDetailScreen: View {
     private func photoStrip(_ memory: GardenMemory) -> some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
+                if canAddPhoto(memory) {
+                    PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                        VStack(spacing: 8) {
+                            if uploading {
+                                ProgressView().tint(FrolicColor.ink)
+                            } else {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 22, weight: .bold))
+                            }
+                            Text("Add a photo")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundStyle(FrolicColor.ink)
+                        .frame(width: 130, height: 160)
+                        .background(FrolicColor.chip, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .disabled(uploading)
+                    .accessibilityIdentifier("memory.addPhoto")
+                    .accessibilityLabel("Add a photo")
+                }
                 ForEach(memory.photos) { photo in
                     GardenRemoteImage(url: photo.url, heroKey: photo.heroKey ?? memory.heroKey)
                         .frame(width: 130, height: 160)
@@ -197,10 +218,46 @@ struct MemoryDetailScreen: View {
         .scrollIndicators(.hidden)
     }
 
+    private func canAddPhoto(_ memory: GardenMemory) -> Bool {
+        guard let me = store.myUserId else { return false }
+        return memory.going.contains { $0.userId == me }
+    }
+
+    private func upload(_ item: PhotosPickerItem) async {
+        defer { pickedPhoto = nil }
+        guard let identity = GardenIdentity.resolve(), let client = backend.client else {
+            toast = "Couldn't add that photo. Try again."
+            return
+        }
+        uploading = true
+        defer { uploading = false }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data),
+                  let jpeg = image.jpegData(compressionQuality: 0.8)
+            else { throw BackendError.notConfigured }
+            let urlString: String = try await client.mutation("users:generateUploadUrl", with: ["deviceToken": identity.deviceToken])
+            guard let url = URL(string: urlString) else { throw BackendError.notConfigured }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+            let (body, _) = try await URLSession.shared.upload(for: request, from: jpeg)
+            struct Uploaded: Decodable { let storageId: String }
+            let uploaded = try JSONDecoder().decode(Uploaded.self, from: body)
+            try await client.mutation("garden:setMine", with: [
+                "deviceToken": identity.deviceToken,
+                "frolicId": row.frolicId,
+                "storageId": uploaded.storageId,
+            ])
+        } catch {
+            toast = "Couldn't add that photo. Try again."
+        }
+    }
+
     private func shareMemory() {
         let card = GardenStoryCard(
             groupName: row.dateLine,
-            countLine: row.namesLine,
+            countLine: row.namesLine(me: store.myUserId),
             line: memory?.title ?? row.title,
             detail: memory?.caption,
             people: memory?.going ?? row.going
