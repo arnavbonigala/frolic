@@ -1,66 +1,35 @@
-import { makeFunctionReference } from "convex/server";
-import type { Id } from "../_generated/dataModel";
+import type { ApiFromModules } from "convex/server";
+import { internal } from "../_generated/api";
+import type * as checkins from "../checkins";
+import type * as etas from "../etas";
+import type * as memoryEvents from "../memory/events";
+import type * as snaps from "../snaps";
+import type * as taps from "../taps";
+import type * as users from "../users";
+import type * as whopLinks from "../whop/links";
 
-type TimeWindow = { start: number; end: number };
+type AgentApi = ApiFromModules<{
+  checkins: typeof checkins;
+  etas: typeof etas;
+  "memory/events": typeof memoryEvents;
+  snaps: typeof snaps;
+  taps: typeof taps;
+  users: typeof users;
+  "whop/links": typeof whopLinks;
+}>;
 
-export const tapAs = makeFunctionReference<
-  "mutation",
-  {
-    userId: Id<"users">;
-    frolicId: Id<"frolics">;
-    kind: "down" | "notToday";
-    onlyIf?: Id<"users">[];
-    window?: TimeWindow;
-    source: "imessage";
-  },
-  null
->("taps:tapAs");
+export const tapAs: AgentApi["taps"]["tapAs"] = internal.taps.tapAs;
 
-export const createUserAs = makeFunctionReference<
-  "mutation",
-  { name: string; phone: string },
-  Id<"users">
->("users:createAs");
+export const createUserAs: AgentApi["users"]["createAs"] = internal.users.createAs;
 
-export const joinAs = makeFunctionReference<
-  "mutation",
-  { userId: Id<"users">; inviteCode: string; via: "imessage" },
-  unknown
->("users:joinAs");
+export const joinAs: AgentApi["users"]["joinAs"] = internal.users.joinAs;
 
-export const checkInAs = makeFunctionReference<
-  "mutation",
-  { userId: Id<"users">; frolicId: Id<"frolics">; method: "imessage" },
-  null
->("checkins:checkInAs");
+export const checkInAs: AgentApi["checkins"]["checkInAs"] = internal.checkins.checkInAs;
 
-export const setEtaAs = makeFunctionReference<
-  "mutation",
-  { userId: Id<"users">; frolicId: Id<"frolics">; minutes: number; onTheWay: boolean },
-  null
->("etas:setEtaAs");
+export const setEtaAs: AgentApi["etas"]["setEtaAs"] = internal.etas.setEtaAs;
 
-export const addSnapAs = makeFunctionReference<
-  "mutation",
-  { userId: Id<"users">; frolicId: Id<"frolics">; storageId: Id<"_storage">; takenAt: number },
-  null
->("snaps:addSnapAs");
+export const addSnapAs: AgentApi["snaps"]["addSnapAs"] = internal.snaps.addSnapAs;
 
-export const checkoutLink = makeFunctionReference<
-  "mutation",
-  { userId: Id<"users">; frolicId: Id<"frolics"> },
-  { kind: "hold" | "share"; url: string; amountCents: number; expiresAt: number } | { kind: "none" }
->("whop/links:checkoutLink");
+export const checkoutLink: AgentApi["whop"]["links"]["checkoutLink"] = internal.whop.links.checkoutLink;
 
-export const recordMemoryEvent = makeFunctionReference<
-  "mutation",
-  {
-    eventKey: string;
-    kind: "limit";
-    groupId: Id<"groups">;
-    userId: Id<"users">;
-    payload: { text: string };
-    source: "imessage";
-  },
-  unknown
->("memory/events:recordEvent");
+export const recordMemoryEvent: AgentApi["memory"]["events"]["recordEvent"] = internal.memory.events.recordEvent;

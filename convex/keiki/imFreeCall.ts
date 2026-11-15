@@ -1,10 +1,7 @@
-import { makeFunctionReference } from "convex/server";
-import type { Id } from "../_generated/dataModel";
+import type { ApiFromModules } from "convex/server";
+import { internal } from "../_generated/api";
+import type * as frolics from "../frolics";
 
-export type ImFreeResult = { error: string } | null;
+type FrolicsApi = ApiFromModules<{ frolics: typeof frolics }>;
 
-export const imFreeAs = makeFunctionReference<
-  "mutation",
-  { userId: Id<"users">; groupId: Id<"groups">; forMinutes: number },
-  ImFreeResult
->("frolics:imFreeAs");
+export const imFreeAs: FrolicsApi["frolics"]["imFreeAs"] = internal.frolics.imFreeAs;
