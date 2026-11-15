@@ -17,6 +17,19 @@ struct MemoryDetailScreen: View {
 
     private var memory: GardenMemory? { store.memory?.frolicId == row.frolicId ? store.memory : nil }
 
+    private var title: String { memory?.title ?? row.title }
+
+    private var dateLine: String { memory?.dateLine ?? row.dateLine }
+
+    private var going: [GardenPerson] { memory?.going ?? row.going }
+
+    private var heroKey: String? { memory?.heroKey ?? row.heroKey }
+
+    private var heroPhotoUrl: String? {
+        if let url = row.photoUrl, !url.isEmpty { return url }
+        return memory?.photos.first?.url
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -43,17 +56,16 @@ struct MemoryDetailScreen: View {
     private var hero: some View {
         ZStack(alignment: .top) {
             Group {
-                if let url = memory?.photos.first?.url, !url.isEmpty {
-                    GardenRemoteImage(url: url, heroKey: memory?.heroKey ?? row.heroKey)
+                if let url = heroPhotoUrl, !url.isEmpty {
+                    GardenRemoteImage(url: url, heroKey: heroKey)
                 } else {
-                    GardenArtwork(key: memory?.heroKey ?? row.heroKey, seed: row.title)
+                    GardenArtwork(key: heroKey, seed: row.title)
                 }
             }
             .frame(height: 400)
             .frame(maxWidth: .infinity)
             .clipped()
-            .accessibilityLabel(Text("Photo from \(row.title)"))
-            .accessibilityHidden(shown != .ready)
+            .accessibilityLabel(Text("Photo from \(title)"))
             HStack {
                 CircleIconButton(systemImage: "chevron.left", label: "Back to Garden") {
                     dismiss()
@@ -70,50 +82,89 @@ struct MemoryDetailScreen: View {
         }
     }
 
-    @ViewBuilder
     private var detailBody: some View {
-        if shown == .ready, let memory {
+        VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(memory.dateLine)
+                Text(dateLine)
                     .frolicFont(.subheadline)
                     .fontWeight(.bold)
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityIdentifier("memory.date")
-                Text(memory.title)
+                Text(title)
                     .frolicFont(.largeTitle)
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("memory.title")
                     .padding(.top, 2)
-                people(memory)
+                people(going)
                     .padding(.top, 12)
-                placeCard(memory)
-                    .padding(.top, 4)
-                if let fundLine = memory.fundLine {
+                if let memory {
+                    placeCard(memory)
+                        .padding(.top, 4)
+                }
+                if let fundLine = memory?.fundLine {
                     fundRow(fundLine)
                         .padding(.top, 12)
                 }
-                SectionHeader(title: "Photos")
-                    .accessibilityIdentifier("memory.photos")
             }
             .padding(.horizontal, 18)
             .padding(.top, 18)
-            photoStrip(memory)
+            footer
+        }
+    }
+
+    @ViewBuilder
+    private var footer: some View {
+        if let memory {
+            photosSection(memory)
+                .padding(.bottom, 40)
+        } else if shown == .loading || shown == .ready {
+            photosSkeleton
                 .padding(.bottom, 40)
         } else {
             PhasePlaceholder(
-                phase: shown == .ready ? .loading : shown,
+                phase: shown,
                 copy: PlaceholderCopy(
                     loading: "Opening that night",
                     emptyTitle: "That night is gone",
                     emptyMessage: "This frolic has faded.",
                     errorTitle: "Couldn't load that night"
                 ),
-                color: row.going.first?.color ?? .marigold,
+                color: going.first?.color ?? .marigold,
                 onRetry: { store.loadMemory(row, backend: backend, route: router.e2eRoute) }
             )
-            .padding(.top, 40)
+            .padding(.bottom, 40)
         }
+    }
+
+    private func photosSection(_ memory: GardenMemory) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: "Photos")
+                .accessibilityIdentifier("memory.photos")
+                .padding(.horizontal, 18)
+            photoStrip(memory)
+        }
+    }
+
+    private var photosSkeleton: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: "Photos")
+                .padding(.horizontal, 18)
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(FrolicColor.chip)
+                            .frame(width: 130, height: 160)
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 4)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private func displayed(_ person: GardenPerson) -> GardenPerson {
@@ -121,9 +172,9 @@ struct MemoryDetailScreen: View {
         return GardenPerson(userId: person.userId, name: "You", color: person.color, photoUrl: person.photoUrl)
     }
 
-    private func people(_ memory: GardenMemory) -> some View {
+    private func people(_ going: [GardenPerson]) -> some View {
         HStack(alignment: .bottom, spacing: 4) {
-            ForEach(Array(memory.going.sorted { $0.userId == store.myUserId && $1.userId != store.myUserId }.enumerated()), id: \.element.id) { index, person in
+            ForEach(Array(going.sorted { $0.userId == store.myUserId && $1.userId != store.myUserId }.enumerated()), id: \.element.id) { index, person in
                 GardenFlower(
                     person: displayed(person),
                     color: person.color,
@@ -138,7 +189,7 @@ struct MemoryDetailScreen: View {
         .frame(height: 96)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(memory.namesLine) went.")
+        .accessibilityLabel("\(GardenNames.line(going.map(\.name))) went.")
     }
 
     @ViewBuilder
