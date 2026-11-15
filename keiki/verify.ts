@@ -19,6 +19,7 @@ const TOOLS = [
   "pay_deposit",
   "remember",
   "pause",
+  "im_free",
 ];
 
 type Row = { tool: string; anonymous: number; authenticated: number; shaped: boolean; verdict: string };
