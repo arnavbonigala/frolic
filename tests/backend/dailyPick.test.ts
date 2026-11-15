@@ -49,11 +49,11 @@ describe("question bank", () => {
     }
   });
 
-  test("questions start with a capital and options stay lowercase and short", () => {
+  test("questions start with a capital and options are capitalized and short", () => {
     for (const question of QUESTION_BANK) {
       expect(question.text.charAt(0)).toBe(question.text.charAt(0).toUpperCase());
       for (const { label } of question.options) {
-        expect(label.charAt(0)).toBe(label.charAt(0).toLowerCase());
+        expect(label.charAt(0)).toBe(label.charAt(0).toUpperCase());
         expect(label).not.toMatch(/[.!?,;:]/);
         expect(label.split(/\s+/).length).toBeLessThanOrEqual(4);
         expect(label.trim()).toBe(label);

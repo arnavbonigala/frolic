@@ -49,11 +49,11 @@ function passedTags(rows: Doc<"dailyPicks">[], answers: Doc<"dailyPickAnswers">[
   for (const row of rows) {
     const question = BANK_BY_KEY.get(row.questionKey);
     if (!question) continue;
-    const taken = new Set(answers.filter((answer) => answer.day === row.day).map((answer) => answer.option));
+    const taken = new Set(answers.filter((answer) => answer.day === row.day).map((answer) => answer.option.trim().toLowerCase()));
     if (taken.size === 0) continue;
     const offered = new Map<string, boolean>();
     for (const option of question.options) {
-      for (const tag of option.tags) offered.set(tag, (offered.get(tag) ?? false) || taken.has(option.label));
+      for (const tag of option.tags) offered.set(tag, (offered.get(tag) ?? false) || taken.has(option.label.toLowerCase()));
     }
     for (const [tag, took] of offered) if (!took) passes.set(tag, (passes.get(tag) ?? 0) + 1);
   }
@@ -115,6 +115,11 @@ async function answersOn(ctx: QueryCtx, groupId: Id<"groups">, day: string) {
     .take(ANSWER_LIMIT);
 }
 
+export function tagsFor(question: PickQuestion, answer: string): string[] {
+  const wanted = answer.trim().toLowerCase();
+  return question.options.find((option) => option.label.toLowerCase() === wanted)?.tags ?? [];
+}
+
 export function matchOption(question: PickQuestion, raw: string): string | null {
   const wanted = raw.trim().toLowerCase();
   if (!wanted) return null;
@@ -151,7 +156,7 @@ export async function answerAs(
     await ctx.db.insert("dailyPickAnswers", { groupId: group._id, day, userId, option, answeredAt: now });
     await ctx.db.patch("dailyPicks", row._id, { answers: row.answers + 1 });
   }
-  const tags = question.options.find((o) => o.label === option)?.tags ?? [];
+  const tags = tagsFor(question, option);
   await enqueue(ctx, {
     eventKey: "pick:" + group._id + ":" + day + ":" + userId + ":" + option,
     kind: "daily_pick",
@@ -232,7 +237,7 @@ export const pickTags = internalQuery({
       if (!row) continue;
       const question = await questionFor(ctx, args.groupId, day);
       for (const answer of await answersOn(ctx, args.groupId, day)) {
-        for (const tag of question.options.find((o) => o.label === answer.option)?.tags ?? []) {
+        for (const tag of tagsFor(question, answer.option)) {
           if (!tags.includes(tag)) tags.push(tag);
         }
       }
