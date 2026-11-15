@@ -68,6 +68,7 @@ struct TodayFlower: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
         .onAppear(perform: startMotion)
+        .task(id: sways) { await sway() }
     }
 
     private var accessibilityText: String {
@@ -203,6 +204,29 @@ struct TodayFlower: View {
         context.fill(sepal, with: .color(FrolicColor.leaf))
     }
 
+    private var swayDuration: Double { 4.6 + swayDelay.truncatingRemainder(dividingBy: 1.3) }
+
+    private var swayCurve: Animation { .easeInOut(duration: swayDuration) }
+
+    @MainActor
+    private func sway() async {
+        guard sways else {
+            withAnimation(swayCurve) { swayed = false }
+            return
+        }
+        if swayDelay > 0 {
+            try? await Task.sleep(for: .seconds(swayDelay))
+            guard !Task.isCancelled else { return }
+        }
+        while !Task.isCancelled {
+            withAnimation(swayCurve) { swayed = true }
+            try? await Task.sleep(for: .seconds(swayDuration))
+            guard !Task.isCancelled else { break }
+            withAnimation(swayCurve) { swayed = false }
+            try? await Task.sleep(for: .seconds(swayDuration))
+        }
+    }
+
     private func startMotion() {
         if animatesIn, !appeared {
             withAnimation((reduceMotion ? Animation.easeInOut(duration: 0.4) : .spring(response: 0.6, dampingFraction: 0.62)).delay(appearDelay)) {
@@ -210,11 +234,6 @@ struct TodayFlower: View {
             }
         }
         guard !reduceMotion else { return }
-        if sways {
-            withAnimation(.easeInOut(duration: 4.6 + swayDelay.truncatingRemainder(dividingBy: 1.3)).repeatForever(autoreverses: true).delay(swayDelay)) {
-                swayed = true
-            }
-        }
         if state == .bud {
             withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
                 breathing = true

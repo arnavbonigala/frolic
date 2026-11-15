@@ -24,13 +24,25 @@ struct CrewBloom: View {
         .rotationEffect(.degrees(sways ? (swayed ? 3 : -3) : 0), anchor: .bottom)
         .saturation(row.isFolded ? 0.25 : 1)
         .opacity(row.isFolded ? 0.6 : 1)
-        .onAppear {
-            guard sways else { return }
-            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
-                swayed = true
-            }
-        }
+        .task(id: sways) { await sway() }
         .accessibilityHidden(true)
+    }
+
+    private var swayCurve: Animation { .easeInOut(duration: 4) }
+
+    @MainActor
+    private func sway() async {
+        guard sways else {
+            withAnimation(swayCurve) { swayed = false }
+            return
+        }
+        while !Task.isCancelled {
+            withAnimation(swayCurve) { swayed = true }
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { break }
+            withAnimation(swayCurve) { swayed = false }
+            try? await Task.sleep(for: .seconds(4))
+        }
     }
 
     @ViewBuilder
