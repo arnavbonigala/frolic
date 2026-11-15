@@ -35,6 +35,7 @@ import type * as keiki_routes from "../keiki/routes.js";
 import type * as keiki_tools from "../keiki/tools.js";
 import type * as lib_core from "../lib/core.js";
 import type * as lib_heroArt from "../lib/heroArt.js";
+import type * as lib_hold from "../lib/hold.js";
 import type * as lib_hooks from "../lib/hooks.js";
 import type * as lib_identity from "../lib/identity.js";
 import type * as lib_matcher from "../lib/matcher.js";
@@ -120,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   "keiki/tools": typeof keiki_tools;
   "lib/core": typeof lib_core;
   "lib/heroArt": typeof lib_heroArt;
+  "lib/hold": typeof lib_hold;
   "lib/hooks": typeof lib_hooks;
   "lib/identity": typeof lib_identity;
   "lib/matcher": typeof lib_matcher;

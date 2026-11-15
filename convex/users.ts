@@ -54,8 +54,15 @@ export async function createGroupFor(
   name: string,
   timezone: string,
   e2eRun?: string,
+  holdEnabled?: boolean,
 ): Promise<{ groupId: Id<"groups">; inviteCode: string }> {
-  const groupId = await ctx.db.insert("groups", { name: cleanName(name), createdBy: userId, timezone, e2eRun });
+  const groupId = await ctx.db.insert("groups", {
+    name: cleanName(name),
+    createdBy: userId,
+    timezone,
+    e2eRun,
+    holdEnabled,
+  });
   await addMember(ctx, groupId, userId, "creator");
   const inviteCode = newCode();
   await ctx.db.insert("invites", { code: inviteCode, groupId, createdBy: userId, kind: "group", revoked: false });
