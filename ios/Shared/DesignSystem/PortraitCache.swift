@@ -70,10 +70,16 @@ final class PortraitCache: @unchecked Sendable {
     }
 
     func warm(_ refs: [PortraitRef]) async {
-        for ref in refs where !isWarm(ref) {
-            guard let data = await bytes(ref.url) else { continue }
-            hydrate(data, id: ref.id, url: ref.url)
+        await withTaskGroup(of: Void.self) { group in
+            for ref in refs where !isWarm(ref) {
+                group.addTask { await self.warm(ref) }
+            }
         }
+    }
+
+    private func warm(_ ref: PortraitRef) async {
+        guard let data = await bytes(ref.url) else { return }
+        hydrate(data, id: ref.id, url: ref.url)
     }
 
     private func isWarm(_ ref: PortraitRef) -> Bool {
