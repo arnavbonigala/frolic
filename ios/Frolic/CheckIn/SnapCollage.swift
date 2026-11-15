@@ -207,11 +207,11 @@ struct SnapCollage: View {
     @ViewBuilder
     private func photo(for person: WirePerson, index: Int) -> some View {
         if store.isMe(person), let shot = store.myShot {
-            Image(uiImage: shot).resizable().scaledToFill()
+            Image(uiImage: shot).resizable().scaledToFill().accessibilityHidden(true)
         } else if let url = snapURL(for: person) {
             AsyncImage(url: url) { phase in
                 if let image = phase.image {
-                    image.resizable().scaledToFill()
+                    image.resizable().scaledToFill().accessibilityHidden(true)
                 } else {
                     waiting(for: person, label: phase.error == nil ? "Developing" : "Couldn't load theirs")
                 }
@@ -230,6 +230,7 @@ struct SnapCollage: View {
             FrolicColor.chip
             VStack(spacing: 8) {
                 FlowerView(state: .bud, color: person.flower, radius: 18, stem: 18)
+                    .accessibilityHidden(true)
                 Text(label)
                     .font(.system(.caption, weight: .semibold))
                     .foregroundStyle(FrolicColor.secondaryText)
