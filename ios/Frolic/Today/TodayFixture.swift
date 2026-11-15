@@ -83,7 +83,8 @@ struct TodayFixture {
                 plan: plan
             ),
             myTap: myTap,
-            reveal: reveal
+            reveal: reveal,
+            frolicNumber: 13
         )
         crew = CrewView(groupName: "Sunset Crew", members: members, holdEnabled: query["hold"] != "off")
         payment = Self.payment(query["pay"])
@@ -157,6 +158,7 @@ struct TodayFixture {
         case "bail": .bail
         case "hold": .hold
         case "free": .free
+        case "imfree": .imFree
         default: nil
         }
     }

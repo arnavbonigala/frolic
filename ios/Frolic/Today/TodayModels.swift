@@ -96,6 +96,7 @@ struct TodayView: Codable, Hashable {
     var frolic: TodayFrolic?
     var myTap: TodayTap?
     var reveal: TodayReveal?
+    var frolicNumber: Double?
 }
 
 struct TodayPayment: Codable, Hashable {

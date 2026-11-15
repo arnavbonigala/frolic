@@ -92,7 +92,7 @@ struct TodayScreen: View {
                 onRetry: { store.retry(backend: backend, route: route) }
             )
         case .empty:
-            TodayNoPlan(title: "No plan yet", message: "Today's plan arrives at 3. Your crew's flowers bloom here when they're free.")
+            TodayNoPlanStart(store: store)
         case .ready:
             TodayPhaseView(store: store, router: router)
         }
@@ -166,7 +166,7 @@ private struct TodayPhaseView: View {
         Group {
             switch store.scene {
             case .none:
-                TodayNoPlan(title: "No plan yet", message: "Today's plan arrives at 3. Your crew's flowers bloom here when they're free.")
+                TodayNoPlanStart(store: store)
             case .solo(let waiting):
                 TodaySoloView(store: store, waiting: waiting)
             case .off:
@@ -202,7 +202,7 @@ private struct TodayPlanPacket: View {
         let title = plan?.title ?? ""
         TodayPacket(
             label: label ?? "TODAY · " + TodayCopy.weekday(plan?.startsAt ?? store.now()),
-            number: number ?? store.today?.groupName,
+            number: number ?? store.today?.frolicNumber.map { "Crew frolic No. \(Int($0))" } ?? store.today?.groupName,
             hero: plan?.heroKey,
             heroURL: plan?.place?.photoUrl,
             heroDescription: title,
@@ -642,6 +642,43 @@ private struct TodayDoneView: View {
             TodayMoneyCard(store: store)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
+        }
+    }
+}
+
+private struct TodayNoPlanStart: View {
+    var store: TodayStore
+    @Environment(\.todayOnline) private var online
+
+    var body: some View {
+        if store.startingPlan {
+            VStack(spacing: 0) {
+                TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson])
+                TodayCaption(text: "Your bud is planted. Picking a plan for whoever's free", identifier: "today.caption.waiting", showsDots: true)
+                    .padding(.horizontal, 22)
+                TodaySkeleton()
+                    .padding(.top, -128)
+                    .accessibilityHidden(true)
+            }
+        } else {
+            VStack(spacing: 0) {
+                TodayNoPlan(title: "No plan yet", message: "Today's plan arrives at 3. Your crew's flowers bloom here when they're free.")
+                if store.startFailed {
+                    TodayStatusCard(title: "That didn't start", message: "Nobody was told. Try again, or wait for today's plan at 3.")
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .accessibilityIdentifier("today.imFree.error")
+                }
+                if store.imFreeEnabled {
+                    Button("I'm free") { store.sheet = .imFree }
+                        .buttonStyle(.frolicPrimary)
+                        .disabled(!online)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 18)
+                        .accessibilityIdentifier("today.imFree")
+                    TodayHush(text: "Your crew gets a plan. Nobody sees who started it.", identifier: "today.imFree.hush")
+                }
+            }
         }
     }
 }

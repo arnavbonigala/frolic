@@ -31,6 +31,7 @@ final class TodayStore {
         case bail
         case hold
         case free
+        case imFree
 
         var id: String { rawValue }
     }
@@ -50,6 +51,9 @@ final class TodayStore {
     private(set) var pending: PendingTap?
     private(set) var pendingFree: CrewFree?
     private(set) var isFixture = false
+    private(set) var startingPlan = false
+    private(set) var startFailed = false
+    var imFreeEnabled = TodayFeatures.imFree
 
     var sheet: Sheet?
     var picks: Set<String> = []
@@ -301,6 +305,37 @@ final class TodayStore {
         showNotice("Back in. " + TodayCopy.freeLabel(pendingFree))
     }
 
+    func imFree(minutes: Double) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        sheet = nil
+        startFailed = false
+        startingPlan = true
+        let end = now() + minutes * 60_000
+        pendingFree = CrewFree(state: "now", window: TodayWindow(start: now(), end: end), minutesAway: myFree?.minutesAway, updatedAt: now())
+        guard !isFixture, let client, let groupId = identity.groupId else {
+            if isFixture {
+                tasks.append(Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    self?.startingPlan = false
+                    self?.startFailed = true
+                })
+            }
+            return
+        }
+        let token = identity.deviceToken
+        tasks.append(Task { [weak self] in
+            do {
+                try await client.mutation("frolics:imFree", with: ["deviceToken": token, "groupId": groupId, "forMinutes": minutes])
+            } catch {
+                guard let self else { return }
+                self.startingPlan = false
+                self.startFailed = true
+                self.pendingFree = nil
+                self.fail(error)
+            }
+        })
+    }
+
     func onMyWay() {
         guard let frolicId = frolic?.frolicId else { return }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -512,6 +547,7 @@ final class TodayStore {
     private func apply(_ view: TodayView) {
         today = view
         load = .ready
+        if view.phase != .none { startingPlan = false }
         if let pending, confirms(pending) {
             self.pending = nil
         }
@@ -532,6 +568,7 @@ final class TodayStore {
         bloomed = false
         bloomedFrolic = nil
         scheduleBloom()
+        imFreeEnabled = TodayFeatures.imFree || route.query["imfree"] != nil
         if fixture.sheet == .onlyIf {
             picks = Set(route.query["picks"].map { $0.split(separator: ",").map(String.init) } ?? [])
         }
@@ -622,4 +659,8 @@ struct TodayShareItem: Identifiable, Hashable {
     var url: URL
     var title: String
     var id: String { url.absoluteString }
+}
+
+enum TodayFeatures {
+    static let imFree = false
 }

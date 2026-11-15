@@ -13,6 +13,7 @@ struct TodaySheetHost: View {
             case .bail: TodayBailSheet(store: store)
             case .hold: TodayHoldSheet(store: store)
             case .free: TodayFreeSheet(store: store)
+            case .imFree: TodayImFreeSheet(store: store)
             }
         }
         .padding(.horizontal, 20)
@@ -353,6 +354,29 @@ private struct TodayFreeSheet: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
         .accessibilityIdentifier(id)
+    }
+}
+
+private struct TodayImFreeSheet: View {
+    var store: TodayStore
+
+    var body: some View {
+        let tonight = max(60, (TodayCopy.todayAt(hour: 23) - store.now()) / 60_000)
+        let options: [(String, Double, String)] = [("1 hour", 60, "1h"), ("2 hours", 120, "2h"), ("3 hours", 180, "3h"), ("Tonight", tonight, "tonight")]
+        VStack(alignment: .leading, spacing: 0) {
+            TodaySheetTitle(text: "I'm free for", identifier: "imFree.sheet.title")
+            TodaySheetBody(text: "Frolic picks a plan now and counts you as down. Your crew never sees who started it.")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                ForEach(options, id: \.2) { option in
+                    Button(option.0) { store.imFree(minutes: option.1.rounded()) }
+                        .buttonStyle(.frolicSecondaryWide)
+                        .accessibilityIdentifier("imFree.sheet.\(option.2)")
+                }
+            }
+            .padding(.top, 16)
+            Spacer(minLength: 0)
+        }
+        .presentationDetents([.height(320), .large])
     }
 }
 
