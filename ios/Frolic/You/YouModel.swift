@@ -125,6 +125,12 @@ enum YouAccountPhase: Equatable {
     case failed
 }
 
+enum YouCountPhase: Equatable {
+    case loading
+    case ready
+    case failed
+}
+
 @MainActor
 @Observable
 final class YouModel {
@@ -138,11 +144,14 @@ final class YouModel {
     var readCalendar = YouPreferences.readCalendar
     var tasteTags: [String] = []
     var wentCount: Int?
+    var countPhase: YouCountPhase = .loading
     var savePhase: YouSavePhase = .idle
     var accountPhase: YouAccountPhase = .idle
 
     @ObservationIgnored private var hasLoaded = false
     @ObservationIgnored private var cardOverride: YouCard?
+    @ObservationIgnored private var countOverride: YouCountPhase?
+    @ObservationIgnored private var countTask: Task<Void, Never>?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
 
     init() {
@@ -222,6 +231,15 @@ final class YouModel {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
             await self?.flush(backend: backend)
+        }
+    }
+
+    func retryCount(backend: FrolicBackend) {
+        countTask?.cancel()
+        countOverride = nil
+        countPhase = .loading
+        countTask = Task { [weak self] in
+            await self?.restartCount(backend: backend)
         }
     }
 
@@ -353,7 +371,14 @@ final class YouModel {
     }
 
     private func trackCount(client: ConvexClient, token: String) async {
-        guard let groupId = await resolvedGroupId() else { return }
+        if let countOverride {
+            countPhase = countOverride
+            return
+        }
+        guard let groupId = await resolvedGroupId() else {
+            countPhase = .failed
+            return
+        }
         let publisher = client.subscribe(
             to: "garden:overview",
             with: ["deviceToken": token, "groupId": groupId],
@@ -362,10 +387,22 @@ final class YouModel {
         do {
             for try await overview in publisher.values {
                 wentCount = overview.yourCount ?? overview.memories.filter(\.youWent).count
+                countPhase = .ready
             }
+        } catch is CancellationError {
+            return
         } catch {
+            countPhase = .failed
+        }
+    }
+
+    private func restartCount(backend: FrolicBackend) async {
+        let token = FrolicIdentity.shared.deviceToken
+        guard let client = try? backend.requireClient() else {
+            countPhase = .failed
             return
         }
+        await trackCount(client: client, token: token)
     }
 
     private func resolvedGroupId() async -> String? {
@@ -434,6 +471,9 @@ final class YouModel {
         if route.query["went"] != nil {
             cardOverride = .wentSample
         }
+        countOverride = nil
+        if route.query["count"] == "error" { countOverride = .failed }
+        if route.query["count"] == "loading" { countOverride = .loading }
         if let taste = route.query["taste"] {
             tasteTags = taste
                 .split(separator: ",")
