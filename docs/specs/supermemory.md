@@ -16,7 +16,7 @@ Every person and every group gets a private Supermemory namespace (the v5 name f
 ## Advanced capabilities we use
 
 1. Per-namespace supportingContext, so the group namespace extracts tastes, places and price feel, and the personal one extracts limits and preferences.
-2. Profile buckets on the group (likes, avoids, vibe, budget, rhythm) and on the person (limits, only_if, diet). The taste card reads the buckets directly.
+2. Profile buckets on the group (likes, avoids, vibe, budget, rhythm) and on the person (limits, only_if). The taste card reads the buckets directly.
 3. Graph updates and derives: a later loved night supersedes an earlier skip of the same tag; "golden-hour chasers" is a derived memory, not a stored string. Search with include.related gives the chain behind a why line.
 4. Typed metadata filters (kind, tag, placeId, day) so a why line only cites check-in, snap and night memories, never skips or taps.
 5. Stable document ids per event, so retries never duplicate and a repeated event is a no-op.
@@ -41,7 +41,7 @@ Not built, in the report: memory graph visual on a web page, memory review of in
 | snap caption | yes | yes, after reveal |
 | limits (budget, no car, vegetarian) | yes | never |
 
-The mapping lives in one pure function (`convex/memory/events.ts`), keyed by event kind, which returns the namespace and text. Group-scoped kinds refuse a payload that carries a user id other than for an already revealed member list, and reveal/check-in/snap events carry a `revealAt`; the flusher refuses to write a group event before it. Tests assert no group write for tap, skip, only if and limits.
+The mapping lives in one pure function (`convex/memory/mapping.ts`), keyed by event kind, which returns the namespace and text. Reveal, check-in and snap events must carry a `revealAt` (recordEvent refuses them otherwise) and the flusher holds the whole event until then; liked-tag counters are bumped only when the reveal event has been sent. Tests assert no group write for tap, skip, only if and limits.
 
 Skips in aggregate: skips are personal. `closeDay(group, day)` runs after the day ends, counts a tag as skipped for the group once if the plan was shown, nobody revealed, and at least one skip was recorded. The counter has no person ids. Counter (Convex table, since Supermemory is not an aggregate store) drives suppression; a one-line group memory ("The crew passed on boba 2 times") goes to Supermemory so the taste profile reflects it.
 

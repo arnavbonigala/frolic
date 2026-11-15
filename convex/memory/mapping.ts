@@ -52,6 +52,7 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
     date: day(e),
   });
   const who = str(e.payload.name, "Someone");
+  if ((e.kind === "reveal" || e.kind === "checkin" || e.kind === "snap") && e.revealAt === undefined) throw new Error(e.kind + " needs revealAt");
 
   switch (e.kind) {
     case "group_skip": {
@@ -90,7 +91,7 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
             date: day(e),
           })),
         ],
-        notBefore: e.revealAt ?? 0,
+        notBefore: e.revealAt!,
       };
     }
     case "checkin":
@@ -99,7 +100,7 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
           personal("checkin", "Checked in at " + where + "."),
           group("checkin", who + " checked in at " + where + "."),
         ],
-        notBefore: e.revealAt ?? 0,
+        notBefore: e.revealAt!,
       };
     case "snap": {
       const caption = str(e.payload.caption);
@@ -108,7 +109,7 @@ export function planWrites(eventKey: string, e: EventInput): { writes: MemoryWri
           personal("snap", "Snap at " + where + (caption ? ": " + caption : "") + "."),
           group("snap", who + " took a snap at " + where + (caption ? ": " + caption : "") + "."),
         ],
-        notBefore: e.revealAt ?? 0,
+        notBefore: e.revealAt!,
       };
     }
   }

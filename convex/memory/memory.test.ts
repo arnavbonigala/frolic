@@ -148,6 +148,17 @@ describe("ingest", () => {
     expect(await t.action(internal.memory.ingest.flushDue, {})).toBe(1);
   });
 
+  test("a reveal without revealAt is refused", async () => {
+    const { t, maya, groupId } = await seed();
+    await expect(t.mutation(internal.memory.events.recordEvent, { eventKey: "r0", kind: "reveal", groupId, payload: { memberIds: [maya] } })).rejects.toThrow("needs revealAt");
+  });
+
+  test("tap-derived liked tags are not published before the reveal is sent", async () => {
+    const { t, maya, groupId } = await seed();
+    await t.mutation(internal.memory.events.recordEvent, { eventKey: "r1", kind: "reveal", groupId, revealAt: Date.now() + 60_000, payload: { tags: ["sunset"], memberIds: [maya] } });
+    expect(await t.run((ctx) => ctx.db.query("memoryTagStats").collect())).toEqual([]);
+  });
+
   test("iMessage is accepted as an event source", async () => {
     const { t, maya, groupId } = await seed();
     const r = await t.mutation(internal.memory.events.recordEvent, { eventKey: "im:1", kind: "skip", groupId, userId: maya, payload: { title: "Boba" }, source: "imessage" });
@@ -203,7 +214,11 @@ describe("stats and context", () => {
     expect(searches()).toBe(1);
     await t.action(internal.memory.read.getMemoryContext, { groupId, day: "d" });
     expect(searches()).toBe(1);
-    await t.mutation(internal.memory.events.recordEvent, { eventKey: "rev", kind: "reveal", groupId, revealAt: Date.now(), payload: { title: "Rock", tags: ["sunset"], memberIds: [maya] } });
+    const { eventId } = await t.mutation(internal.memory.events.recordEvent, { eventKey: "rev", kind: "reveal", groupId, revealAt: Date.now() + 60_000, payload: { title: "Rock", tags: ["sunset"], memberIds: [maya] } });
+    await t.action(internal.memory.read.getMemoryContext, { groupId, day: "d" });
+    expect(searches()).toBe(1);
+    await t.run((ctx) => ctx.db.patch("memoryEvents", eventId as never, { nextAttemptAt: Date.now() - 1 }));
+    await t.action(internal.memory.ingest.flushEvent, { eventId });
     const c = await t.action(internal.memory.read.getMemoryContext, { groupId, day: "d" });
     expect(searches()).toBe(2);
     expect(c.likedTags).toEqual(["sunset"]);
@@ -221,11 +236,44 @@ describe("stats and context", () => {
     expect(await t.action(internal.memory.read.whyThis, { groupId, tags: ["bowling"] })).toBeNull();
   });
 
-  test("tasteProfile reads the group profile", async () => {
-    const { t, groupId } = await seed();
+  test("tasteProfile falls back to a house-voice template, never a raw tag list", async () => {
+    const { t, maya, groupId } = await seed();
+    await t.mutation(internal.memory.events.recordEvent, { eventKey: "rv", kind: "reveal", groupId, revealAt: Date.now() - 1, payload: { title: "Rock", tags: ["sunset"], memberIds: [maya] } });
+    const rows = await t.run((ctx) => ctx.db.query("memoryEvents").collect());
+    await t.action(internal.memory.ingest.flushEvent, { eventId: rows[0]._id });
     const taste = await t.action(internal.memory.read.tasteProfile, { groupId });
-    expect(taste.likes).toEqual([]);
+    expect(taste).toMatchObject({ headline: "Sunset Crew", source: "template", storedAt: null });
+    expect(taste.inputs.topTags).toEqual(["sunset"]);
     expect(fake.calls.some((c) => c.path === "/ns/" + groupNamespace(groupId) + "/profile")).toBe(true);
+  });
+
+  test("a stored device line wins and carries its source", async () => {
+    const { t, groupId } = await seed();
+    await t.mutation(internal.memory.read.setTasteHeadline, { groupId, headline: "Sunset Crew", why: "Golden-hour chasers, under 10 dollars.", source: "device" });
+    const taste = await t.action(internal.memory.read.tasteProfile, { groupId });
+    expect(taste).toMatchObject({ headline: "Sunset Crew", why: "Golden-hour chasers, under 10 dollars.", source: "device" });
+    expect(taste.storedAt).toBeGreaterThan(0);
+  });
+
+  test("setTasteHeadline rejects copy that breaks the rules and overwrites on update", async () => {
+    const { t, groupId } = await seed();
+    await expect(t.mutation(internal.memory.read.setTasteHeadline, { groupId, headline: "Sunset Crew!", why: "ok", source: "device" })).rejects.toThrow("exclamation");
+    await t.mutation(internal.memory.read.setTasteHeadline, { groupId, headline: "A", why: "b", source: "device" });
+    await t.mutation(internal.memory.read.setTasteHeadline, { groupId, headline: "Fresh Air Club", why: "Happiest outside.", source: "template" });
+    expect(await t.query(internal.memory.read.storedTasteLine, { groupId })).toMatchObject({ headline: "Fresh Air Club", source: "template" });
+    expect(await t.run((ctx) => ctx.db.query("tasteProfiles").collect())).toHaveLength(1);
+  });
+
+  test("recentFrolics returns on and done frolics with their plan title", async () => {
+    const { t, maya, groupId } = await seed();
+    await t.run(async (ctx) => {
+      const place = await ctx.db.insert("places", { slug: "p", name: "Indian Rock", lat: 0, lng: 0, cost: 0, tags: ["sunset"], hours: [], indoor: false, sober: true });
+      const planId = await ctx.db.insert("plans", { groupId, day: "2026-11-14", kind: "daily", placeId: place, title: "Sunset at Indian Rock", line: "l", cost: 0, startsAt: 0, durationMinutes: 60, source: "scorer", generatedAt: 0 });
+      await ctx.db.insert("frolics", { groupId, day: "2026-11-14", kind: "daily", planId, status: "done", window: { start: 0, end: 1 }, durationMinutes: 60, deadline: 0 });
+      await ctx.db.insert("frolics", { groupId, day: "2026-11-15", kind: "daily", status: "open", window: { start: 0, end: 1 }, durationMinutes: 60, deadline: 0 });
+    });
+    expect(await t.query(internal.memory.read.recentFrolics, { groupId })).toEqual([{ day: "2026-11-14", title: "Sunset at Indian Rock" }]);
+    void maya;
   });
 });
 

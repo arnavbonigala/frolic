@@ -539,6 +539,10 @@ export default defineSchema({
     groupId: v.id("groups"),
     tags: v.array(v.string()),
     card: v.optional(v.string()),
+    headline: v.optional(v.string()),
+    why: v.optional(v.string()),
+    source: v.optional(v.union(v.literal("device"), v.literal("template"), v.literal("haiku"))),
+    headlineAt: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_groupId", ["groupId"]),
 });

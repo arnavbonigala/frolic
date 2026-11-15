@@ -20,7 +20,7 @@ export const eventKind = v.union(
 export const eventSource = v.union(v.literal("app"), v.literal("web"), v.literal("notification"), v.literal("imessage"));
 
 export const MAX_ATTEMPTS = 6;
-export const LEASE_MS = 60_000;
+export const LEASE_MS = 300_000;
 
 export const eventArgs = {
   eventKey: v.string(),
@@ -69,11 +69,6 @@ export async function enqueue(ctx: MutationCtx, args: EventInput & { eventKey: s
     attempts: 0,
     nextAttemptAt,
   });
-  if (args.kind === "reveal") {
-    const tags = Array.isArray(args.payload?.tags) ? (args.payload.tags as unknown[]).filter((t): t is string => typeof t === "string") : [];
-    for (const tag of tags) await bumpTagStat(ctx, args.groupId, tag, "liked");
-    await invalidateContext(ctx, args.groupId);
-  }
   await ctx.scheduler.runAfter(nextAttemptAt - now, internal.memory.ingest.flushEvent, { eventId });
   return { queued: true as const, eventId };
 }
@@ -99,7 +94,14 @@ export const claimEvent = internalMutation({
 export const markSent = internalMutation({
   args: { eventId: v.id("memoryEvents") },
   handler: async (ctx, { eventId }) => {
+    const event = await ctx.db.get("memoryEvents", eventId);
+    if (!event || event.status === "sent") return null;
     await ctx.db.patch("memoryEvents", eventId, { status: "sent", lastError: undefined });
+    if (event.kind === "reveal") {
+      const tags = Array.isArray(event.payload?.tags) ? (event.payload.tags as unknown[]).filter((t): t is string => typeof t === "string") : [];
+      for (const tag of tags) await bumpTagStat(ctx, event.groupId, tag, "liked");
+      await invalidateContext(ctx, event.groupId);
+    }
     return null;
   },
 });

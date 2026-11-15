@@ -3,6 +3,7 @@ import { internalAction, internalMutation, internalQuery } from "../_generated/s
 import { internal } from "../_generated/api";
 import { getClient } from "./ingest";
 import { buildContext, buildTaste, findWhyThis, type MemoryContext, type TasteProfile, type WhyThis } from "./context";
+import { templateTaste, validateTasteLine, type TasteLine } from "./taste";
 import { groupNamespace } from "./mapping";
 
 export const cached = internalQuery({
@@ -41,10 +42,75 @@ export const whyThis = internalAction({
     findWhyThis(getClient(), groupNamespace(groupId), tags).catch(() => null),
 });
 
+export const setTasteHeadline = internalMutation({
+  args: {
+    groupId: v.id("groups"),
+    headline: v.string(),
+    why: v.string(),
+    source: v.union(v.literal("device"), v.literal("template"), v.literal("haiku")),
+  },
+  handler: async (ctx, { groupId, headline, why, source }) => {
+    const problem = validateTasteLine({ headline, why });
+    if (problem) throw new Error(problem);
+    const row = await ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", groupId)).unique();
+    const fields = { headline: headline.trim(), why: why.trim(), source, headlineAt: Date.now(), updatedAt: Date.now() };
+    if (row) await ctx.db.patch("tasteProfiles", row._id, fields);
+    else await ctx.db.insert("tasteProfiles", { groupId, tags: [], ...fields });
+    return null;
+  },
+});
+
+export const storedTasteLine = internalQuery({
+  args: { groupId: v.id("groups") },
+  handler: async (ctx, { groupId }) => {
+    const row = await ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", groupId)).unique();
+    if (!row?.headline || !row.why || !row.source) return null;
+    return { headline: row.headline, why: row.why, source: row.source, at: row.headlineAt ?? row.updatedAt };
+  },
+});
+
+export const recentFrolics = internalQuery({
+  args: { groupId: v.id("groups") },
+  handler: async (ctx, { groupId }) => {
+    const rows = await ctx.db.query("frolics").withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId)).order("desc").take(20);
+    const out: { day: string; title: string }[] = [];
+    for (const f of rows) {
+      if (f.status !== "on" && f.status !== "done") continue;
+      const plan = f.planId ? await ctx.db.get("plans", f.planId) : null;
+      out.push({ day: f.day, title: plan?.title ?? "A frolic" });
+      if (out.length === 5) break;
+    }
+    return out;
+  },
+});
+
+export type TasteResult = TasteLine & {
+  likes: string[];
+  avoids: string[];
+  vibe: string[];
+  budget: string[];
+  topTags: string[];
+  inputs: { topTags: string[]; budget: string[]; recentFrolics: { day: string; title: string }[] };
+  storedAt: number | null;
+};
+
 export const tasteProfile = internalAction({
   args: { groupId: v.id("groups") },
-  handler: async (ctx, { groupId }): Promise<TasteProfile> => {
+  handler: async (ctx, { groupId }): Promise<TasteResult> => {
     const stats = await ctx.runQuery(internal.memory.stats.tagStats, { groupId });
-    return buildTaste(getClient(), groupNamespace(groupId), stats);
+    const taste: TasteProfile = await buildTaste(getClient(), groupNamespace(groupId), stats).catch(() => ({ headline: "", likes: [], avoids: [], vibe: [], budget: [], topTags: stats.filter((s) => s.liked > 0).sort((a, b) => b.liked - a.liked).slice(0, 3).map((s) => s.tag) }));
+    const stored = await ctx.runQuery(internal.memory.read.storedTasteLine, { groupId });
+    const recent = await ctx.runQuery(internal.memory.read.recentFrolics, { groupId });
+    const line: TasteLine = stored ?? templateTaste(taste.topTags, taste.budget);
+    return {
+      ...line,
+      likes: taste.likes,
+      avoids: taste.avoids,
+      vibe: taste.vibe,
+      budget: taste.budget,
+      topTags: taste.topTags,
+      inputs: { topTags: taste.topTags, budget: taste.budget, recentFrolics: recent },
+      storedAt: stored?.at ?? null,
+    };
   },
 });
