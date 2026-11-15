@@ -9,7 +9,7 @@
 <p align="center">
   <img src="docs/screens/welcome-live.png" width="190" alt="Welcome screen">
   <img src="docs/screens/today-live.png" width="190" alt="Today: one plan for the crew">
-  <img src="docs/screens/on-live.png" width="190" alt="It's on: the reveal">
+  <img src="docs/screens/its-on.png" width="190" alt="It's on: the reveal">
   <img src="docs/screens/pay-live.png" width="190" alt="The $3 hold, paid through Whop">
 </p>
 <p align="center">
