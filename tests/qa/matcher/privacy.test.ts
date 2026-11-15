@@ -60,6 +60,7 @@ const QUERY_REGISTRY: Record<string, ArgsFor> = {
   "crew:looking": () => ({ roomToken: "qa-room-token" }),
   "crews:mine": (f, observer) => ({ deviceToken: f.tokens[observer] }),
   "you:totals": (f, observer) => ({ deviceToken: f.tokens[observer] }),
+  "taste:crew": (f, observer) => ({ deviceToken: f.tokens[observer], groupId: f.groupId }),
   "etas:forFrolic": (f, observer) => ({
     deviceToken: f.tokens[observer],
     frolicId: f.frolicId,
@@ -142,7 +143,7 @@ async function resolveQueries(t: any, f: Fixture, observer: string): Promise<Cal
   const { resolved, unresolved } = await auditSurface(t, f, observer);
   expect(
     unresolved,
-    "every public query must be registered here with its real arguments, or this audit is blind to it",
+    "every public query must be registered here with its real arguments, or this audit is blind to it " + JSON.stringify(unresolved),
   ).toEqual([]);
   expect(resolved.length, "at least one public query must exist to audit").toBeGreaterThan(0);
   const keys = resolved.map((c) => `${c.entry.module}:${c.entry.name}`);
