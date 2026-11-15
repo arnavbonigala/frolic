@@ -232,7 +232,7 @@ struct SmallTodayView: View {
                 WidgetPillButton(title: LockScreenCopy.down, intent: ImDownIntent(), id: "widget.down")
             }
         case .waiting(let s):
-            WidgetMessage(illustration: "state-waiting", title: LockScreenCopy.planted, line: s.onlyIf.isEmpty ? LockScreenCopy.hush : LockScreenCopy.onlyIfLine(s.onlyIf), compact: true)
+            WidgetMessage(illustration: "state-waiting", title: s.onlyIf.isEmpty ? LockScreenCopy.planted : LockScreenCopy.onlyIfLine(s.onlyIf), line: LockScreenCopy.waitingLine, compact: true)
         case .on(let s):
             VStack(alignment: .leading, spacing: 4) {
                 FlowerRow(people: s.going, radius: 12, label: "Going: " + LockScreenCopy.list(s.going.map(\.name)))
@@ -316,7 +316,7 @@ struct MediumTodayView: View {
                 PaintedImage(name: "state-waiting", fill: false)
                     .frame(width: 110)
                     .accessibilityHidden(true)
-                WidgetMessage(illustration: nil, title: LockScreenCopy.planted, line: s.onlyIf.isEmpty ? "\(s.planTitle ?? "Today's plan"). \(LockScreenCopy.hush)." : "\(LockScreenCopy.onlyIfLine(s.onlyIf)). \(LockScreenCopy.hush).", compact: false)
+                WidgetMessage(illustration: nil, title: s.onlyIf.isEmpty ? LockScreenCopy.planted : LockScreenCopy.onlyIfLine(s.onlyIf), line: LockScreenCopy.hush, compact: false)
             }
         case .on(let s):
             HStack(spacing: 12) {
@@ -379,14 +379,14 @@ struct StateMessage: View {
         case .signedOut:
             content(illustration: "launch-meadow", title: "Frolic", line: LockScreenCopy.signedOut)
         case .loading:
-            content(illustration: "state-waiting", title: "Today's plan", line: "Finding your crew's plan")
+            content(illustration: "state-waiting", title: "Today's plan", line: "Loading")
                 .redacted(reason: .placeholder)
         case .dayOff:
             content(illustration: nil, title: LockScreenCopy.dayOff, line: LockScreenCopy.dayOffLine)
         case .faded(let s):
             content(illustration: "state-faded", title: LockScreenCopy.drifted, line: compact ? LockScreenCopy.nextDrop : "\(s.planTitle.map { "\($0) quietly faded. " } ?? "")\(LockScreenCopy.nextDrop)")
         case .done(let s):
-            content(illustration: "state-its-on", title: s.amGoing ? "Planted in the garden" : LockScreenCopy.noPlanYet, line: s.amGoing ? LockScreenCopy.bloomedLine(going: s.going.map(\.name), meName: s.me?.name, place: s.placeName) : LockScreenCopy.nextDrop)
+            content(illustration: "state-its-on", title: s.amGoing ? (s.placeName ?? "You went") : LockScreenCopy.noPlanYet, line: s.amGoing ? LockScreenCopy.bloomedLine(going: s.going.map(\.name), meName: s.me?.name, place: s.placeName) : LockScreenCopy.nextDrop)
         case .none:
             content(illustration: "launch-meadow", title: LockScreenCopy.noPlanYet, line: LockScreenCopy.todayArrives)
         case .error(let message):

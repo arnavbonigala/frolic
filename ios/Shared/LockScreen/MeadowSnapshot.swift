@@ -9,7 +9,7 @@ struct MeadowSnapshot: Codable, Equatable {
     var healthLine: String?
 
     static let widgetKind = "FrolicMeadow"
-    static let quietLine = "The meadow's quiet right now."
+    static let quietLine = "Quiet right now"
     static let tapLine = "Tap if you're free"
     private static let cacheKey = "lockscreen.meadow"
 
@@ -19,7 +19,7 @@ struct MeadowSnapshot: Codable, Equatable {
         if !freeNow.isEmpty {
             return "\(LockScreenCopy.list(freeNow.map(\.name))) \(freeNow.count == 1 ? "is" : "are") free right now"
         }
-        if isAlone { return "Your meadow grows with your crew" }
+        if isAlone { return "Just you so far" }
         return healthLine ?? Self.quietLine
     }
 

@@ -8,7 +8,8 @@ enum LockScreenCopy {
     static let hopIn = "Hop in"
     static let onMyWay = "I'm on my way"
     static let imHere = "I'm here"
-    static let planted = "Your bud is planted. Waiting for a friend"
+    static let planted = "You're down"
+    static let waitingLine = "Waiting for a friend"
     static let hush = "Nobody sees you're down unless they are too"
     static let itsOn = "It's on."
     static let drifted = "This one drifted off"
@@ -21,7 +22,7 @@ enum LockScreenCopy {
     static let errorTitle = "Couldn't reach Frolic"
     static let offlineTitle = "You're offline"
     static let tryAgain = "Try again"
-    static let tapFailed = "Couldn't plant your bud. Open Frolic to try again."
+    static let tapFailed = "Couldn't send that. Open Frolic to try again."
     static let notYet = "Today's plan isn't out yet. Try again in a minute."
 
     static func list(_ names: [String]) -> String {
@@ -76,6 +77,6 @@ enum LockScreenCopy {
     }
 
     static func bloomedLine(going: [String], meName: String?, place: String?) -> String {
-        "\(goingLine(going, meName: meName, amGoing: true)) bloomed at \(place ?? "the spot") today."
+        "\(goingLine(going, meName: meName, amGoing: true)) went to \(place ?? "the spot") today."
     }
 }

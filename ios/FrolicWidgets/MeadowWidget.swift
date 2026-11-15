@@ -65,8 +65,8 @@ struct MeadowWidget: Widget {
         StaticConfiguration(kind: MeadowSnapshot.widgetKind, provider: MeadowProvider()) { entry in
             MeadowWidgetView(entry: entry)
         }
-        .configurationDisplayName("Meadow")
-        .description("Your crew's flowers bloom when they're free.")
+        .configurationDisplayName("Who's free")
+        .description("See which friends are free right now.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -88,8 +88,8 @@ struct MeadowWidgetView: View {
     private var title: String {
         switch entry.content {
         case .signedOut: "Frolic"
-        case .loading: "Your meadow"
-        case .failure: "The meadow's out of reach"
+        case .loading: "Your crew"
+        case .failure: "Can't reach your crew"
         case .fresh(let s), .stale(let s): s.headline
         }
     }
@@ -97,11 +97,11 @@ struct MeadowWidgetView: View {
     private var line: String {
         switch entry.content {
         case .signedOut: LockScreenCopy.signedOut
-        case .loading: "Checking who's free"
-        case .failure(.offline): "You're offline. It'll catch up when you're back."
-        case .failure: "Frolic couldn't reach your crew. It'll try again soon."
+        case .loading: "Loading"
+        case .failure(.offline): "You're offline"
+        case .failure: "Trying again soon"
         case .stale(let s): "Last checked \(LockScreenCopy.time(s.fetchedAt))"
-        case .fresh(let s): s.isAlone ? "Invite a friend from the Crew tab" : MeadowSnapshot.tapLine
+        case .fresh(let s): s.isAlone ? "Invite a friend" : MeadowSnapshot.tapLine
         }
     }
 

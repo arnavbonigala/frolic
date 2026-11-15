@@ -18,7 +18,7 @@ enum DropNotifications {
             identifier: category,
             actions: [down, onlyIf, notToday],
             intentIdentifiers: [],
-            hiddenPreviewsBodyPlaceholder: "Today's plan is in",
+            hiddenPreviewsBodyPlaceholder: "Today's plan",
             options: [.customDismissAction]
         )
         UNUserNotificationCenter.current().setNotificationCategories([drop])

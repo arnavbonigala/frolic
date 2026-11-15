@@ -39,7 +39,7 @@ struct AccessoryRectangularView: View {
                 }
             }
         case .waiting(let s):
-            lines("Your bud is planted", s.onlyIf.isEmpty ? "Waiting for a friend" : LockScreenCopy.onlyIfLine(s.onlyIf))
+            lines(s.onlyIf.isEmpty ? LockScreenCopy.planted : LockScreenCopy.onlyIfLine(s.onlyIf), LockScreenCopy.waitingLine)
         case .on(let s):
             lines("\(LockScreenCopy.itsOn) \(s.startsAt.map(LockScreenCopy.time) ?? "")", LockScreenCopy.goingLine(s.going.map(\.name), meName: s.me?.name, amGoing: s.amGoing))
         case .dayOff:
@@ -47,7 +47,7 @@ struct AccessoryRectangularView: View {
         case .faded:
             lines(LockScreenCopy.drifted, LockScreenCopy.nextDrop)
         case .done(let s):
-            lines(s.placeName ?? "Frolic", s.amGoing ? "Planted in the garden" : LockScreenCopy.nextDrop)
+            lines(s.placeName ?? "Frolic", s.amGoing ? "You went" : LockScreenCopy.nextDrop)
         case .none:
             lines(LockScreenCopy.noPlanYet, LockScreenCopy.todayArrives)
         case .signedOut:
@@ -96,7 +96,7 @@ struct AccessoryCircularView: View {
                 .accessibilityLabel(LockScreenCopy.freeLine(s.free.map(\.name)))
             case .waiting:
                 FlowerView(state: .bud, color: .marigold, radius: 12, stem: 0)
-                    .accessibilityLabel("Your bud is planted")
+                    .accessibilityLabel(LockScreenCopy.planted)
             case .on(let s):
                 VStack(spacing: 0) {
                     Text("On")
@@ -121,7 +121,7 @@ struct AccessoryInlineView: View {
     var body: some View {
         switch display {
         case .open(let s): Text("\(s.planTitle ?? "Today's plan") · \(s.free.count) free")
-        case .waiting: Text("Your bud is planted")
+        case .waiting: Text(LockScreenCopy.planted)
         case .on(let s): Text("It's on · \(s.startsAt.map(LockScreenCopy.time) ?? "")")
         case .hopIn: Text("Room for one more")
         case .faded: Text(LockScreenCopy.drifted)
