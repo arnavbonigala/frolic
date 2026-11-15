@@ -180,9 +180,61 @@ describe("garden overview", () => {
     expect(memory.title).toBe("Sunset at Indian Rock");
   });
 
+  test("a person sets their own photo and caption on a memory", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await t.mutation(internal.reveal.complete, { frolicId: crew.frolicId });
+    const storageId = await t.run(async (ctx) =>
+      ctx.storage.store(new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0x02])])),
+    );
+    await t.mutation(api.garden.setMine, {
+      deviceToken: token("Maya"),
+      frolicId: crew.frolicId,
+      storageId,
+      caption: "the sky did the rest",
+    });
+    const memory = await t.query(api.garden.memory, { deviceToken: token("Dev"), frolicId: crew.frolicId });
+    expect(memory.photos).toHaveLength(1);
+    expect(memory.photos[0].caption).toBe("the sky did the rest");
+
+    await t.mutation(api.garden.setMine, {
+      deviceToken: token("Maya"),
+      frolicId: crew.frolicId,
+      caption: "same rock, better light",
+    });
+    const again = await t.query(api.garden.memory, { deviceToken: token("Dev"), frolicId: crew.frolicId });
+    expect(again.photos).toHaveLength(1);
+    expect(again.photos[0].caption).toBe("same rock, better light");
+  });
+
+  test("setMine refuses someone who was not going, a stranger, and bad copy", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await expect(
+      t.mutation(api.garden.setMine, { deviceToken: token("Jordan"), frolicId: crew.frolicId, caption: "hi" }),
+    ).rejects.toThrow(/people who went/);
+    await t.mutation(api.users.createGroup, { deviceToken: token("Eve"), firstName: "Eve", groupName: "Other" });
+    await expect(
+      t.mutation(api.garden.setMine, { deviceToken: token("Eve"), frolicId: crew.frolicId, caption: "hi" }),
+    ).rejects.toThrow(/not in this crew/);
+    await expect(
+      t.mutation(api.garden.setMine, { deviceToken: token("Maya"), frolicId: crew.frolicId, caption: "so fun!" }),
+    ).rejects.toThrow(/Captions/);
+    await expect(
+      t.mutation(api.garden.setMine, { deviceToken: token("Maya"), frolicId: crew.frolicId }),
+    ).rejects.toThrow(/Add a photo/);
+  });
+
   test("a frolic that never happened is not a memory", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev"]);
+    await t.run(async (ctx) => ctx.db.patch("frolics", crew.frolicId, { status: "faded" }));
     await expect(
       t.query(api.garden.memory, { deviceToken: token("Maya"), frolicId: crew.frolicId }),
     ).rejects.toThrow(/did not happen/);

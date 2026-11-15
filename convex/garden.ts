@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { query, type QueryCtx } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { templateCopy } from "./ai/copy";
 import { heroKeyOf } from "./lib/heroArt";
 import { requireMember, userFromToken } from "./lib/identity";
@@ -237,7 +237,7 @@ export const memory = query({
     await requireMember(ctx, frolic.groupId, user._id);
     const group = await ctx.db.get("groups", frolic.groupId);
     if (!group) throw new ConvexError({ code: "NOT_FOUND", message: "This crew is gone" });
-    if (frolic.status !== "on" && frolic.status !== "done") {
+    if (frolic.status === "faded") {
       throw new ConvexError({ code: "NOT_FOUND", message: "This frolic did not happen" });
     }
     const memberships = await ctx.db
@@ -264,7 +264,7 @@ export const memory = query({
       if (url) {
         photos.push({
           url,
-          caption: captionFor(place?.name ?? "the park", frolic.day, going.length),
+          caption: snap.caption ?? captionFor(place?.name ?? "the park", frolic.day, going.length),
         });
       }
     }
@@ -284,5 +284,61 @@ export const memory = query({
       going: await people(ctx, memberships, going.map((a) => a.userId)),
       photos,
     };
+  },
+});
+
+export const setMine = mutation({
+  args: {
+    deviceToken: v.string(),
+    frolicId: v.id("frolics"),
+    storageId: v.optional(v.id("_storage")),
+    caption: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    const frolic = await ctx.db.get("frolics", args.frolicId);
+    if (!frolic) throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
+    await requireMember(ctx, frolic.groupId, user._id);
+    if (frolic.status === "faded") {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This frolic did not happen" });
+    }
+    const attendee = await ctx.db
+      .query("attendees")
+      .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", args.frolicId).eq("userId", user._id))
+      .unique();
+    if (attendee?.status !== "going") {
+      throw new ConvexError({ code: "NOT_GOING", message: "Memories are for people who went" });
+    }
+    const caption = args.caption?.trim();
+    if (caption !== undefined && (caption.length === 0 || caption.length > 80 || /[\u2014!]/.test(caption))) {
+      throw new ConvexError({ code: "BAD_CAPTION", message: "Captions are short and calm, up to 80 characters" });
+    }
+    const existing = await ctx.db
+      .query("snaps")
+      .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", args.frolicId).eq("userId", user._id))
+      .take(20);
+    const mine = existing[existing.length - 1];
+    const now = Date.now();
+    if (mine) {
+      await ctx.db.patch("snaps", mine._id, {
+        ...(args.storageId !== undefined ? { storageId: args.storageId } : {}),
+        ...(caption !== undefined ? { caption } : {}),
+      });
+      return null;
+    }
+    if (args.storageId === undefined) {
+      throw new ConvexError({ code: "NO_PHOTO", message: "Add a photo first" });
+    }
+    await ctx.db.insert("snaps", {
+      frolicId: args.frolicId,
+      groupId: frolic.groupId,
+      userId: user._id,
+      storageId: args.storageId,
+      snapAt: frolic.snapAt ?? now,
+      takenAt: now,
+      caption,
+    });
+    return null;
   },
 });

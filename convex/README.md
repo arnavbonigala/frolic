@@ -349,3 +349,5 @@ The e2e demo seed sets those four portraits and flower colours, so the app, the 
 - `photos` are server URLs oldest first with a generated caption each, and stay hidden from you while the frolic is still happening until you add your own snap. Once it is `done`, every photo is visible to the crew.
 - `fundLine` reads `The Frolic Fund covered $8 of this one.` when the fund paid into that frolic.
 - Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND` (`This frolic did not happen` for a frolic that never matched).
+
+**`garden.setMine({ deviceToken, frolicId, storageId?, caption? })`** is how a person adds their own photo memory or caption to a frolic they went to. It writes to `snaps` as that person, so their photo unlocks the crew's photos for them, and the caption replaces the generated one for their snap. Rules: you must be in the crew, the frolic must not have faded, and you must have been going. A caption is 1 to 80 characters with no em dash and no exclamation mark. Calling it again updates the same snap. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND`, `NOT_GOING`, `BAD_CAPTION`, `NO_PHOTO`.
