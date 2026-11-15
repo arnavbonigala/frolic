@@ -6,7 +6,7 @@ if [ ! -d "$deps/node_modules/yaml" ]; then
   mkdir -p "$deps"
   npm install --prefix "$deps" --silent --no-fund --no-audit yaml@2
 fi
-node "$here/lint.mjs" "$@"
+node "$here/tools/lint.mjs" "$@"
 echo "--- revyl backend validation (needs revyl auth login) ---"
 if revyl auth status >/dev/null 2>&1; then
   revyl test validate "$here/flows"/*.yaml
