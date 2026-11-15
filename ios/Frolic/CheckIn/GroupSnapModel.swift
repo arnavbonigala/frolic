@@ -113,6 +113,7 @@ final class GroupSnapModel {
                 stage = .failed("The camera didn't catch it. Try again together.")
                 return
             }
+            guard !Task.isCancelled else { return }
             photo = image
             stage = .uploading
             do {

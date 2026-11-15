@@ -761,10 +761,12 @@ final class TodayStore {
             return
         }
         bloomTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(max(wait - 4, 0) * 1_000_000))
+            let lead = min(max(wait - 4, 0), 86_400_000)
+            try? await Task.sleep(nanoseconds: UInt64(lead * 1_000_000))
             guard let self, !Task.isCancelled else { return }
             while self.now() < target {
-                try? await Task.sleep(nanoseconds: 1_000_000)
+                let left = min(max(target - self.now(), 1), 1_000_000)
+                try? await Task.sleep(nanoseconds: UInt64(left * 1_000_000))
                 if Task.isCancelled { return }
             }
             self.flip(frolicId: frolicId, animated: true)
