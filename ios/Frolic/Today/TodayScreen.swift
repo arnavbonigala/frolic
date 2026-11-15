@@ -671,8 +671,13 @@ private struct TodayOnView: View {
             .padding(.horizontal, 24)
             .padding(.top, 6)
             VStack(spacing: 12) {
-                StoryPrimaryButton(title: "I'm on my way", systemImage: "figure.walk") { store.onMyWay() }
-                    .accessibilityIdentifier("today.on.otw")
+                if let hold = holdDue {
+                    StoryPrimaryButton(title: "Hold \(TodayCopy.money(cents: hold.amountCents))", systemImage: "lock.fill") { store.sheet = .hold }
+                        .accessibilityIdentifier("today.on.hold")
+                } else {
+                    StoryPrimaryButton(title: "I'm on my way", systemImage: "figure.walk") { store.onMyWay() }
+                        .accessibilityIdentifier("today.on.otw")
+                }
                 Button { directions(plan) } label: {
                     Label("Directions", systemImage: "map.fill")
                         .todayFont(17, .semibold, rounded: true, relativeTo: .headline)
@@ -685,15 +690,22 @@ private struct TodayOnView: View {
             }
             .padding(.horizontal, 24)
             .padding(.top, 24)
-            TodayMoneyCard(store: store)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+            if holdDue == nil {
+                TodayMoneyCard(store: store)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+            }
             Button("I can't make it") { store.sheet = .bail }
                 .buttonStyle(.frolicText)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
                 .accessibilityIdentifier("today.on.bail")
         }
+    }
+
+    private var holdDue: TodayPayment? {
+        guard let payment = store.visiblePayment, payment.kind == "hold", ["due", "failed"].contains(payment.state) else { return nil }
+        return payment
     }
 
     private func meetLine(_ plan: TodayPlan?) -> Text {
