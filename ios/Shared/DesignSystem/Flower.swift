@@ -123,9 +123,7 @@ struct FlowerView: View {
                 .resizable()
                 .scaledToFill()
         } else if let url = person.avatarURL {
-            AsyncImage(url: url) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
+            CachedPortrait(url: url) {
                 initial(for: person)
             }
         } else {

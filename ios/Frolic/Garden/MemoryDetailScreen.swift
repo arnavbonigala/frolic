@@ -152,7 +152,7 @@ struct MemoryDetailScreen: View {
                             .foregroundStyle(FrolicColor.ink)
                     }
                     if let caption = memory.caption, !caption.isEmpty {
-                        Text(caption)
+                        Text(GardenSentence.from(caption))
                             .frolicFont(.subheadline)
                             .foregroundStyle(FrolicColor.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -209,7 +209,7 @@ struct MemoryDetailScreen: View {
                     GardenRemoteImage(url: photo.url, heroKey: photo.heroKey ?? memory.heroKey)
                         .frame(width: 130, height: 160)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .accessibilityLabel(Text(photo.caption ?? "Photo from \(memory.title)"))
+                        .accessibilityLabel(Text(photo.caption.map(GardenSentence.from) ?? "Photo from \(memory.title)"))
                 }
             }
             .padding(.horizontal, 18)
@@ -220,7 +220,8 @@ struct MemoryDetailScreen: View {
 
     private func canAddPhoto(_ memory: GardenMemory) -> Bool {
         guard let me = store.myUserId else { return false }
-        return memory.going.contains { $0.userId == me }
+        guard memory.going.contains(where: { $0.userId == me }) else { return false }
+        return !memory.photos.contains { !$0.url.isEmpty }
     }
 
     private func upload(_ item: PhotosPickerItem) async {
@@ -256,11 +257,19 @@ struct MemoryDetailScreen: View {
     }
 
     private func shareMemory() {
+        let urls = (memory?.going ?? row.going).compactMap { $0.photoUrl.flatMap(URL.init(string:)) }
+        Task {
+            for url in urls { await PortraitCache.shared.load(url) }
+            renderShare()
+        }
+    }
+
+    private func renderShare() {
         let card = GardenStoryCard(
             groupName: row.dateLine,
             countLine: row.namesLine(me: store.myUserId),
             line: memory?.title ?? row.title,
-            detail: memory?.caption,
+            detail: memory?.caption.map(GardenSentence.from),
             people: memory?.going ?? row.going
         )
         guard let image = GardenStoryRenderer.image(card: card) else {
