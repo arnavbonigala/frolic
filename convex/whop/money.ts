@@ -369,11 +369,32 @@ export const noShowSweep = internalMutation({
   },
 });
 
+const WHEN = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  weekday: "short",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function whenLabel(startsAt: number | undefined, now: number): string {
+  if (startsAt === undefined) return "";
+  const day = (t: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", dateStyle: "short" }).format(t);
+  const time = WHEN.format(startsAt).replace(/^[A-Za-z]{3},?\s*/, "");
+  return day(startsAt) === day(now) ? `Today at ${time}` : `${WHEN.format(startsAt)}`;
+}
+
 export const payView = internalQuery({
   args: { token: v.string() },
   returns: v.union(
-    v.object({ ok: v.literal(true), title: v.string(), kind: v.union(v.literal("deposit"), v.literal("chipIn")), amountCents: v.number() }),
-    v.object({ ok: v.literal(false), message: v.string() }),
+    v.object({
+      ok: v.literal(true),
+      title: v.string(),
+      when: v.string(),
+      kind: v.union(v.literal("deposit"), v.literal("chipIn")),
+      amountCents: v.number(),
+      fundCents: v.number(),
+    }),
+    v.object({ ok: v.literal(false), message: v.string(), art: v.optional(v.literal("released")) }),
   ),
   handler: async (ctx, { token }) => {
     const share = await ctx.db.query("shares").withIndex("by_token", (q) => q.eq("token", token)).unique();
@@ -383,9 +404,20 @@ export const payView = internalQuery({
     if (!frolic || frolic.status !== "on" || frolic.revealAt === undefined || frolic.revealAt > now || (frolic.endsAt !== undefined && now >= frolic.endsAt)) {
       return { ok: false as const, message: "This one is not happening right now." };
     }
-    if (share.status !== "due" && share.status !== "failed") return { ok: false as const, message: "You're already set for this one." };
+    if (share.status !== "due" && share.status !== "failed") {
+      return { ok: false as const, message: "You're already set for this one.", art: share.kind === "deposit" ? ("released" as const) : undefined };
+    }
     const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
-    return { ok: true as const, title: plan?.title ?? "Today's frolic", kind: share.kind, amountCents: share.amountCents };
+    const per = await perPersonCents(ctx, frolic);
+    const fundCents = share.kind === "chipIn" ? Math.max(0, per - share.amountCents) : 0;
+    return {
+      ok: true as const,
+      title: plan?.title ?? "Today's frolic",
+      when: whenLabel(frolic.startsAt, now),
+      kind: share.kind,
+      amountCents: share.amountCents,
+      fundCents,
+    };
   },
 });
 

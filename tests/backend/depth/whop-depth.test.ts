@@ -136,14 +136,17 @@ describe("share reads", () => {
     expect(await t.query(internal.whop.money.payView, { token: "due-token" })).toEqual({
       ok: true,
       title: "Today's frolic",
+      when: expect.any(String),
       kind: "deposit",
       amountCents: 300,
+      fundCents: 0,
     });
 
     await t.run(async (ctx) => await ctx.db.patch("shares", due, { status: "held" }));
     expect(await t.query(internal.whop.money.payView, { token: "due-token" })).toEqual({
       ok: false,
       message: "You're already set for this one.",
+      art: "released",
     });
 
     const other = await share(t, state, state.ids.Dev, { token: "late-token" });
