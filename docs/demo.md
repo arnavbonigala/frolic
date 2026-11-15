@@ -79,6 +79,7 @@ Read this before promising the run to anyone. Each item is a beat that has no pa
 4. **The three-phone recording.** Beat 6 is the only beat with no substitute. It needs an iOS build on `main`, the three `/e2e/*` routes, and a Revyl run. If it is 5:30 and there is no recording, the Revyl moment is the replay links at beat 12 and the demo says so.
 5. **A live Supermemory read in plan generation.** The memory layer is tested, but no plan calls it yet. Until plan generation reads `getMemoryContext`, beat 13 shows the garden and the quoted memory from a seeded record, which is honest if the presenter says "seeded" once.
 6. **A no-show on cue.** Capture runs 45 minutes after the start, so beat 9 needs a seeded frolic whose start has already passed, and the sweep run once from the dashboard while Jordan's phone is face down. If the sweep is not the demo's to run, the fund tick is a screenshot and the presenter says so.
+7. **A web yes that matches an app yes.** The page and its routes are built and 13 of its 18 tests pass. The five that fail are the five that need the tap mutation, which the matcher lane has not written: `Could not find module for: "taps"`. The QR code in the after-demo section only works once that lands.
 
 ## The taps
 
@@ -116,7 +117,9 @@ Each key names the failure, the recovery, and the exact words. Never say "let me
 
 ## What the judges can hold afterwards
 
-Hand over three things, in this order: the mock on a laptop (every screen, interactive, no account), the three-phone recording, and the pull request trail. The mock is the only one that needs no explanation.
+Hand over four things, in this order: the mock on a laptop (every screen, interactive, no account), the three-phone recording, the pull request trail, and a QR code to today's web page. The mock is the only one that needs no explanation.
+
+The QR code is worth having because a judge tapping "I'm down" in a browser and watching our phone bloom is the strongest thing in the demo that a judge does themselves. It only works once the web yes can reach the matcher, so print it at 5:30, not before, and only if the five blocked web tests have gone green.
 
 ---
 
@@ -126,10 +129,10 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 | Sponsor | Tier | Demo beat | Status today | Evidence |
 | - | - | - | - | - |
-| Convex | required | Both taps in the dashboard while every phone shows a private bud, then both flip from one server timestamp | 23 tables, Workflow, Presence and Rate Limiter mounted, and the router wiring, on `schema-matcher` (PR #1, draft). Matcher, reveal and tests pending. | `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts` on that branch, read by this thread |
+| Convex | required | Both taps in the dashboard while every phone shows a private bud, then both flip from one server timestamp | 23 tables, Workflow, Presence and Rate Limiter mounted, and the router wiring, on `schema-matcher` (PR #1, draft). The matcher and the reveal are not written. Two suites already test them. | `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts` on that branch, read by this thread. `convex/qa/matcher/` (PR #7) and `tests/web.test.ts` (PR #5) bind to the functions that do not exist yet |
 | Whop | Tier 1 | The $3 hold at the reveal, released by arrival, the no-show feeding the Frolic Fund, the paid plan split with the fund first | Spec only (PR #3, draft). Nothing built. | `docs/specs/whop.md` on the spec branch |
 | Keiki | Tier 1 | One friend on the app, one on the lock screen, one only in iMessage, all revealing together | Agent prompt on `main`. Routes and agent number pending. | `docs/keiki-system-prompt.md` |
-| Supermemory | required | Two skips and boba stops being suggested, and the "why this" line quotes a memory | Code and tests on branch `memory`, not merged. | `convex/memory/*` on that branch |
+| Supermemory | required | Two skips and boba stops being suggested, and the "why this" line quotes a memory | Built and proven against the real API on branch `memory` (PR #4, open). The plan path does not call it yet. | 42 tests plus a live proof under `SUPERMEMORY_LIVE=1`, per `reports/ARN-6.md`; this thread reran the 42 and the typecheck |
 | Revyl | required | Cloud phones flipping with ours, offsets burned in, the three-phone recorded run | 44 flows and the run plan on `e2e/revyl-harness` (PR #2, draft). Never run: no build, no login. | `e2e/` lint at 0 errors, 44 files |
 | Capy | required | The pull request trail with replays, and the reports in the Drive | This thread, and every lane that opened a PR today | PRs #1, #2, #3, `reports/` in the Captain Drive |
 
@@ -143,7 +146,7 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 - The Workflow component for plan generation, mounted in `convex/convex.config.ts`, called from `convex/plans/`. The Presence component for who has the app open, and the Rate Limiter for the tap and invite routes, both mounted in the same file.
 - Scheduler and crons for the daily drop and the fade: `convex/crons.ts` calls `registerPlanCrons` in `convex/plans/crons.ts`.
 - File storage for the group snap, one `_storage` id per shot in `convex/schema.ts` and the collage row beside it.
-- HTTP actions for the web "I'm down" page, the Whop webhook and the Keiki routes: `convex/http.ts` registers `convex/web/routes.ts`, `convex/whop/routes.ts` and `convex/keiki/routes.ts`. The router is the schema lane's file; each lane fills its own.
+- HTTP actions for the web "I'm down" page, the Whop webhook and the Keiki routes: `convex/http.ts` registers `convex/web/routes.ts`, `convex/whop/routes.ts` and `convex/keiki/routes.ts`. The router is the schema lane's file; each lane fills its own. The web page is written (PR #5): one route serves the seed packet card, a first-name field and a secret yes, and the page flips live over its own subscription when the match lands.
 - Tests everywhere: vitest and convex-test, one suite per function, with the matcher's race and privacy cases written as tests rather than claims.
 
 **Where it lives.** `convex/schema.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts`, `convex/matcher.ts`, `convex/reveal.ts`, `convex/taps.ts`, `convex/frolics.ts`, `convex/plans/`, `convex/memory/`, `convex/whop/`, `convex/keiki/`, `convex/web/`.
@@ -171,7 +174,9 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 The hold amount is still a decision. The spec proposes $3, and the demo works the same at $1, so the number follows Arnav's call rather than the other way round.
 
-**If it is not ready.** The dashboard and the state machine narrated, with the spec's state diagram on screen. Do not mime a payment.
+One operational fact the spec found by probing the company, and it matters on stage: the only Whop key on our machines is a **production** key. There is no sandbox key yet, so every hold in a rehearsal is real money on a real card. A voided hold costs nothing and a captured no-show costs the amount plus the 2.7 percent processing fee, which is why the hold stays small. Say which mode the demo is in before it starts, and never leave a hold open: an uncaptured hold lapses on its own within five days, but a captured one is a charge someone has to refund.
+
+**If it is not ready.** If no hidden Frolic product and no hold variant exist, the beat cannot run at all, because a hold needs a variant to authorize against. Then the dashboard and the state machine are narrated over the rehearsal's payments, with the spec's state diagram on screen. Do not mime a payment.
 
 ## Keiki
 
@@ -203,7 +208,9 @@ The hold amount is still a decision. The spec proposes $3, and the demo works th
 
 **The moment.** At t58 the crew's two skipped days for boba stop boba from being suggested, and the "why this" line quotes the memory it learned from, with the graph chain visible in one search. It is the only beat where the app changes what it offers because of something nobody typed.
 
-**Status.** On branch `memory`, not merged. The suite passes: 42 tests in 4 files (`npx vitest run`, Nov 15 18:48) and `npx tsc --noEmit -p convex` is clean, run against that branch by this thread. The live half is not proven: no run against the real API here, which needs `SUPERMEMORY_LIVE=1` and the key, and the read path into plan generation is called by no lane yet. Until a live run lands, the Supermemory beat runs from the recorded thread or the live script (F9).
+**Status.** Built and proven on branch `memory`, PR #4, open against `schema-matcher`. Two things are independently true. The lane reports a live run against the real API: two group skips suppressed boba, a why line returned a stored night, and a personal limit never showed up in a group search (`reports/ARN-6.md`). And this thread reran the offline suite on that branch: 42 tests in 4 files pass and `npx tsc --noEmit -p convex` exits clean (Nov 15 18:48).
+
+What is still missing for beat 13 is the join: no plan generation calls `getMemoryContext` or `whyThis` yet, so a plan cannot quote the memory on screen until the plan lane wires it. Until then the beat shows the garden and the quoted memory from the seeded record, and the presenter says the word seeded once (F9).
 
 ## Revyl
 
