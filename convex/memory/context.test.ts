@@ -51,6 +51,16 @@ describe("context", () => {
     expect(why).toEqual({ memoryId: "b", text: "Two friends went to Marina (sunset).", because: ["Sunset is the crew's favorite."] });
   });
 
+  test("findWhyThis prefers the most recent matching night", async () => {
+    const client = fake({
+      search: vi.fn().mockResolvedValue([
+        { id: "old", memory: "Two friends went to Marina (sunset).", metadata: { day: "2026-10-01" } },
+        { id: "new", memory: "Two friends went to Indian Rock (sunset).", metadata: { day: "2026-11-08" } },
+      ]),
+    });
+    expect((await findWhyThis(client, "n", ["sunset"]))?.memoryId).toBe("new");
+  });
+
   test("findWhyThis returns null when nothing matches", async () => {
     expect(await findWhyThis(fake(), "n", ["sunset"])).toBeNull();
     expect(await findWhyThis(fake(), "n", [])).toBeNull();

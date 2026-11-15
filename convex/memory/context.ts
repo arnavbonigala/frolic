@@ -82,7 +82,11 @@ export async function findWhyThis(client: MemoryClient, namespace: string, tags:
     searchMode: "hybrid",
   });
   const lower = tags.map((t) => t.toLowerCase());
-  const hit = results.find((r) => lower.some((t) => text(r).toLowerCase().includes(t))) ?? null;
+  const dayOf = (r: SearchResult) => (typeof r.metadata?.day === "string" ? r.metadata.day : "");
+  const hit =
+    results
+      .filter((r) => lower.some((t) => text(r).toLowerCase().includes(t)))
+      .sort((a, b) => dayOf(b).localeCompare(dayOf(a)))[0] ?? null;
   if (!hit) return null;
   const related = [...(hit.included?.related?.parents ?? []), ...(hit.included?.related?.siblings ?? [])].map((m) => m.memory ?? "").filter(Boolean);
   return { memoryId: hit.id, text: text(hit), because: related.slice(0, 2) };

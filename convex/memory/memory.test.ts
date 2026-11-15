@@ -148,6 +148,14 @@ describe("ingest", () => {
     expect(await t.action(internal.memory.ingest.flushDue, {})).toBe(1);
   });
 
+  test("a check-in recorded without revealAt is held to now instead of failing the check-in", async () => {
+    const { t, maya, groupId } = await seed();
+    const r = await t.mutation(internal.memory.events.recordEvent, { eventKey: "ci:1", kind: "checkin", groupId, userId: maya, payload: { placeName: "Indian Rock" } });
+    expect(r.queued).toBe(true);
+    const row = await t.run((ctx) => ctx.db.get("memoryEvents", r.eventId));
+    expect(row!.revealAt).toBeDefined();
+  });
+
   test("a reveal without revealAt is refused", async () => {
     const { t, maya, groupId } = await seed();
     await expect(t.mutation(internal.memory.events.recordEvent, { eventKey: "r0", kind: "reveal", groupId, payload: { memberIds: [maya] } })).rejects.toThrow("needs revealAt");

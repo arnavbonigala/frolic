@@ -111,6 +111,15 @@ describe("the live skip beat, through the real mutations", () => {
     expect(rows[0].why).toContain(place.name);
   });
 
+  test("the e2e beat helper suppresses boba for a seeded run and refuses an unknown run", async () => {
+    const t = makeT();
+    await t.mutation(internal.places.seed.seedPlaces, {});
+    await t.mutation(internal.e2e.admin.seed, { run: "beat1", scenario: "demo" });
+    const done = await t.mutation(internal.memory.e2eBeat.skipBobaTwice, { run: "beat1" });
+    expect(done).toEqual({ suppressed: ["boba"], days: ["2026-11-01", "2026-11-02"] });
+    expect(await t.mutation(internal.memory.e2eBeat.skipBobaTwice, { run: "nope" })).toBeNull();
+  });
+
   test("one person passing twice does not stop it", async () => {
     const c = await crew();
     await bobaDay(c, "2026-11-13", ["Maya"]);
