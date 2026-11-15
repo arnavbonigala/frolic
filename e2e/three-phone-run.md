@@ -48,7 +48,7 @@ Every run starts clean, and the run id is unique so nothing leaks between rehear
     curl -s -X POST "$FROLIC_E2E_URL/e2e/reset" -H "x-e2e-secret: $FROLIC_E2E_SECRET" -H 'content-type: application/json' -d "{\"run\":\"$FROLIC_E2E_RUN\"}"
     curl -s -X POST "$FROLIC_E2E_URL/e2e/seed"  -H "x-e2e-secret: $FROLIC_E2E_SECRET" -H 'content-type: application/json' -d "{\"run\":\"$FROLIC_E2E_RUN\"}"
 
-The seed response's `users.maya.link`, `.dev.link` and `.jordan.link` go into the run as test variables `maya_link`, `dev_link`, `jordan_link`. Do not wait on `reveal_at` from the seed: it comes back null, because `revealAt` is only written when the matcher finds a match. The clock the run works to comes from the barrier below, and the reveal log is read afterwards to prove exactly one reveal.
+The seed response's `users.maya.link`, `.dev.link` and `.jordan.link` go into the run as test variables `maya_link`, `dev_link`, `jordan_link`. Each comes back as `frolic://signin?deviceToken=..&groupId=..`; the app also takes `frolic://e2e/signin?token=..&group=..`, so pass either and do not rewrite them. Do not wait on `reveal_at` from the seed: it comes back null, because `revealAt` is only written when the matcher finds a match. The clock the run works to comes from the barrier below, and the reveal log is read afterwards to prove exactly one reveal.
 
 Reset after a run too, so the next rehearsal never inherits a tap.
 

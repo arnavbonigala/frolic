@@ -32,3 +32,5 @@ test:
       step_description: "A row starting \"Tomorrow:\" reads \"Maya and Dev are kayaking. There's room for you.\""
     - type: "validation"
       step_description: "The bottom tab bar shows Today, Crew, Garden and You with Today selected"
+    - type: "validation"
+      step_description: "The tab bar exposes the identifiers tab.today, tab.crew, tab.garden and tab.you, with tab.today selected"
