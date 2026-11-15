@@ -64,8 +64,8 @@ struct PhasePlaceholder: View {
                 FlowerView(state: .bloom, color: color, radius: 30, stem: 44)
                     .accessibilityHidden(true)
                 message(title: copy.emptyTitle, body: copy.emptyMessage)
-                if let action = copy.emptyAction {
-                    Button(action) { onEmptyAction?() }
+                if let action = copy.emptyAction, let onEmptyAction {
+                    Button(action, action: onEmptyAction)
                         .buttonStyle(.frolicPrimary)
                         .padding(.top, 6)
                 }
