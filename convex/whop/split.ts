@@ -3,7 +3,10 @@ export type Split = { appliedCents: number; shares: number[] };
 export function splitCost(perPersonCents: number, people: number, fundCents: number, minChargeCents: number): Split {
   if (people <= 0 || perPersonCents <= 0) return { appliedCents: 0, shares: [] };
   const total = perPersonCents * people;
-  const appliedCents = Math.max(0, Math.min(fundCents, total));
+  let appliedCents = Math.max(0, Math.min(fundCents, total));
+  if (appliedCents < total && total - appliedCents < people * minChargeCents) {
+    appliedCents = total >= people * minChargeCents ? total - people * minChargeCents : 0;
+  }
   const due = total - appliedCents;
   const base = Math.floor(due / people);
   const extra = due - base * people;

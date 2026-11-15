@@ -63,10 +63,27 @@ export const charge = internalAction({
   },
 });
 
-export const reconcile = internalAction({
-  args: { shareId: v.id("shares") },
+export const voidOrphan = internalAction({
+  args: { shareId: v.id("shares"), paymentId: v.string() },
   returns: v.null(),
-  handler: async (ctx, { shareId }): Promise<null> => {
+  handler: async (_ctx, { shareId, paymentId }): Promise<null> => {
+    try {
+      await whop.voidPayment(paymentId, `${shareId}:orphan:${paymentId}`);
+    } catch {
+      try {
+        await whop.refundPayment(paymentId, `${shareId}:orphan-refund:${paymentId}`);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  },
+});
+
+export const reconcile = internalAction({
+  args: { shareId: v.id("shares"), errors: v.optional(v.number()) },
+  returns: v.null(),
+  handler: async (ctx, { shareId, errors }): Promise<null> => {
     const share: ShareView = await ctx.runQuery(internal.whop.money.getShare, { shareId });
     if (!share || !["pending", "held", "releasing", "refunding"].includes(share.status)) return null;
     if (!share.whopPaymentId) {
@@ -82,8 +99,13 @@ export const reconcile = internalAction({
       const { signal, amountAfterFeesCents } = await readSignal(payment);
       const expired = payment.capture_expires_at ? Date.parse(payment.capture_expires_at) < Date.now() : false;
       await ctx.runMutation(internal.whop.money.signal, { shareId, signal: expired && signal === "authorized" ? "canceled" : signal, amountAfterFeesCents });
-    } catch {
-      await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId });
+    } catch (e) {
+      const n = (errors ?? 0) + 1;
+      if (n >= policy.maxReconcileErrors) {
+        await ctx.runMutation(internal.whop.money.settle, { shareId, status: "needsAttention", message: errorText(e) });
+        return null;
+      }
+      await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId, errors: n });
       return null;
     }
     const after: ShareView = await ctx.runQuery(internal.whop.money.getShare, { shareId });

@@ -128,6 +128,62 @@ async function hold(t: T, crew: Crew, name: string) {
   return await shareOf(t, crew, name);
 }
 
+async function paidCrew(t: T, names = ["Maya", "Dev", "Jordan"]) {
+  const crew = await setupCrew(t, names);
+  const placeId = await t.run(
+    async (ctx) =>
+      await ctx.db.insert("places", {
+        slug: "sunset-park",
+        name: "Sunset Park",
+        lat: 37.8,
+        lng: -122.5,
+        cost: 8,
+        tags: [],
+        hours: [],
+        indoor: false,
+        sober: true,
+        title: "Sunset Park",
+        address: "1 Sunset Way",
+        costPerPersonCents: 800,
+        costLabel: "$8",
+        payUpFront: true,
+        priceVerified: true,
+        energy: "chill",
+        needsDaylight: false,
+        durationMinutes: 60,
+        meetSpot: "The gate",
+        source: "seed",
+      }),
+  );
+  const planId = await t.run(
+    async (ctx) =>
+      await ctx.db.insert("plans", {
+        groupId: crew.groupId,
+        day: "2026-11-15",
+        kind: "daily",
+        placeId,
+        title: "Sunset Park",
+        line: "Golden hour at the water",
+        cost: 8,
+        startsAt: NOON + HOUR,
+        durationMinutes: 60,
+        source: "fallback",
+        generatedAt: NOON,
+        costLabel: "$8",
+        payUpFront: true,
+        chips: [],
+        whySource: "template",
+        whyInputs: { placeName: "Sunset Park", topTags: [], rainSwap: false },
+        weatherSwap: false,
+      }),
+  );
+  await t.run(async (ctx) => {
+    await ctx.db.patch("frolics", crew.frolicId, { planId });
+    await ctx.db.insert("fundLedger", { groupId: crew.groupId, entry: "deposit", amountCents: 300, at: NOON });
+  });
+  return crew;
+}
+
 describe("splitCost", () => {
   test("splits the plan across people, leaning on the fund first", () => {
     expect(splitCost(800, 3, 0, 100)).toEqual({ appliedCents: 0, shares: [800, 800, 800] });
@@ -146,7 +202,18 @@ describe("splitCost", () => {
 
   test("rounds a sub dollar share up to the minimum charge", () => {
     expect(splitCost(50, 3, 0, 100)).toEqual({ appliedCents: 0, shares: [100, 100, 100] });
-    expect(splitCost(30, 3, 10, 100)).toEqual({ appliedCents: 10, shares: [100, 100, 100] });
+    expect(splitCost(30, 3, 10, 100)).toEqual({ appliedCents: 0, shares: [100, 100, 100] });
+  });
+
+  test("leaves fund money unspent rather than collect more than the plan costs", () => {
+    expect(splitCost(120, 3, 100, 100)).toEqual({ appliedCents: 60, shares: [100, 100, 100] });
+    expect(splitCost(150, 2, 250, 100)).toEqual({ appliedCents: 100, shares: [100, 100] });
+    for (const [per, people, fund] of [[120, 3, 100], [999, 4, 3500], [101, 5, 7], [400, 3, 1150]]) {
+      const split = splitCost(per, people, fund, 100);
+      const collected = split.appliedCents + split.shares.reduce((a, b) => a + b, 0);
+      expect(collected).toBe(per * people);
+      expect(split.shares.every((c) => c === 0 || c >= 100)).toBe(true);
+    }
   });
 });
 
@@ -361,6 +428,60 @@ describe("holds, check ins, no shows", () => {
     expect(calls.filter((c) => c.path.endsWith("/void")).map((c) => c.path)).toEqual(["/payments/pay_1/void"]);
   });
 
+  test("a second payment for a share that already has one is voided and the first is kept", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    const held = await hold(t, crew, "Maya");
+    expect(held.whopPaymentId).toBe("pay_1");
+
+    await t.mutation(internal.whop.money.recordCharge, { shareId: held._id, whopPaymentId: "pay_9", signal: "authorized" });
+    await drain(t);
+
+    const after = await shareOf(t, crew, "Maya");
+    expect(after).toMatchObject({ status: "held", whopPaymentId: "pay_1" });
+    expect(calls.some((c) => c.method === "POST" && c.path === "/payments/pay_9/void")).toBe(true);
+    expect(calls.some((c) => c.path === "/payments/pay_1/void")).toBe(false);
+  });
+
+  test("calling off a paid plan refunds the friends still going and puts the fund money back", async () => {
+    const t = makeT();
+    const crew = await paidCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    created = { status: "paid", substatus: "succeeded" };
+    await hold(t, crew, "Maya");
+    await hold(t, crew, "Dev");
+    expect((await ledgerRows(t, crew.groupId)).map((r) => [r.entry, r.amountCents])).toEqual([
+      ["deposit", 300],
+      ["payout", -300],
+    ]);
+
+    await t.mutation(api.frolics.sitOut, { deviceToken: token("Dev"), frolicId: crew.frolicId });
+    await drain(t);
+
+    expect((await shareOf(t, crew, "Maya")).status).toBe("refunded");
+    expect((await shareOf(t, crew, "Dev")).status).toBe("paid");
+    expect(calls.some((c) => c.method === "POST" && c.path === "/payments/pay_1/refund")).toBe(true);
+    expect(calls.some((c) => c.path === "/payments/pay_2/refund")).toBe(false);
+    const rows = await ledgerRows(t, crew.groupId);
+    expect(rows.reduce((sum, r) => sum + r.amountCents, 0)).toBe(300);
+  });
+
+  test("an unpaid share is waived when the plan is called off", async () => {
+    const t = makeT();
+    const crew = await paidCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    await t.mutation(api.frolics.sitOut, { deviceToken: token("Dev"), frolicId: crew.frolicId });
+    await drain(t);
+    expect((await shareOf(t, crew, "Maya")).status).toBe("waived");
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
+  });
+
   test("an unconfirmed hold expires ten minutes after the reveal and sits the person out", async () => {
     const t = makeT();
     const crew = await heldCrew(t);
@@ -387,58 +508,7 @@ describe("holds, check ins, no shows", () => {
 
   test("a paid plan chips in what the fund does not cover", async () => {
     const t = makeT();
-    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
-    const placeId = await t.run(
-      async (ctx) =>
-        await ctx.db.insert("places", {
-          slug: "sunset-park",
-          name: "Sunset Park",
-          lat: 37.8,
-          lng: -122.5,
-          cost: 8,
-          tags: [],
-          hours: [],
-          indoor: false,
-          sober: true,
-          title: "Sunset Park",
-          address: "1 Sunset Way",
-          costPerPersonCents: 800,
-          costLabel: "$8",
-          payUpFront: true,
-          priceVerified: true,
-          energy: "chill",
-          needsDaylight: false,
-          durationMinutes: 60,
-          meetSpot: "The gate",
-          source: "seed",
-        }),
-    );
-    const planId = await t.run(
-      async (ctx) =>
-        await ctx.db.insert("plans", {
-          groupId: crew.groupId,
-          day: "2026-11-15",
-          kind: "daily",
-          placeId,
-          title: "Sunset Park",
-          line: "Golden hour at the water",
-          cost: 8,
-          startsAt: NOON + HOUR,
-          durationMinutes: 60,
-          source: "fallback",
-          generatedAt: NOON,
-          costLabel: "$8",
-          payUpFront: true,
-          chips: [],
-          whySource: "template",
-          whyInputs: { placeName: "Sunset Park", topTags: [], rainSwap: false },
-          weatherSwap: false,
-        }),
-    );
-    await t.run(async (ctx) => {
-      await ctx.db.patch("frolics", crew.frolicId, { planId });
-      await ctx.db.insert("fundLedger", { groupId: crew.groupId, entry: "deposit", amountCents: 300, at: NOON });
-    });
+    const crew = await paidCrew(t);
 
     await tap(t, crew, "Maya");
     await tap(t, crew, "Dev");
@@ -493,6 +563,20 @@ describe("webhooks", () => {
 
     expect(await t.mutation(internal.whop.webhooks.ingest, { eventId: "evt_3", type: "payment.authorized", payload: authorized })).toBe("ignored");
     expect((await shareOf(t, crew, "Maya")).status).toBe("released");
+  });
+
+  test("a webhook for a stray second payment voids it and leaves the share alone", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    const held = await hold(t, crew, "Maya");
+    const stray = JSON.stringify({
+      type: "payment.authorized",
+      data: { id: "pay_7", status: "authorized", substatus: "requires_capture", metadata: { shareId: held._id } },
+    });
+    expect(await t.mutation(internal.whop.webhooks.ingest, { eventId: "evt_stray", type: "payment.authorized", payload: stray })).toBe("ignored");
+    await drain(t);
+    expect(await shareOf(t, crew, "Maya")).toMatchObject({ status: "held", whopPaymentId: "pay_1" });
+    expect(calls.some((c) => c.method === "POST" && c.path === "/payments/pay_7/void")).toBe(true);
   });
 
   test("the http route answers 200 on a good signature and 401 on a bad one", async () => {
