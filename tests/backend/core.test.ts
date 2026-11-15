@@ -271,6 +271,26 @@ describe("hop in, sit out and refill", () => {
     expect(r.reveal?.me.canHopIn).toBe(false);
   });
 
+  test("changing your window keeps your place in line for a capped plan", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"], { capacity: 2 });
+    await tap(t, crew, "Maya");
+    vi.advanceTimersByTime(100);
+    await tap(t, crew, "Dev");
+    vi.advanceTimersByTime(100);
+    await tap(t, crew, "Jordan");
+    vi.advanceTimersByTime(100);
+    const mayaTap = async () =>
+      (await t.run(async (ctx) => await ctx.db.query("taps").collect())).find((x) => x.userId === crew.ids.Maya)!;
+    const first = (await mayaTap()).updatedAt;
+    await tap(t, crew, "Maya", { window: { start: NOON + HOUR, end: NOON + 5 * HOUR } });
+    expect((await mayaTap()).updatedAt).toBe(first);
+    expect((await mayaTap()).window).toEqual({ start: NOON + HOUR, end: NOON + 5 * HOUR });
+    await flipDue(t);
+    const r = await today(t, crew, "Jordan");
+    expect(r.reveal?.going.map((p) => p.name).sort()).toEqual(["Dev", "Maya"]);
+  });
+
   test("capacity seats the tapper whose only if is met", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev", "Jordan", "Sam"], { capacity: 3 });
