@@ -59,16 +59,14 @@ export const dropInputs = internalQuery({
       .query("memberships")
       .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
       .take(MEMBER_LIMIT);
+    const dayRows = await ctx.db
+      .query("availability")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day))
+      .take(MEMBER_LIMIT);
+    const available = new Map(dayRows.map((row) => [row.userId, row]));
     const attendees: DropInputs["attendees"] = [];
     for (const member of members) {
-      const row = (
-        await ctx.db
-          .query("availability")
-          .withIndex("by_groupId_and_userId_and_day", (q) =>
-            q.eq("groupId", args.groupId).eq("userId", member.userId).eq("day", args.day),
-          )
-          .take(1)
-      )[0];
+      const row = available.get(member.userId);
       if (!row || row.state === "busy") continue;
       const limits = (
         await ctx.db.query("limits").withIndex("by_userId", (q) => q.eq("userId", member.userId)).take(1)

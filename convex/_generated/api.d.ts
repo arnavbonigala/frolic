@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as ai_cache from "../ai/cache.js";
 import type * as ai_copy from "../ai/copy.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_pick from "../ai/pick.js";
@@ -23,8 +24,13 @@ import type * as e2e_routes from "../e2e/routes.js";
 import type * as etas from "../etas.js";
 import type * as frolics from "../frolics.js";
 import type * as http from "../http.js";
+import type * as keiki_auth from "../keiki/auth.js";
+import type * as keiki_env from "../keiki/env.js";
+import type * as keiki_lib from "../keiki/lib.js";
 import type * as keiki_outbound from "../keiki/outbound.js";
+import type * as keiki_refs from "../keiki/refs.js";
 import type * as keiki_routes from "../keiki/routes.js";
+import type * as keiki_tools from "../keiki/tools.js";
 import type * as lib_core from "../lib/core.js";
 import type * as lib_hooks from "../lib/hooks.js";
 import type * as lib_identity from "../lib/identity.js";
@@ -83,6 +89,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/cache": typeof ai_cache;
   "ai/copy": typeof ai_copy;
   "ai/openai": typeof ai_openai;
   "ai/pick": typeof ai_pick;
@@ -98,8 +105,13 @@ declare const fullApi: ApiFromModules<{
   etas: typeof etas;
   frolics: typeof frolics;
   http: typeof http;
+  "keiki/auth": typeof keiki_auth;
+  "keiki/env": typeof keiki_env;
+  "keiki/lib": typeof keiki_lib;
   "keiki/outbound": typeof keiki_outbound;
+  "keiki/refs": typeof keiki_refs;
   "keiki/routes": typeof keiki_routes;
+  "keiki/tools": typeof keiki_tools;
   "lib/core": typeof lib_core;
   "lib/hooks": typeof lib_hooks;
   "lib/identity": typeof lib_identity;

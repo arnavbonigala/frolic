@@ -352,3 +352,26 @@ describe("generatePlan", () => {
     expect(badCopy.whySource).not.toBe("haiku");
   });
 });
+
+describe("day bounds", () => {
+  test("a weekend plan booked on Thursday never starts before its own day", () => {
+    const saturday = "2026-11-21";
+    const thursdayNoon = localTimeToMs("2026-11-19", 9 * 60);
+    const input = drop({
+      day: saturday,
+      kind: "weekend",
+      nowMs: thursdayNoon,
+      attendees: [person("maya", {}, saturday), person("dev", {}, saturday)],
+    });
+    const ranked = rankCandidates(input);
+    expect(ranked.length).toBeGreaterThan(0);
+    const dayStart = localTimeToMs(saturday, 0);
+    const dayEnd = localTimeToMs("2026-11-22", 0);
+    for (const c of ranked) {
+      expect(c.startMs).toBeGreaterThanOrEqual(dayStart);
+      expect(c.endMs).toBeLessThanOrEqual(dayEnd);
+    }
+    const plan = generatePlan(input)!;
+    expect(plan.startsAt).toBeGreaterThanOrEqual(dayStart);
+  });
+});

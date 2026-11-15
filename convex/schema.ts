@@ -193,6 +193,10 @@ export default defineSchema({
     candidates: v.array(v.string()),
     error: v.optional(v.string()),
     startedAt: v.number(),
+    modelPick: v.optional(
+      v.object({ key: v.string(), slug: v.string(), why: v.string() }),
+    ),
+    finishedAt: v.optional(v.number()),
   }).index("by_groupId_and_day", ["groupId", "day"]),
 
   frolics: defineTable({

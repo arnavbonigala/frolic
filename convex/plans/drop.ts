@@ -2,9 +2,11 @@ import { WorkflowManager, start, vResultValidator, vWorkflowId, type WorkflowId 
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { internalAction, internalMutation, type MutationCtx } from "../_generated/server";
+import { internalAction, internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
 import { PLACE_BY_SLUG } from "../places/data";
 import { pickPlace } from "../ai/pick";
+import { pickCacheKey } from "../ai/cache";
+import { rateLimiter } from "../lib/rateLimits";
 import {
   fallbackPlan,
   generatePlan,
@@ -162,17 +164,117 @@ function buildInput(args: {
   };
 }
 
-export async function modelPick(input: DropInput, fetcher?: typeof fetch): Promise<GenerateOptions | null> {
+export const cachedPick = internalQuery({
+  args: { groupId: v.id("groups"), day: v.string(), key: v.string() },
+  returns: v.union(v.object({ slug: v.string(), why: v.string() }), v.null()),
+  handler: async (ctx, args) => {
+    const run = await ctx.db
+      .query("planRuns")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day))
+      .take(20);
+    const hit = run.find((row) => row.modelPick?.key === args.key);
+    return hit?.modelPick ? { slug: hit.modelPick.slug, why: hit.modelPick.why } : null;
+  },
+});
+
+export const rememberPick = internalMutation({
+  args: {
+    groupId: v.id("groups"),
+    day: v.string(),
+    kind: vDropKind,
+    key: v.string(),
+    slug: v.string(),
+    why: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await runRow(ctx, args.groupId, args.day, args.kind);
+    if (!row) return null;
+    await ctx.db.patch("planRuns", row._id, { modelPick: { key: args.key, slug: args.slug, why: args.why } });
+    return null;
+  },
+});
+
+export async function modelPick(
+  input: DropInput,
+  options: { cached: { slug: string; why: string } | null; fetcher?: typeof fetch },
+): Promise<GenerateOptions | null> {
+  if (options.cached) return { preferredSlug: options.cached.slug, preferredWhy: options.cached.why };
   const ranked = rankCandidates(input).slice(0, 8);
   if (ranked.length < 2) return null;
   const top = generatePlan(input);
   const result = await pickPlace({
     candidates: ranked.map((c) => ({ slug: c.place.slug, name: c.place.name, tags: c.place.tags, costLabel: c.place.costLabel, indoor: c.place.indoor, why: c.place.fallbackWhy })),
     context: { topTags: top?.whyInputs.topTags ?? [], memory: input.memory.pastNights[0]?.text ?? null, weather: top?.weather ?? null },
-    fetcher,
+    fetcher: options.fetcher,
   });
   return result ? { preferredSlug: result.slug, preferredWhy: result.why } : null;
 }
+
+async function runRow(ctx: MutationCtx, groupId: Id<"groups">, day: string, kind: DropKind) {
+  const rows = await ctx.db
+    .query("planRuns")
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).eq("day", day))
+    .take(20);
+  return rows.find((row) => row.kind === kind) ?? null;
+}
+
+export const beginRun = internalMutation({
+  args: {
+    groupId: v.id("groups"),
+    day: v.string(),
+    kind: vDropKind,
+    workflowId: v.string(),
+    candidates: v.array(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await runRow(ctx, args.groupId, args.day, args.kind);
+    if (existing) {
+      await ctx.db.patch("planRuns", existing._id, {
+        workflowId: args.workflowId,
+        status: "running",
+        error: undefined,
+        finishedAt: undefined,
+        startedAt: Date.now(),
+      });
+      return null;
+    }
+    await ctx.db.insert("planRuns", { ...args, status: "running", startedAt: Date.now() });
+    return null;
+  },
+});
+
+export const noteCandidates = internalMutation({
+  args: { groupId: v.id("groups"), day: v.string(), kind: vDropKind, candidates: v.array(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await runRow(ctx, args.groupId, args.day, args.kind);
+    if (row) await ctx.db.patch("planRuns", row._id, { candidates: args.candidates });
+    return null;
+  },
+});
+
+export const finishRun = internalMutation({
+  args: { groupId: v.id("groups"), day: v.string(), kind: vDropKind, status: v.union(v.literal("done"), v.literal("fallback")), error: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await runRow(ctx, args.groupId, args.day, args.kind);
+    if (row) await ctx.db.patch("planRuns", row._id, { status: args.status, error: args.error, finishedAt: Date.now() });
+    return null;
+  },
+});
+
+export const claimAiBudget = internalMutation({
+  args: { groupId: v.id("groups") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const group = await rateLimiter.limit(ctx, "aiGroup", { key: args.groupId });
+    if (!group.ok) return false;
+    const global = await rateLimiter.limit(ctx, "aiGlobal", { key: "global" });
+    return global.ok;
+  },
+});
 
 async function fetchWeatherOrNull(day: string): Promise<DayWeather | null> {
   try {
@@ -213,10 +315,34 @@ export const pickStep = internalAction({
   returns: v.union(vStoredPlan, v.null()),
   handler: async (ctx, args): Promise<StoredPlan | null> => {
     const input = buildInput(args);
-    const preferred = process.env.OPENAI_API_KEY ? await modelPick(input).catch(() => null) : null;
+    const key = pickCacheKey(input);
+    const cached = process.env.OPENAI_API_KEY
+      ? await ctx.runQuery(internal.plans.drop.cachedPick, { groupId: args.groupId, day: args.day, key })
+      : null;
+    const preferred =
+      process.env.OPENAI_API_KEY &&
+      (cached || (await ctx.runMutation(internal.plans.drop.claimAiBudget, { groupId: args.groupId })))
+        ? await modelPick(input, { cached }).catch(() => null)
+        : null;
+    if (preferred && !cached && preferred.preferredSlug && preferred.preferredWhy) {
+      await ctx.runMutation(internal.plans.drop.rememberPick, {
+        groupId: args.groupId,
+        day: args.day,
+        kind: args.kind,
+        key,
+        slug: preferred.preferredSlug,
+        why: preferred.preferredWhy,
+      });
+    }
     const plan = generatePlan(input, preferred ?? {});
     if (!plan) return null;
     const picked = validatePlan(plan, input) ? plan : fallbackPlan(input);
+    await ctx.runMutation(internal.plans.drop.noteCandidates, {
+      groupId: args.groupId,
+      day: args.day,
+      kind: args.kind,
+      candidates: plan.candidates,
+    });
     if (!picked) return null;
     if (picked.whySource !== "memory") {
       const place = PLACE_BY_SLUG.get(picked.placeSlug);
@@ -325,11 +451,26 @@ export const patchPlan = internalMutation({
       costLabel: args.plan.costLabel,
       payUpFront: args.plan.payUpFront,
       startsAt: args.plan.startsAt,
+      durationMinutes: args.plan.durationMinutes,
+      meetingPoint: args.plan.meetingPoint,
+      sunsetAt: args.plan.sunsetAt,
       weather: args.plan.weather ?? undefined,
       weatherSwap: args.plan.weatherSwap,
       weatherCheckedAt: Date.now(),
     });
     return existing._id;
+  },
+});
+
+export const openFrolic = internalQuery({
+  args: { groupId: v.id("groups"), day: v.string() },
+  returns: v.union(v.id("frolics"), v.null()),
+  handler: async (ctx, args) => {
+    const frolics = await ctx.db
+      .query("frolics")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day))
+      .take(10);
+    return frolics.find((f) => f.status === "open")?._id ?? null;
   },
 });
 
@@ -344,6 +485,8 @@ export const weatherSwapStep = internalAction({
   handler: async (ctx, args): Promise<StoredPlan | null> => {
     const place = PLACE_BY_SLUG.get(args.plan.placeSlug);
     if (!place || place.indoor) return null;
+    const frolic = await ctx.runQuery(internal.plans.drop.openFrolic, { groupId: args.groupId, day: args.day });
+    if (!frolic) return null;
     const weather = await fetchWeatherOrNull(args.day);
     if (!isRainy(hourAt(weather, args.plan.startsAt))) return null;
     const inputs: DropInputs = await ctx.runQuery(internal.plans.inputs.dropInputs, {
@@ -469,8 +612,14 @@ export const dropComplete = internalMutation({
   },
   returns: v.union(v.id("plans"), v.null()),
   handler: async (ctx, args): Promise<Id<"plans"> | null> => {
-    if (args.result.kind === "success" && args.result.returnValue !== null) return null;
-    return await writeFallbackPlan(ctx, args.context);
+    const failed = args.result.kind !== "success" || args.result.returnValue === null;
+    const planId = failed ? await writeFallbackPlan(ctx, args.context) : null;
+    await ctx.runMutation(internal.plans.drop.finishRun, {
+      ...args.context,
+      status: failed ? "fallback" : "done",
+      error: args.result.kind === "success" ? undefined : args.result.kind,
+    });
+    return planId;
   },
 });
 
@@ -479,11 +628,19 @@ async function startDropFor(
   args: { groupId: Id<"groups">; day: string; kind: DropKind; nowMs: number },
 ): Promise<WorkflowId | null> {
   if (await existingPlanId(ctx, args.groupId, args.day, args.kind)) return null;
-  return await start(ctx, internal.plans.drop.dropWorkflow, args, {
+  const workflowId = await start(ctx, internal.plans.drop.dropWorkflow, args, {
     onComplete: internal.plans.drop.dropComplete,
     context: { groupId: args.groupId, day: args.day, kind: args.kind },
     startAsync: true,
   });
+  await ctx.runMutation(internal.plans.drop.beginRun, {
+    groupId: args.groupId,
+    day: args.day,
+    kind: args.kind,
+    workflowId: String(workflowId),
+    candidates: [],
+  });
+  return workflowId;
 }
 
 export const startDrop = internalMutation({

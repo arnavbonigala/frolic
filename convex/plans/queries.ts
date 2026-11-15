@@ -25,7 +25,6 @@ const vPlanView = v.object({
   whySource: v.union(v.literal("template"), v.literal("memory"), v.literal("device"), v.literal("haiku")),
   whyInputs: v.object({
     placeName: v.string(),
-    memory: v.optional(v.string()),
     topTags: v.array(v.string()),
     weather: v.optional(v.string()),
     tempF: v.optional(v.number()),
@@ -71,7 +70,14 @@ export const today = query({
       line: plan.line,
       why: plan.why ?? null,
       whySource: plan.whySource,
-      whyInputs: plan.whyInputs,
+      whyInputs: {
+        placeName: plan.whyInputs.placeName,
+        topTags: plan.whyInputs.topTags,
+        weather: plan.whyInputs.weather,
+        tempF: plan.whyInputs.tempF,
+        sunsetAt: plan.whyInputs.sunsetAt,
+        rainSwap: plan.whyInputs.rainSwap,
+      },
       heroKey: PLACE_BY_SLUG.has(place.slug) ? heroKeyFor(PLACE_BY_SLUG.get(place.slug)!) : "plan-free-stuff",
       chips: plan.chips,
       cost: plan.cost,

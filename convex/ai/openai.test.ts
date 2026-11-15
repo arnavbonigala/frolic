@@ -5,7 +5,6 @@ import {
   OPENAI_URL,
   callStructured,
   extractOutputText,
-  hasOpenAI,
   structuredBody,
   type Fetcher,
   type StructuredBody,
@@ -130,14 +129,6 @@ describe("callStructured", () => {
 });
 
 describe("openai helpers", () => {
-  test("hasOpenAI follows the key", () => {
-    expect(hasOpenAI()).toBe(true);
-    delete env.OPENAI_API_KEY;
-    expect(hasOpenAI()).toBe(false);
-    env.OPENAI_API_KEY = "   ";
-    expect(hasOpenAI()).toBe(false);
-  });
-
   test("the default timeout is 6 seconds", () => {
     expect(DEFAULT_TIMEOUT_MS).toBe(6000);
   });

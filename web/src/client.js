@@ -11,14 +11,17 @@ const MARK = '<svg class="mark" viewBox="-12 -14 330 128" role="img" aria-label=
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const colorOf = name => { let h = 0; for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
 
-function bloom(name, R, stem) {
+function bloom(name, R, stem, avatarUrl) {
   const [a, b] = colorOf(name), W = R * 2 + 8, cx = W / 2, cy = R + 4, H = stem ? R * 2 + stem + 4 : W;
   let p = "";
   for (let i = 0; i < 8; i++) p += '<ellipse cx="' + cx + '" cy="' + (cy - R * .56) + '" rx="' + R * .34 + '" ry="' + R * .5 + '" fill="' + b + '" transform="rotate(' + (i * 45 + 22.5) + " " + cx + " " + cy + ')"/>';
   for (let i = 0; i < 8; i++) p += '<ellipse cx="' + cx + '" cy="' + (cy - R * .58) + '" rx="' + R * .3 + '" ry="' + R * .46 + '" fill="' + a + '" transform="rotate(' + i * 45 + " " + cx + " " + cy + ')"/>';
   const st = stem ? '<path d="M' + cx + " " + (cy + R * .4) + " C " + (cx - 3) + " " + (cy + R + stem * .4) + ", " + (cx + 4) + " " + (cy + R + stem * .7) + ", " + cx + " " + H + '" fill="none" stroke="#3E9B52" stroke-width="4" stroke-linecap="round"/>' : "";
   const ini = esc(String(name).trim().charAt(0).toUpperCase() || "F");
-  const face = '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R * .5 + 3) + '" fill="#FFF8EC"/><text x="' + cx + '" y="' + (cy + R * .18) + '" text-anchor="middle" font-family="ui-rounded,system-ui" font-weight="800" font-size="' + R * .5 + '" fill="' + b + '">' + ini + "</text>";
+  const clip = "av" + cx + R;
+  const face = avatarUrl
+    ? '<clipPath id="' + clip + '"><circle cx="' + cx + '" cy="' + cy + '" r="' + (R * .5 + 3) + '"/></clipPath><image href="' + esc(avatarUrl) + '" x="' + (cx - R * .5 - 3) + '" y="' + (cy - R * .5 - 3) + '" width="' + (R + 6) + '" height="' + (R + 6) + '" clip-path="url(#' + clip + ')" preserveAspectRatio="xMidYMid slice"/>'
+    : '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R * .5 + 3) + '" fill="#FFF8EC"/><text x="' + cx + '" y="' + (cy + R * .18) + '" text-anchor="middle" font-family="ui-rounded,system-ui" font-weight="800" font-size="' + R * .5 + '" fill="' + b + '">' + ini + "</text>";
   return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" aria-hidden="true">' + st + p + face + "</svg>";
 }
 function bud(name, R, stem) {
@@ -29,7 +32,7 @@ function names(list) { return list.length < 2 ? list.join("") : list.slice(0, -1
 
 function packet(card) {
   if (!card) return '<div class="packet"><div class="band"><span>&nbsp;</span></div><div class="win skel"></div><div class="pk"><div class="skel" style="height:29px;width:70%"></div><div class="skel" style="height:30px;width:90%;margin-top:12px"></div></div></div>';
-  return '<div class="packet"><div class="band"><span>' + esc(card.label) + "</span><i>" + esc(card.no) + '</i></div><div class="win">' + (card.imageUrl ? '<img src="' + esc(card.imageUrl) + '" alt="' + esc(card.title) + '" width="410" height="118" decoding="async">' : "") + '</div><div class="pk"><h1>' + esc(card.title) + '</h1><div class="chips">' + (card.chips || []).map(c => '<span class="chip">' + esc(c) + "</span>").join("") + "</div>" + (card.why ? '<p class="why"><b>Why this:</b> ' + esc(card.why) + "</p>" : "") + "</div></div>";
+  return '<div class="packet"><div class="band"><span>' + esc(card.label) + "</span><i>" + esc(card.no) + '</i></div><div class="win">' + (card.imageUrl ? '<img src="' + esc(card.imageUrl) + '" alt="" width="410" height="118" decoding="async" onerror="this.remove()">' : "") + '</div><div class="pk"><h1>' + esc(card.title) + '</h1><div class="chips">' + (card.chips || []).map(c => '<span class="chip">' + esc(c) + "</span>").join("") + "</div>" + (card.why ? '<p class="why"><b>Why this:</b> ' + esc(card.why) + "</p>" : "") + "</div></div>";
 }
 
 const store = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
@@ -53,22 +56,22 @@ const serverNow = () => Date.now() + offset;
 
 function banner() { return ui.offline ? '<div class="banner" role="status">You are offline. Reconnect to say you are down.</div>' : ""; }
 function head(v) {
-  return '<div class="top">' + MARK + "</div>" + (v && v.host ? '<p class="from">' + esc(v.host) + " shared a plan" + (v.group ? " with " + esc(v.group) : "") + "</p>" : "");
+  return '<div class="top">' + MARK + '<a class="txtbtn" style="margin:0;padding:0;font:600 15px system-ui;text-decoration:none" href="' + esc(boot.appUrl) + '">Back to the app</a></div>' + (v && v.host ? '<p class="from">' + esc(v.host) + " shared a plan" + (v.group ? " with " + esc(v.group) : "") + "</p>" : "");
 }
 
 function body(v) {
   if (!v) return '<div class="below"><div class="skel" style="height:56px"></div><div class="skel" style="height:54px;border-radius:999px;margin-top:12px"></div></div>';
   if (ui.subError) return '<div class="below"><div class="card center" role="alert"><b style="font-size:17px">Something went wrong</b><p class="sub">We could not load this plan. Your yes, if you sent one, is safe.</p></div><button class="btn" id="retry">Try again</button></div>';
   if (v.phase === "on") {
-    const mates = (v.mates || []).filter(n => n !== guestName(v));
-    const who = names((v.me ? ["You"] : []).concat(mates));
-    const blooms = (v.me ? [guestName(v)] : []).concat(mates).slice(0, 4);
-    return '<div class="below"><div class="card center bloomin" role="status"><div class="blooms">' + blooms.map(n => bloom(n, 26, 0)).join("") + '</div><h1 style="margin-top:6px">It\u2019s on.</h1><p class="sub">' + esc(who || "It\u2019s on") + (who ? ", " + esc(v.meet || "") : "") + (who && v.time ? " at " + esc(v.time) : "") + '.</p></div><a class="btn" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
+    const mates = (v.mates || []).filter(m => m.name !== guestName(v));
+    const who = names((v.me ? ["You"] : []).concat(mates.map(m => m.name)));
+    const folk = (v.me ? [{name: guestName(v), avatarUrl: v.avatar}] : []).concat(mates).slice(0, 4);
+    return '<div class="below"><div class="card center bloomin" role="status"><div class="blooms">' + folk.map(m => bloom(m.name, 26, 0, m.avatarUrl)).join("") + '</div><h1 style="margin-top:6px">It\u2019s on.</h1><p class="sub">' + esc(who || "It\u2019s on") + (who ? ", " + esc(v.meet || "") : "") + (who && v.time ? " at " + esc(v.time) : "") + '.</p></div><a class="btn" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
   }
   if (v.phase === "planted" && !v.me) return body(Object.assign({}, v, {phase: "open"}));
   if (v.phase === "planted") return '<div class="below"><div class="card"><div class="row" role="status"><div class="fl bud new" style="flex:none">' + bud(guestName(v), 16, 6) + '</div><div><b>You\u2019re down, ' + esc(guestName(v)) + '</b><small>Only you know. Keep this page open: it blooms the moment someone else says yes.</small></div></div></div><span class="cap">Waiting for a friend<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>';
   if (v.phase === "drifted") return '<div class="below"><div class="card center" role="status"><div class="blooms" style="opacity:.55">' + bud(v.me || "Frolic", 20, 14) + '</div><h1 style="margin-top:6px">Drifted off.</h1><p class="sub">' + (v.me ? "Nobody else said yes in time, so nobody ever knew you did. Nothing was shared." : "Nobody could make it this time. Nothing was shared.") + '</p></div><a class="btn sec" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
-  return '<form class="below" id="f" novalidate><label class="sr" for="wn">Your first name</label><input id="wn" class="field" autocomplete="given-name" autocapitalize="words" maxlength="24" placeholder="Your first name" value="' + esc(ui.name) + '"' + (ui.busy ? " disabled" : "") + '><button class="btn" type="submit"' + (ui.busy || ui.offline ? " disabled" : "") + ">" + (ui.busy ? "Planting\u2026" : "I\u2019m down") + "</button>" + (ui.error ? '<p class="err" role="alert">' + esc(ui.error) + "</p>" : "") + '<p class="hush">' + LOCK + " Nobody sees you\u2019re down unless someone else is too. No app needed.</p></form>";
+  return '<form class="below" id="f" novalidate><label class="sr" for="wn">Your first name</label><input id="wn" class="field" autocomplete="given-name" autocapitalize="words" maxlength="24" placeholder="Your first name" value="' + esc(ui.name) + '"' + (ui.busy ? " disabled" : "") + '><button class="btn" type="submit"' + (ui.busy || ui.offline ? " disabled" : "") + ">" + (ui.busy ? "Planting\u2026" : ui.error ? "Try again" : "I\u2019m down") + "</button>" + (ui.error ? '<p class="err" role="alert">' + esc(ui.error) + "</p>" : "") + '<p class="hush">' + LOCK + " Nobody sees you\u2019re down unless someone else is too. No app needed.</p></form>";
 }
 function guestName(v) { return v.me || ui.name || "You"; }
 
@@ -141,11 +144,16 @@ async function submit(name) {
   store.set("frolic.name", name);
   ui.busy = true; ui.error = ""; render();
   try {
-    await client.mutation(anyApi.web.share.join, {code: boot.code, deviceToken: device, name});
+    await Promise.race([
+      client.mutation(anyApi.web.share.join, {code: boot.code, deviceToken: device, name}),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 7000)),
+    ]);
     ui.busy = false;
   } catch (e) {
     ui.busy = false;
-    ui.error = ui.offline ? "You are offline. Reconnect to say you are down." : "That did not go through. Try again in a moment.";
+    ui.error = ui.offline
+      ? "You are offline. Reconnect to say you are down."
+      : "Your yes did not reach Frolic. Check your connection and try again.";
     render();
   }
 }
@@ -154,6 +162,9 @@ if (boot.phase === "invalid" || boot.phase === "expired") {
   ui.view = {phase: boot.phase};
   render();
 } else {
+  if (boot.phase === "open" && boot.card) {
+    ui.view = {phase: "open", host: boot.host, group: boot.group, card: boot.card, me: null, avatar: null, revealAt: null, mates: [], meet: null, time: null};
+  }
   render();
   syncClock();
   client = new ConvexClient(boot.cloudUrl);

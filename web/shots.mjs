@@ -2,7 +2,7 @@ import puppeteer from "puppeteer-core";
 import { ConvexClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 const SITE = process.env.SITE ?? "http://127.0.0.1:3213";
 const CLOUD = process.env.CLOUD ?? "http://127.0.0.1:3212";
@@ -41,6 +41,8 @@ let page;
 const newPage = async () => {
   if (page) await page.close();
   page = await browser.newPage();
+  await page.goto(`${SITE}/p/x`);
+  await page.evaluate(() => localStorage.clear());
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   page.on("pageerror", (e) => console.log("pageerror:", e.message));
   return page;
@@ -155,7 +157,7 @@ if (only === "all" || only === "error") {
   });
   await page.type("#wn", "Maya");
   await page.click(".btn");
-  await sleep(2500);
+  await sleep(9500);
   await shot("12-error", "the yes did not go through, said plainly");
   await page.close();
   page = null;
