@@ -113,8 +113,7 @@ struct CrewComingUpRow: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
-            .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+            .padding(.horizontal, -12)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)

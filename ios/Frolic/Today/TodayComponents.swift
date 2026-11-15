@@ -177,15 +177,15 @@ struct TodayPacket<Content: View>: View {
                         if flickable, buds.isEmpty, me != nil {
                             VStack(spacing: 4) {
                                 Circle()
-                                    .strokeBorder(FrolicColor.cream, style: StrokeStyle(lineWidth: 2.5, dash: [5, 4]))
-                                    .background(Circle().fill(FrolicColor.cream.opacity(0.28)))
+                                    .strokeBorder(Color(hex: 0xFFF8EC), style: StrokeStyle(lineWidth: 2.5, dash: [5, 4]))
+                                    .background(Circle().fill(Color(hex: 0xFFF8EC).opacity(0.28)))
                                     .frame(width: 48, height: 48)
                                 Text("You?")
                                     .todayFont(13, .bold, rounded: true, relativeTo: .caption)
-                                    .foregroundStyle(FrolicColor.ink)
+                                    .foregroundStyle(Color(hex: 0x23180F))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
-                                    .background(Capsule().fill(FrolicColor.cream.opacity(0.92)))
+                                    .background(Capsule().fill(Color(hex: 0xFFF8EC).opacity(0.92)))
                             }
                             .padding(.bottom, 6)
                             .frame(maxWidth: .infinity)

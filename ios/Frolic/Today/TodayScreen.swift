@@ -22,9 +22,10 @@ struct TodayScreen: View {
     }
 
     private var bleeds: Bool {
-        guard shown == .ready, store.plan != nil else { return false }
+        guard shown == .ready else { return false }
         switch store.scene {
-        case .open, .waiting, .solo: return true
+        case .open, .waiting, .solo: return store.plan != nil
+        case .none: return !(store.startingPlan || (store.frolic != nil && store.plan == nil))
         default: return false
         }
     }
@@ -51,7 +52,7 @@ struct TodayScreen: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
-            .scrollDisabled(bleeds && store.scene == .open && !dynamicTypeSize.isAccessibilitySize)
+            .scrollDisabled(bleeds && (store.scene == .open || store.scene == .none) && !dynamicTypeSize.isAccessibilitySize)
             .contentMargins(.bottom, 0, for: .scrollContent)
             .ignoresSafeArea(edges: bleeds ? .top : [])
             if !connectivity.isOnline && store.today != nil && router.phaseOverride == nil {
@@ -139,7 +140,9 @@ struct TodayScreen: View {
             TodayNoPlanStart(store: store)
         case .ready:
             TodayPhaseView(store: store, router: router)
-            DailyPickSlot(scene: store.scene, me: store.meMember.map(TodayStore.person), todayFixture: store.isFixture)
+            if store.scene != .none {
+                DailyPickSlot(scene: store.scene, me: store.meMember.map(TodayStore.person), todayFixture: store.isFixture)
+            }
         }
     }
 }
@@ -158,15 +161,40 @@ extension EnvironmentValues {
 private struct TodayTopBar: View {
     var store: TodayStore
     var ready: Bool
+    @Environment(FrolicBackend.self) private var backend
+    @State private var crews = CrewSwitcherModel()
 
     var body: some View {
         HStack {
-            Wordmark(color: StoryColor.ink, width: 74)
-                .padding(.horizontal, 16)
-                .frame(minHeight: 44)
-                .glassEffect(.regular, in: .capsule)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Frolic")
+            if crews.crews.count > 1, let current = crews.current {
+                CrewSwitchMenu(model: crews) {
+                    HStack(spacing: 6) {
+                        Text(current.name)
+                            .todayFont(16, .bold, rounded: true, relativeTo: .headline)
+                            .lineLimit(1)
+                        if crews.othersWaiting > 0 {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(StoryColor.accent)
+                        }
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .foregroundStyle(StoryColor.ink)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
+                .accessibilityLabel(crews.othersWaiting > 0 ? "\(current.name). Another crew has a plan waiting. Switch crew" : "\(current.name). Switch crew")
+                .accessibilityIdentifier("today.crewSwitch")
+            } else {
+                Wordmark(color: StoryColor.ink, width: 74)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                    .glassEffect(.regular, in: .capsule)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Frolic")
+            }
             Spacer()
             if ready {
                 if store.scene == .done {
@@ -186,6 +214,7 @@ private struct TodayTopBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
+        .task { crews.start(backend: backend) }
     }
 }
 
@@ -875,46 +904,44 @@ private struct TodayNoPlanStart: View {
                     .foregroundStyle(FrolicColor.secondaryText)
                     .padding(.top, 10)
             }
-        } else {
-            VStack(spacing: 0) {
-                TimelineView(.periodic(from: .now, by: 30)) { context in
-                    TodayNoPlan(title: "No plan yet", message: TodayCopy.dropCountdown(context.date))
-                }
-                if let line = store.gardenHealth?.line, !line.isEmpty {
-                    Text(line)
-                        .todayFont(15, .semibold, relativeTo: .subheadline)
-                        .foregroundStyle(FrolicColor.ink)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 22)
-                        .padding(.top, 10)
-                        .accessibilityIdentifier("today.garden.health")
-                }
-                if let error = store.startError {
-                    TodayStatusCard(title: error, message: "Nobody was told.")
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .accessibilityIdentifier("today.imFree.error")
-                }
-                Button("I'm free") { store.sheet = .imFree }
-                    .buttonStyle(.frolicPrimary)
-                    .disabled(!online)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 18)
-                    .accessibilityIdentifier("today.imFree")
-                if let past = store.onThisDay, let title = past.title {
-                    TodayRowLink(
-                        thumb: past.heroKey.flatMap { UIImage(named: $0) != nil ? $0 : nil } ?? "plan-free-stuff",
-                        thumbRemote: past.photoUrl,
-                        prefix: (past.label ?? "On this day") + ":",
-                        text: title,
-                        identifier: "today.onThisDay",
-                        action: { router.tab = .garden }
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                }
-                TodayTomorrowRow(store: store)
+        } else if (store.today?.memberCount ?? 2) <= 1 {
+            TodayStoryPage(
+                hero: "plan-outdoors",
+                people: [store.mePerson],
+                ghosts: 3,
+                caption: "Room for your people",
+                kicker: store.today?.groupName ?? "Your crew",
+                title: "It's just you so far",
+                line: "Plans start once a friend joins. Send them your link."
+            ) {
+                TodayInviteButton(crewName: store.today?.groupName ?? "my crew")
             }
+            .accessibilityIdentifier("state.empty")
+        } else {
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                TodayStoryPage(
+                    hero: "plan-outdoors",
+                    people: store.freeFriends,
+                    caption: store.freeFriends.isEmpty ? nil : TodayCopy.names(store.freeFriends.map(\.name)) + (store.freeFriends.count == 1 ? " is free" : " are free"),
+                    kicker: TodayCopy.weekday(context.date.timeIntervalSince1970 * 1000) + " · " + (store.today?.groupName ?? "Your crew"),
+                    title: "No plan yet",
+                    line: TodayCopy.dropCountdown(context.date)
+                ) {
+                    if let error = store.startError {
+                        Text(error)
+                            .todayFont(15, .semibold, relativeTo: .subheadline)
+                            .foregroundStyle(StoryColor.ink)
+                            .accessibilityIdentifier("today.imFree.error")
+                    }
+                    StoryPrimaryButton(title: "I'm free now", systemImage: "hand.wave.fill") { store.sheet = .imFree }
+                        .disabled(!online)
+                        .accessibilityIdentifier("today.imFree")
+                    Text("Your crew sees a plan, not who asked.")
+                        .todayFont(13, relativeTo: .footnote)
+                        .foregroundStyle(StoryColor.faint)
+                }
+            }
+            .accessibilityIdentifier("state.empty")
         }
     }
 }

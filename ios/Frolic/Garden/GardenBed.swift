@@ -62,7 +62,7 @@ struct GardenBed: View {
             .padding(.top, 34)
             }
         }
-        .frame(height: 220)
+        .frame(height: 150)
         .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.18), .init(color: .black, location: 0.8), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
         .accessibilityElement(children: .contain)
     }

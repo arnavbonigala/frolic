@@ -21,6 +21,8 @@ private struct CreatedCrew: Decodable {
 @Observable
 final class CrewSwitcherModel {
     var crews: [CrewSummary] = []
+    var current: CrewSummary? { crews.first { $0.groupId == FrolicIdentity.shared.groupId } }
+    var othersWaiting: Int { crews.filter { $0.planOpen && $0.groupId != FrolicIdentity.shared.groupId }.count }
     var myName = ""
     private var tasks: [Task<Void, Never>] = []
 
@@ -60,36 +62,57 @@ final class CrewSwitcherModel {
     }
 }
 
+struct CrewSwitchMenu<Label: View>: View {
+    var model: CrewSwitcherModel
+    @ViewBuilder var label: Label
+    @Environment(FrolicBackend.self) private var backend
+    @State private var naming = false
+    @State private var newName = ""
+
+    var body: some View {
+        Menu {
+            ForEach(model.crews) { crew in
+                Button {
+                    FrolicIdentity.shared.setGroup(crew.groupId)
+                } label: {
+                    if crew.groupId == FrolicIdentity.shared.groupId {
+                        SwiftUI.Label(crew.name, systemImage: "checkmark")
+                    } else if crew.planOpen {
+                        SwiftUI.Label(crew.name, systemImage: "sparkles")
+                    } else {
+                        Text(crew.name)
+                    }
+                }
+            }
+            Divider()
+            Button {
+                newName = ""
+                naming = true
+            } label: {
+                SwiftUI.Label("Start a new crew", systemImage: "plus")
+            }
+        } label: {
+            label
+        }
+        .alert("Name your new crew", isPresented: $naming) {
+            TextField("Crew name", text: $newName)
+            Button("Start crew") { Task { await model.create(name: newName, backend: backend) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Then invite friends to it.")
+        }
+    }
+}
+
 struct CrewSwitcherTitle: View {
     var title: String
     var subtitle: String?
     @Environment(FrolicBackend.self) private var backend
     @State private var model = CrewSwitcherModel()
-    @State private var naming = false
-    @State private var newName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Menu {
-                ForEach(model.crews) { crew in
-                    Button {
-                        FrolicIdentity.shared.setGroup(crew.groupId)
-                    } label: {
-                        if crew.groupId == FrolicIdentity.shared.groupId {
-                            Label(crew.name, systemImage: "checkmark")
-                        } else {
-                            Text(crew.planOpen ? "\(crew.name) · plan waiting" : crew.name)
-                        }
-                    }
-                }
-                Divider()
-                Button {
-                    newName = ""
-                    naming = true
-                } label: {
-                    Label("Start a new crew", systemImage: "plus")
-                }
-            } label: {
+            CrewSwitchMenu(model: model) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(title)
                         .font(.system(.largeTitle, design: .serif, weight: .heavy))
@@ -113,12 +136,5 @@ struct CrewSwitcherTitle: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .task { model.start(backend: backend) }
-        .alert("Name your new crew", isPresented: $naming) {
-            TextField("Crew name", text: $newName)
-            Button("Start crew") { Task { await model.create(name: newName, backend: backend) } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Then invite friends to it.")
-        }
     }
 }
