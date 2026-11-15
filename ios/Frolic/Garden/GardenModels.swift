@@ -21,7 +21,6 @@ enum GardenNames {
         }
     }
 }
-}
 
 struct GardenMemoryRow: Decodable, Hashable, Identifiable {
     let frolicId: String
