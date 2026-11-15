@@ -120,8 +120,8 @@ struct AnyDecodable: Decodable {
 }
 
 struct GardenMilestone: Codable, Hashable {
-    let reached: Double?
-    let next: Double?
+    let reached: String?
+    let next: String?
     let nextAt: Double?
     let line: String?
 
@@ -129,13 +129,13 @@ struct GardenMilestone: Codable, Hashable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        reached = try? container.decodeIfPresent(Double.self, forKey: .reached)
-        next = try? container.decodeIfPresent(Double.self, forKey: .next)
+        reached = try? container.decodeIfPresent(String.self, forKey: .reached)
+        next = try? container.decodeIfPresent(String.self, forKey: .next)
         nextAt = try? container.decodeIfPresent(Double.self, forKey: .nextAt)
         line = try? container.decodeIfPresent(String.self, forKey: .line)
     }
 
-    init(reached: Double?, next: Double?, nextAt: Double?, line: String?) {
+    init(reached: String?, next: String?, nextAt: Double?, line: String?) {
         self.reached = reached
         self.next = next
         self.nextAt = nextAt

@@ -189,8 +189,8 @@ final class OnboardingBackend {
         ]
         if let window {
             args["window"] = [
-                "start": Int(window.start.timeIntervalSince1970 * 1000),
-                "end": Int(window.end.timeIntervalSince1970 * 1000),
+                "start": window.start.timeIntervalSince1970 * 1000,
+                "end": window.end.timeIntervalSince1970 * 1000,
             ] as [String: ConvexEncodable?]
         }
         try await client.mutation("crew:setFree", with: args)
