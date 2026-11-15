@@ -1,5 +1,6 @@
 import {ConvexClient} from "convex/browser";
 import {anyApi} from "convex/server";
+import {FADED_TITLE, FADED_BODY} from "../../convex/lib/copy";
 
 const boot = JSON.parse(document.getElementById("boot").textContent);
 const app = document.getElementById("app");
@@ -70,7 +71,7 @@ function body(v) {
   }
   if (v.phase === "planted" && !v.me) return body(Object.assign({}, v, {phase: "open"}));
   if (v.phase === "planted") return '<div class="below"><div class="card"><div class="row" role="status"><span style="color:var(--t2);flex:none">' + LOCK + '</span><div><b>You&#39;re down, ' + esc(guestName(v)) + '</b><small>Only you know. Keep this page open: it blooms the moment someone else says yes.</small></div></div></div></div>';
-  if (v.phase === "drifted") return '<div class="below"><div class="card center" role="status"><div class="blooms" style="opacity:.55">' + bud(v.me || "Frolic", 20, 14) + '</div><h1 style="margin-top:6px">Drifted off.</h1><p class="sub">' + (v.me ? "Nobody else said yes in time, so nobody ever knew you did. Nothing was shared." : "Nobody could make it this time. Nothing was shared.") + '</p></div><a class="btn sec" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
+  if (v.phase === "drifted") return '<div class="below"><div class="card center" role="status"><div class="blooms" style="opacity:.55">' + bud(v.me || "Frolic", 20, 14) + '</div><h1 style="margin-top:6px">' + esc(FADED_TITLE) + '</h1><p class="sub">' + esc(FADED_BODY) + '</p></div><a class="btn sec" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
   return '<form class="below" id="f" novalidate><label class="sr" for="wn">Your first name</label><input id="wn" class="field" autocomplete="given-name" autocapitalize="words" maxlength="24" placeholder="Your first name" value="' + esc(ui.name) + '"' + (ui.busy ? " disabled" : "") + '><button class="btn" type="submit"' + (ui.busy || ui.offline ? " disabled" : "") + ">" + (ui.busy ? "Planting\u2026" : ui.error ? "Try again" : "I&#39;m down") + "</button>" + (ui.error ? '<p class="err" role="alert">' + esc(ui.error) + "</p>" : "") + '<p class="hush">' + LOCK + " Nobody sees you&#39;re down unless someone else is too. No app needed.</p></form>";
 }
 function guestName(v) { return v.me || ui.name || "You"; }

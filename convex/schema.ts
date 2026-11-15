@@ -46,6 +46,7 @@ export default defineSchema({
     name: v.string(),
     createdBy: v.id("users"),
     timezone: v.string(),
+    holdEnabled: v.optional(v.boolean()),
     e2eRun: v.optional(v.string()),
   }).index("by_e2eRun", ["e2eRun"]),
 
@@ -182,7 +183,31 @@ export default defineSchema({
     favoredUserId: v.optional(v.id("users")),
     weatherSwap: v.boolean(),
     weatherCheckedAt: v.optional(v.number()),
-  }).index("by_groupId_and_day", ["groupId", "day"]),
+    dropId: v.optional(v.id("drops")),
+  })
+    .index("by_groupId_and_day", ["groupId", "day"])
+    .index("by_dropId_and_day", ["dropId", "day"]),
+
+  drops: defineTable({
+    key: v.string(),
+    sellerName: v.string(),
+    title: v.string(),
+    priceCents: v.number(),
+    capacity: v.number(),
+    placeSlug: v.string(),
+    tags: v.array(v.string()),
+    imageKey: v.string(),
+    active: v.boolean(),
+    validDays: v.array(v.number()),
+    startMinute: v.number(),
+    endMinute: v.number(),
+    durationMinutes: v.number(),
+    whopProductId: v.optional(v.string()),
+    whopPlanId: v.optional(v.string()),
+    purchaseUrl: v.optional(v.string()),
+  })
+    .index("by_key", ["key"])
+    .index("by_active", ["active"]),
 
   planRuns: defineTable({
     groupId: v.id("groups"),

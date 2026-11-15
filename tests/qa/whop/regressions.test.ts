@@ -78,7 +78,7 @@ describe("calling the frolic off refunds every paid share", () => {
     }
   });
 
-  test.skip("the automatic call off also refunds the friend who bailed first", async () => {
+  test("the automatic call off also refunds the friend who bailed first", async () => {
     // SKIPPED, real defect: onBail passes the surviving `going` set to callOffMoney, whose loop does
     // `else if (going && !going.has(s.userId)) continue` before the refund branch, so the friend who
     // bailed first keeps their money even though the plan is then called off. The explicit

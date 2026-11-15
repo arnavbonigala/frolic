@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   CHECKIN_RADIUS_METERS,
+  clockTime,
   DEFAULT_WALK_MINUTES,
   crewMembers,
   crewOf,
@@ -21,6 +22,8 @@ import {
   planDetails,
 } from "./lib";
 import { SNAP_WINDOW_MS } from "../snaps";
+import { keikiEnv } from "./env";
+import { imFreeAs } from "./imFreeCall";
 import {
   addSnapAs,
   checkInAs,
@@ -140,7 +143,7 @@ async function afterReveal(ctx: QueryCtx, me: Who, frolicId: Id<"frolics">, kind
   const mine = going.some((a) => a.userId === me.user._id);
   const names = await namesOf(ctx, going.filter((a) => a.userId !== me.user._id).map((a) => a.userId));
   if (kind === "pass") {
-    return { ok: true, answer: "pass", satOut: wasGoing, say: wasGoing ? "Confirm they're out in one line. The group gets a refill if someone is free." : "Confirm in one line. Never ask why." };
+    return { ok: true, answer: "pass", satOut: wasGoing, say: wasGoing ? "Confirm they're out briefly. Never say who else is in, how many, or that someone bailed. The group gets a refill if someone is free." : "Confirm in one line. Never ask why." };
   }
   if (mine) return { ok: true, answer: "down", youreGoing: true, going: names, say: "It's already on and they're in. Call get_reveal for the details." };
   return { ok: false, error: "already_on", youreGoing: false, going: names, say: "It's on without room for that answer. Name only who's going." };
@@ -260,7 +263,7 @@ export const getReveal = internalQuery({
     if (frolic.status === "done") return { ok: true, state: "done", say: "That plan has wrapped. Ask how it was, or mention tomorrow's drop." };
     if (!isRevealed(frolic, now)) {
       if (frolic.status === "faded" || (frolic.status === "open" && now >= frolic.deadline)) {
-        return { ok: true, state: "faded", say: "Say it faded, gently, and mention tomorrow. No guilt." };
+        return { ok: true, state: "faded", say: "Say it drifted off, gently, with no names and no count. Mention tomorrow. No guilt." };
       }
       return { ok: true, state: "not_yet", say: SECRET_LINE };
     }
@@ -390,6 +393,31 @@ export const depositTarget = internalQuery({
       return { ok: false as const, body: { ok: false, error: "already_paid", say: "Their deposit is already in." } };
     }
     return { ok: true as const, userId: me.user._id, frolicId: frolic._id, amountCents: plan?.amountCents ?? null };
+  },
+});
+
+export const imFree = internalMutation({
+  args: { phone: v.string(), forMinutes: v.number() },
+  handler: async (ctx, { phone, forMinutes }) => {
+    const me = await who(ctx, phone);
+    if (!me) return notMember;
+    if (!keikiEnv().imFree) return { ok: false, error: "not_ready", say: "Starting a plan from a text is not on yet. Offer today's plan instead." };
+    const minutes = Math.max(30, Math.min(480, Math.round(forMinutes)));
+    let result: { planTitle?: string; startsAt?: number; error?: string } | null;
+    try {
+      result = await ctx.runMutation(imFreeAs, { userId: me.user._id, groupId: me.group._id, forMinutes: minutes });
+    } catch {
+      return { ok: false, error: "not_ready", say: "Starting a plan from a text did not go through. Offer today's plan instead." };
+    }
+    if (!result || result.error || result.planTitle === undefined || result.startsAt === undefined) {
+      return { ok: false, error: result?.error ?? "not_ready", say: "That did not start. Offer today's plan instead." };
+    }
+    return {
+      ok: true,
+      plan: result.planTitle,
+      startsAt: clockTime(result.startsAt, me.group.timezone),
+      say: "Say the plan is going to the crew without naming who started it. Tell them they are counted as down.",
+    };
   },
 });
 

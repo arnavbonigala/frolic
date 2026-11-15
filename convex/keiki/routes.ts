@@ -23,6 +23,7 @@ export const TOOL_NAMES = [
   "remember",
   "pause",
   "link_group_chat",
+  "im_free",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -39,6 +40,7 @@ const WRITES: ReadonlySet<ToolName> = new Set([
   "remember",
   "pause",
   "link_group_chat",
+  "im_free",
 ]);
 
 const DM_ONLY: ReadonlySet<ToolName> = new Set(TOOL_NAMES.filter((t) => t !== "get_today" && t !== "link_group_chat"));
@@ -186,6 +188,10 @@ async function run(ctx: ActionCtx, tool: ToolName, call: Call): Promise<unknown>
       const what = link.kind === "hold" ? "a hold that comes back when they arrive" : "their share of the plan";
       if (call.context.preflight === true) return { ok: true, preflight: true, amount, what };
       return { ok: true, amount, what, url: link.url, approvedWithFaceId: !!call.context.approval, say: "Send the link once. Say plainly what it is." };
+    }
+    case "im_free": {
+      const minutes = num(input, "for_minutes", false) ?? 120;
+      return await ctx.runMutation(internal.keiki.tools.imFree, { phone: phoneOf(call), forMinutes: minutes });
     }
     case "remember":
       return await ctx.runMutation(internal.keiki.tools.remember, { phone: phoneOf(call), text: str(input, "text", 500)!, now });

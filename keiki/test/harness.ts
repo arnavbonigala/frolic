@@ -27,8 +27,8 @@ export function testEnv(): Record<string, string | undefined> {
   return (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 }
 
-export function makeT(): T {
-  const t = convexTest(schema, modules);
+export function makeT(map: Record<string, () => Promise<unknown>> = modules): T {
+  const t = convexTest(schema, map);
   presence.register(t);
   rateLimiter.register(t);
   workflow.register(t);

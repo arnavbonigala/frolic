@@ -342,7 +342,7 @@ R.today=()=>{
  <button class="row-link" onclick="peekSheet()"><img src="img/${NEXT().img}.jpg" alt=""><span><b>Tomorrow at 3:</b> ${NEXT().title} is looking likely.</span>${I.chev}</button>${sundayRow()}</div>`;
  if(S.phase==='faded')return `<div class="scr sky" style="height:100%">${topbar()}
  <div class="meadow" style="margin-top:20px">${FR.map(k=>`<div class="fl fold">${bloomSvg(k,30,46)}<span>${P[k].n}</span></div>`).join('')}</div>
- <div style="padding:34px 22px 0;text-align:center"><h1>This one drifted off</h1><p class="sub" style="font-size:17px;line-height:23px;margin-top:10px">Not everyone you picked said yes to ${PL().title} this time, so it quietly faded. Nobody knows you said yes. Tomorrow's plan arrives at 3.</p></div>
+ <div style="padding:34px 22px 0;text-align:center"><h1>This one drifted off</h1><p class="sub" style="font-size:17px;line-height:23px;margin-top:10px">Nobody knows you said yes.</p></div>
  <button class="row-link" style="margin-top:24px" onclick="peekSheet()"><img src="img/${NEXT().img}.jpg" alt=""><span><b>Tomorrow at 3:</b> a new plan for whoever's free. ${NEXT().title} is looking likely.</span>${I.chev}</button>${sundayRow()}</div>`;
  const waiting=S.phase==='waiting';const oi=S.onlyIf.map(k=>P[k].n);
  return `<div class="scr sky" style="min-height:100%;padding-bottom:110px">${topbar()}
@@ -351,7 +351,7 @@ R.today=()=>{
  ${packet(waiting?{why:false}:{})}
  ${waiting?`<div class="card" style="margin:14px 16px 0;display:flex;gap:12px;align-items:center" role="status"><span style="color:var(--t2)">${I.lock}</span><div class="nm"><b style="font-size:16px">You're down${oi.length?`, if ${ifIn(oi)}`:''}</b><small style="display:block">${oi.length>2?`If ${names(oi)} all say yes, you'll bloom together. The more people you need, the rarer it blooms.`:oi.length===2?`If ${names(oi)} both say yes, you'll bloom together.`:oi.length?`If ${oi[0]} says yes too, you'll both bloom at once.`:"If a friend says yes too, you'll both bloom at once."} If not, it disappears at 4 and nobody ever knows.</small></div></div>
  <div class="acts"><button class="btn sec" style="flex:1" onclick="S.phase='open';S.onlyIf=[];clearTimeout(S.revealTimer);rerender()">Take it back</button></div>`
- :`<div class="acts"><button class="btn pri" onclick="down([])">I'm down</button><button class="btn sec" onclick="onlyIfSheet()">Only with…</button></div>
+ :`<div class="acts"><button class="btn pri" onclick="down([])">I'm down</button><button class="btn sec" onclick="onlyIfSheet()">Only if…</button></div>
  <p class="hush">${I.lock} Nobody sees you're down unless they are too</p>${sundayRow()}`}</div>`};
 function down(list){S.onlyIf=list;S.match=list.length?list.slice():['maya','dev'];S.phase='waiting';closeSheet();rerender();clearTimeout(S.revealTimer);
  S.revealTimer=setTimeout(()=>{if(S.phase!=='waiting')return;if(S.onlyIf.length>=4||(S.onlyIf.length===3&&Math.random()<.5)){S.phase='faded';rerender();return}S.phase='on';if(location.hash.slice(1).startsWith('today')||!location.hash){rerender();petals();navigator.vibrate&&navigator.vibrate(30)}else toast("It's on! Check Today")},6000)}
@@ -369,7 +369,7 @@ function peekSheet(){const n=NEXT();sheet("Tomorrow's plan",`<p class="sub">It a
 function onlyIfSheet(){S.pick=new Set();const body=()=>{const sel=[...S.pick].map(k=>P[k].n);return `<p class="sub">Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them.</p>
  <div class="pickgrid">${FR.map(k=>`<button class="pick" aria-pressed="${S.pick.has(k)}" onclick="S.pick.has('${k}')?S.pick.delete('${k}'):S.pick.add('${k}');window._d()">${bloomSvg(k,26,0)}${P[k].n}</button>`).join('')}</div>
  <button class="btn pri wide" style="margin-top:14px" ${sel.length?'':'disabled'} onclick="down([...S.pick])">${sel.length?`I'm down if ${ifIn(sel)}`:'Pick at least one friend'}</button>`};
- window._d=()=>sheet("I'm down only with…",body());window._d()}
+ window._d=()=>sheet("I'm down only if…",body());window._d()}
 function freeSheet(){window._d=()=>sheet('When are you free today?',`<p class="sub">Your crew sees this. What you're doing stays private.</p>
  <div class="group" style="margin-top:14px" role="radiogroup" aria-label="When are you free">${Object.entries(FREE).map(([k,v])=>`<button class="radio" role="radio" aria-checked="${S.free===k}" onclick="S.free='${k}';window._d()"><span>${v[1]}${k==='till8'&&S.cal?'<small>From your calendar</small>':''}${k==='after5'?'<small>Set by you, just for today</small>':''}${k==='no'?'<small>No plan for you today. Nobody gets told.</small>':''}</span><i class="r"></i></button>`).join('')}</div>
  <button class="btn pri wide" style="margin-top:14px" onclick="closeSheet();if(S.free==='no'){S.phase='open';clearTimeout(S.revealTimer)}rerender()">Done</button>`,'fh');window._d()}
@@ -385,7 +385,7 @@ R.otw=()=>{clearInterval(S.etaTimer);let you=PL().walk;S.etaTimer=setInterval(()
  <div class="la">${bloomSvg(m[0],18,0)}<div class="t"><b>${PL().place.replace(/^the /,'The ')} at ${PL().time}</b><small>${P[m[0]].n}'s there.${m[1]?` ${P[m2].n} is 4 min out.`:''}</small></div><span class="cd" id="cd">${PL().walk} min<small>away</small></span></div>
  <button class="btn pri wide" style="margin-top:20px" onclick="go('checkin')">I'm here</button>
  <button class="txtbtn" onclick="bailSheet()">I can't make it</button></div></div>`};
-function bailSheet(){const m=S.match.length?S.match:['maya','dev'];sheet("Can't make it?",`<p class="sub">${names(m.map(k=>P[k].n))} will just see one fewer. The others get a chance to hop in.</p><div class="acts" style="margin:16px 0 0"><button class="btn sec" style="flex:1" onclick="closeSheet()">I'll still go</button><button class="btn pri" onclick="closeSheet();S.phase='open';go('today');toast('All good. Next time.')">Sit this one out</button></div>`)}
+function bailSheet(){sheet("Can't make it?",`<p class="sub">Your crew will see a spot open up.</p><div class="acts" style="margin:16px 0 0"><button class="btn sec" style="flex:1" onclick="closeSheet()">I'll still go</button><button class="btn pri" onclick="closeSheet();S.phase='open';go('today');toast('All good. Next time.')">Sit this one out</button></div>`)}
 function snapPics(){const sh=PL().shots;return [[sh[0],'35% 50%'],[sh[1],'70% 45%'],[PL().img,'50% 30%']]}
 function tilt(e,el){const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;const i=el.querySelector('.press-in');i.classList.remove('idle');i.style.transform=`rotateX(${-y*22}deg) rotateY(${x*28}deg)`}
 function untilt(el){const i=el.querySelector('.press-in');i.style.transform='';i.classList.add('idle')}

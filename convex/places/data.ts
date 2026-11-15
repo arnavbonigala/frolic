@@ -54,6 +54,7 @@ export type Place = {
   image: string | null;
   source: string;
   bartStation: string | null;
+  drop?: { dropId: string; sellerName: string; seatsLeft: number };
 };
 
 const h = (hh: number, mm = 0) => hh * 60 + mm;

@@ -192,7 +192,7 @@ Runs inside the tap mutation for every tap while the frolic is `open`. The same 
 
 ### `crew.crew`
 
-Args: `{ deviceToken, groupId, day }`. Returns `{ groupName, members: Member[] }` where `Member` is `{ userId, name, color, photoUrl, isMe, free }` and `free` is `null` or `{ state: "now" | "window" | "busy", window: { start, end } | null, minutesAway: number | null, updatedAt }`.
+Args: `{ deviceToken, groupId, day }`. Returns `{ groupName, holdEnabled, holdCents, memberCount, createdAt, members: Member[] }`, where `holdEnabled` is absent until a member turns the per-crew deposit on and `holdCents` is the amount in cents (300 by default, `FROLIC_HOLD_CENTS` overrides it), `memberCount` is the number of members and `createdAt` is when the crew was made where `Member` is `{ userId, name, color, photoUrl, isMe, free }` and `free` is `null` or `{ state: "now" | "window" | "busy", window: { start, end } | null, minutesAway: number | null, updatedAt }`.
 
 `day` is `YYYY-MM-DD` in the crew's timezone; availability is stored per day.
 
@@ -260,6 +260,24 @@ Args: `{ deviceToken, frolicId, storageId, takenAt }`. Returns `null`.
 
 Needs a check-in first, else `NOT_CHECKED_IN`. Accepted from 1000 ms before `snapAt` to 120000 ms after it, else `NO_SNAP_WINDOW`. A second upload in the same window replaces the first.
 
+## Drops
+
+Local spots and student clubs sell Frolic experiences as visible Whop products. Each row in `drops` is one of them: seller, title, per-person price, capacity, the place it happens at, tags, and the days and minutes it runs. The daily plan engine scores active drops next to places, with a small boost when a drop matches the crew's taste, and a plan built from one carries `plans.dropId`. When that frolic goes on, each going friend's share is charged against the seller's own Whop product: a full share buys the seller's variant by `variant_id`, and a share the Frolic Fund made smaller is charged as an inline variant under the seller's product. The fund, split, webhook and refund paths are the same ones every paid plan uses.
+
+### `drops.forPlan`
+
+Args: `{ deviceToken, frolicId }`. Returns `null` when the frolic's plan is not a drop, else:
+
+```
+{ dropId, sellerName, hostedBy: "Hosted by Cal Kayak Club", title, priceCents, priceLabel, seatsLeft, imageKey }
+```
+
+`seatsLeft` is capacity minus friends going on any crew's `on` frolic for that drop that day, so a pending match never changes it. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`.
+
+### Seeding
+
+`npx convex run drops:seed` creates the three demo drops in the Whop sandbox company (visible products with one visible variant each) and stores their ids. It reads `WHOP_SANDBOX_API_KEY`, `WHOP_API_BASE` and `WHOP_ACCOUNT_ID`, and is idempotent: a row that already has its ids is skipped, and a missing row finds its product by metadata and its variant by `sku` before creating anything.
+
 ## Internal surface
 
 Not callable from a client. These exist so the web, iMessage and plans lanes act as a user without holding a device token.
@@ -278,6 +296,9 @@ Not callable from a client. These exist so the web, iMessage and plans lanes act
 | `reveal.flip` | `{ frolicId }` | `null` |
 | `reveal.fade` | `{ frolicId }` | `null` |
 | `reveal.complete` | `{ frolicId }` | `null` |
+| `drops.seed` | `{}` | `{ key, dropId, productId, planId, purchaseUrl, created }[]` |
+| `drops.offers` | `{ day }` | active drops with Whop ids and `seatsLeft`, as the plan engine reads them |
+| `drops.chargeTarget` | `{ frolicId }` | `{ productId, planId, priceCents, dropId }` or `null` |
 
 `taps.tapAs` and the other `*As` wrappers share the validation of their public counterparts. They differ only in taking `userId` instead of `deviceToken`, so a caller must already have resolved the user.
 
@@ -333,6 +354,7 @@ Triggering the frolics in the demo scenario:
 
 The e2e demo seed sets those four portraits and flower colours, so the app, the web page and Keiki show the same faces.
 
+<<<<<<< HEAD
 ## Garden
 
 `GET`-free public queries in `convex/garden.ts`, membership checked by `deviceToken` like `crew.crew`. Nothing here reads a tap.
@@ -353,3 +375,6 @@ The e2e demo seed sets those four portraits and flower colours, so the app, the 
 **`garden.setMine({ deviceToken, frolicId, storageId?, caption? })`** is how a person adds their own photo memory or caption to a frolic they went to. It writes to `snaps` as that person, so their photo unlocks the crew's photos for them, and the caption replaces the generated one for their snap. Rules: you must be in the crew, the frolic must not have faded, and you must have been going. A caption is 1 to 80 characters with no em dash and no exclamation mark. Calling it again updates the same snap. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND`, `NOT_GOING`, `BAD_CAPTION`, `NO_PHOTO`.
 
 **`snaps.forFrolic({ deviceToken, frolicId })`** returns `[{ userId, url, takenAt, mine }]` for the caller's latest snap window, and `[]` until the caller has added their own snap. That empty array is the mock's rule: you see everyone's shot once you add yours. `url` is null for a doc whose file is gone. Errors: `UNKNOWN_DEVICE`, `NOT_FOUND`, `NOT_A_MEMBER`.
+=======
+**`crew.setHold({ deviceToken, groupId, enabled })`** turns the per-crew deposit on or off for everyone in the crew. It is off by default and any member can set it. Returns null. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`.
+>>>>>>> cbc2340 (Add a per-crew deposit toggle, off by default)

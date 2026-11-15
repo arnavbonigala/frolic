@@ -475,7 +475,7 @@ Instagram grew because the filters were worth using alone, and the network built
 
     TierFeatureDone means
 
-      1Secret "I'm down," "Only with," the match and the synced revealMatcher has a test for every rule; two taps in the same 100 ms reveal exactly once; every phone flips within one frame of revealAt; a "yes" can never be read by any client, proved by a test; bloom animation at 120 fps with a haptic
+      1Secret "I'm down," "Only if," the match and the synced revealMatcher has a test for every rule; two taps in the same 100 ms reveal exactly once; every phone flips within one frame of revealAt; a "yes" can never be read by any client, proved by a test; bloom animation at 120 fps with a haptic
 
       1The daily plan with real places and "Why this"Never an invented place (output is a place id from the candidate list, validated); respects every private limit; under 3 seconds to generate, cached for the day; the "why" line quotes real taste or memory; a hand-written fallback plan if the model fails
 

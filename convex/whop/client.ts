@@ -62,4 +62,14 @@ export const whop = {
     (await call(`/payments/${id}/refund`, "POST", { body: {}, idempotencyKey })) as WhopPayment,
   createProduct: async (body: Record<string, unknown>, idempotencyKey: string) =>
     (await call("/products", "POST", { body, idempotencyKey })) as { id: string },
+  listProducts: async (params: Record<string, string>) =>
+    ((await call(`/products?${new URLSearchParams(params).toString()}`, "GET", {})) as { data?: WhopListed[] }).data ?? [],
+  createVariant: async (body: Record<string, unknown>, idempotencyKey: string) =>
+    (await call("/variants", "POST", { body, idempotencyKey })) as WhopListed,
+  listVariants: async (params: Record<string, string>) =>
+    ((await call(`/variants?${new URLSearchParams(params).toString()}`, "GET", {})) as { data?: WhopListed[] }).data ?? [],
+  createCheckoutConfiguration: async (body: Record<string, unknown>, idempotencyKey: string) =>
+    (await call("/checkout_configurations", "POST", { body, idempotencyKey })) as { id: string; purchase_url?: string | null },
 };
+
+export type WhopListed = { id: string; metadata?: Record<string, unknown> | null; purchase_url?: string | null };
