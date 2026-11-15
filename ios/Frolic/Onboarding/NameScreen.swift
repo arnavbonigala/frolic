@@ -15,6 +15,12 @@ struct NameScreen: View {
                 .padding(.top, 26)
             nameField
                 .padding(.top, 22)
+            Text("Your crew sees your name and photo.")
+                .frolicFont(.footnote)
+                .foregroundStyle(FrolicColor.secondaryText)
+                .padding(.top, 14)
+                .padding(.horizontal, 4)
+                .accessibilityIdentifier("name.foot")
             if let failure = model.failure {
                 OnboardingStateCard(
                     title: failure.title,
