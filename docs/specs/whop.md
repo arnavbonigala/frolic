@@ -14,7 +14,7 @@ Every money state reaches Convex through a signed Whop webhook.
 
 ## 1. What our Whop sandbox can do today
 
-Sandbox only. `WHOP_SANDBOX_API_KEY` is the one key the backend reads, and `WHOP_API_BASE` is `https://sandbox-api.whop.com/api/v1`. `convex/whop/client.ts` refuses any other host, so a stray base URL cannot reach production. The production key is retired: no code reads it, and `convex/tests/noProdKey.test.ts` fails the suite if its name comes back into `convex/`.
+Sandbox only. `WHOP_SANDBOX_API_KEY` is the one key the backend reads, and `WHOP_API_BASE` is `https://sandbox-api.whop.com/api/v1`. `convex/whop/client.ts` refuses any other host, so a stray base URL cannot reach production. The production key is retired: no code reads it, and `tests/backend/noProdKey.test.ts` fails the suite if its name comes back into `convex/`.
 
 Read-only probe of the sandbox account `biz_KRb1JXuRLi8UNe` ("Momentum Labs") with that key (Nov 15 2026):
 
