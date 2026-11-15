@@ -121,7 +121,7 @@ describe("the faded and bail copy", () => {
   test("survives the repo lint over the app sources, the flows and the mock", async () => {
     const root = new URL("../../", import.meta.url).pathname;
     const output = await runCopyLint(root);
-    expect(output).toContain("0 errors");
+    expect(output).toMatch(/copy privacy: \d+ files scanned, 0 errors/);
   });
 });
 

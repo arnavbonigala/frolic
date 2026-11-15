@@ -45,8 +45,12 @@ const OLD_PHRASES = [
     why: "the bail sheet must never tell anyone that someone bailed",
   },
   {
-    re: /(?<!shared )only with/i,
+    re: /only with\s*[,.?"”…]/i,
     why: "the button and the sheet say only if, not only with",
+  },
+  {
+    re: /I'm down only with/i,
+    why: "the only-if sheet says I'm down only if",
   },
 ];
 
@@ -62,23 +66,39 @@ for (const file of files) {
 }
 
 const ANCHORS = [FADED_TITLE, FADED_BODY, BAIL_BODY, ONLY_IF_BUTTON, ONLY_IF_TITLE].map((text) => text.toLowerCase());
+const PREFIXES = ["this one drifted", "nobody knows", "your crew will see", "spot open up", "only if", "i'm down only if"];
 const SWIFT_LITERAL = /"((?:[^"\\\n]|\\.)*)"/g;
+
+function lineOf(text, index) {
+  return text.slice(0, index).split("\n").length;
+}
 
 for (const file of files.filter((name) => name.endsWith(".swift"))) {
   const text = read(file);
   for (const found of text.matchAll(SWIFT_LITERAL)) {
-    const body = found[1];
-    if (!ANCHORS.some((anchor) => body.toLowerCase().includes(anchor))) continue;
-    if (!body.includes("\\(")) continue;
-    const line = text.slice(0, found.index).split("\n").length;
-    errors.push(file + ":" + line + ": a faded or bail string is built by interpolation, so it can name a person or a count: " + JSON.stringify(body));
+    const body = found[1].toLowerCase();
+    if (!PREFIXES.some((anchor) => body.includes(anchor))) continue;
+    if (!found[1].includes("\\(")) continue;
+    errors.push(file + ":" + lineOf(text, found.index) + ": a faded or bail string is built by interpolation, so it can name a person or a count: " + JSON.stringify(found[1]));
   }
+}
+
+for (const file of files.filter((name) => /\.(js|ts|tsx|html)$/.test(name) && name !== COPY_FILE && name !== "convex/web/pageTemplate.ts")) {
+  const text = read(file);
+  const lines = text.split("\n");
+  lines.forEach((line, index) => {
+    const lower = line.toLowerCase();
+    if (!PREFIXES.some((anchor) => lower.includes(anchor))) return;
+    if (!/\$\{/.test(line)) return;
+    errors.push(file + ":" + (index + 1) + ": a faded or bail string is templated, so it can name a person or a count: " + JSON.stringify(line.trim().slice(0, 140)));
+  });
 }
 
 for (const file of files.filter((name) => name.startsWith("e2e/flows/") && name.endsWith(".yaml"))) {
   const lines = read(file).split("\n");
   lines.forEach((line, index) => {
-    if (!ANCHORS.some((anchor) => line.toLowerCase().includes(anchor))) return;
+    const lower = line.toLowerCase();
+    if (!PREFIXES.some((anchor) => lower.includes(anchor))) return;
     if (!/\{\{|\$\{/.test(line)) return;
     errors.push(file + ":" + (index + 1) + ": a faded or bail flow assertion is templated: " + JSON.stringify(line.trim().slice(0, 140)));
   });
@@ -96,6 +116,17 @@ for (const [file, needed] of REQUIRED) {
   const text = read(file);
   for (const piece of needed) {
     if (!text.includes(piece)) errors.push(file + ": is missing the approved copy " + JSON.stringify(piece));
+  }
+}
+
+const PAGE_SHAPE = [
+  "' + esc(FADED_TITLE) + '</h1>",
+  "' + esc(FADED_BODY) + '</p>",
+];
+
+for (const piece of PAGE_SHAPE) {
+  if (!read("web/src/client.js").includes(piece)) {
+    errors.push("web/src/client.js: the faded card must draw the approved string and nothing after it, missing " + JSON.stringify(piece));
   }
 }
 
