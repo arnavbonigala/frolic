@@ -22,7 +22,7 @@ describe("garden", () => {
     expect(view.count).toBe(1);
     expect(view.memories[0].youWent).toBe(true);
     expect(view.memories[0].going.map((p) => p.name)).toEqual(["Dev"]);
-    expect(view.sinceLine).toBe("0 before you, 1 with you");
+    expect(view.sinceLine).toBe("1 with you");
     const stranger = await t.mutation(api.users.createGroup, { deviceToken: token("Zed"), firstName: "Zed", groupName: "Other" });
     await expect(t.query(api.garden.overview, { deviceToken: token("Zed"), groupId: crew.groupId })).rejects.toThrow();
     expect(stranger.groupId).not.toBe(crew.groupId);

@@ -123,7 +123,7 @@ export const overview = query({
       groupName: group.name,
       youWent: mine > 0,
       count: memories.length,
-      sinceLine: mine === 0 ? "all before you joined" : memories.length - mine + " before you, " + mine + " with you",
+      sinceLine: mine === 0 ? "all before you joined" : memories.length === mine ? mine + " with you" : memories.length - mine + " before you, " + mine + " with you",
       weekLine: line.why.charAt(0).toLowerCase() + line.why.slice(1),
       taste: { headline: line.headline, why: line.why },
       fund,

@@ -8,6 +8,16 @@ struct GardenBed: View {
     @ScaledMetric(relativeTo: .title3) private var countSize: CGFloat = 20
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
 
+    init(count: Int, caption: String) {
+        self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false)
+    }
+
+    init(countLine: String, sinceLine: String, yourFlower: Bool) {
+        self.countLine = countLine
+        self.sinceLine = sinceLine
+        self.yourFlower = yourFlower
+    }
+
     private let colors: [FlowerColor] = [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato]
     private let stems: [CGFloat] = [30, 52, 40, 64, 36, 58, 44, 70, 32, 50, 42, 60]
 
