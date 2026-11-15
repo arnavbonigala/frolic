@@ -1,0 +1,75 @@
+import { ConvexError, v } from "convex/values";
+import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
+import { findAttendee, getFrolic } from "./lib/core";
+import { userFromToken } from "./lib/identity";
+
+export const SNAP_COUNTDOWN_MS = 3000;
+export const SNAP_WINDOW_MS = 2 * 60 * 1000;
+
+async function startSnap(ctx: MutationCtx, userId: Id<"users">, frolicId: Id<"frolics">): Promise<number> {
+  const frolic = await getFrolic(ctx, frolicId);
+  const attendee = await findAttendee(ctx, frolicId, userId);
+  if (frolic.status !== "on" || attendee?.status !== "going") {
+    throw new ConvexError({ code: "NOT_GOING", message: "The group snap is for people going" });
+  }
+  const now = Date.now();
+  if (frolic.snapAt !== undefined && now < frolic.snapAt + SNAP_WINDOW_MS) return frolic.snapAt;
+  const snapAt = now + SNAP_COUNTDOWN_MS;
+  await ctx.db.patch("frolics", frolicId, { snapAt });
+  await ctx.runMutation(internal.keiki.outbound.onSnapWindow, { frolicId, snapAt });
+  return snapAt;
+}
+
+async function addSnap(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  frolicId: Id<"frolics">,
+  storageId: Id<"_storage">,
+  takenAt: number,
+): Promise<null> {
+  const frolic = await getFrolic(ctx, frolicId);
+  const checkin = await ctx.db
+    .query("checkins")
+    .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
+    .unique();
+  if (!checkin) throw new ConvexError({ code: "NOT_CHECKED_IN", message: "Check in first" });
+  const snapAt = frolic.snapAt;
+  const now = Date.now();
+  if (snapAt === undefined || now < snapAt - 1000 || now > snapAt + SNAP_WINDOW_MS) {
+    throw new ConvexError({ code: "NO_SNAP_WINDOW", message: "The snap window is closed" });
+  }
+  const existing = await ctx.db
+    .query("snaps")
+    .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
+    .take(20);
+  const same = existing.find((s) => s.snapAt === snapAt);
+  if (same) await ctx.db.patch("snaps", same._id, { storageId, takenAt });
+  else await ctx.db.insert("snaps", { frolicId, groupId: frolic.groupId, userId, storageId, snapAt, takenAt });
+  return null;
+}
+
+export const start = mutation({
+  args: { deviceToken: v.string(), frolicId: v.id("frolics") },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    return await startSnap(ctx, user._id, args.frolicId);
+  },
+});
+
+export const addMine = mutation({
+  args: { deviceToken: v.string(), frolicId: v.id("frolics"), storageId: v.id("_storage"), takenAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    return await addSnap(ctx, user._id, args.frolicId, args.storageId, args.takenAt);
+  },
+});
+
+export const addSnapAs = internalMutation({
+  args: { userId: v.id("users"), frolicId: v.id("frolics"), storageId: v.id("_storage"), takenAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => await addSnap(ctx, args.userId, args.frolicId, args.storageId, args.takenAt),
+});
