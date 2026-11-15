@@ -136,7 +136,7 @@ describe("garden health", () => {
     ]);
     expect(healthFor(2, 1)).toEqual({ state: "thriving", daysSince: 2, line: "Your garden is thriving", cta: null });
     expect(healthFor(5, 1)).toMatchObject({ line: "Your garden is getting thirsty. Anyone free?", cta: "imFree" });
-    expect(healthFor(9, 1)).toMatchObject({ line: "Your garden misses you", cta: "imFree" });
+    expect(healthFor(9, 1)).toMatchObject({ line: "The flowers are resting. They never wilt for good.", cta: "imFree" });
     expect(healthFor(3, 1).cta).toBeNull();
   });
 

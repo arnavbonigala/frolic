@@ -11,7 +11,7 @@ struct GardenBed: View {
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
 
     init(count: Int, caption: String) {
-        self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
+        self.init(countLine: count == 1 ? "1 frolic" : "\(count) frolics", sinceLine: caption, yourFlower: false, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
     }
 
     init(countLine: String, sinceLine: String, yourFlower: Bool, colors: [FlowerColor], health: GardenHealthState = .fine) {

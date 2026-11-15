@@ -106,11 +106,15 @@ private struct GardenVarietyCard: View {
         .background(FrolicColor.paper.opacity(variety.unlocked ? 1 : 0.6), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(variety.name), \(variety.unlocked ? "grown \(variety.flowerCount)" : "locked. \(variety.hint ?? "")")")
+        .accessibilityLabel(variety.unlocked ? "\(variety.name), \(grownLine)" : "\(variety.name), not grown yet. \(variety.hint ?? "")")
+    }
+
+    private var grownLine: String {
+        variety.flowerCount == 1 ? "1 flower" : "\(variety.flowerCount) flowers"
     }
 
     private var detail: String {
-        if variety.unlocked { return variety.flowerCount == 1 ? "1 grown" : "\(variety.flowerCount) grown" }
+        if variety.unlocked { return grownLine }
         return variety.hint ?? ""
     }
 }
