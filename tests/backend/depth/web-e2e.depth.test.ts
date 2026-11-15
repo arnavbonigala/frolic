@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { PLACE_BY_SLUG } from "../../../convex/places/data";
 import { NOON, flipDue, makeT, setupCrew, token } from "../setup.helpers";
 
 type T = ReturnType<typeof makeT>;
@@ -632,7 +633,7 @@ describe("the e2e admin surface", () => {
     const both = await census(t);
     expect(both.groups.map((row) => row.e2eRun).sort()).toEqual(["alpha", "beta"]);
 
-    expect(await t.mutation(internal.e2e.admin.reset, { run: "alpha" })).toEqual({ cleared: 13 });
+    expect(await t.mutation(internal.e2e.admin.reset, { run: "alpha" })).toEqual({ cleared: 14 });
 
     const left = await census(t);
     expect({
@@ -674,7 +675,6 @@ describe("the e2e admin surface", () => {
       plans: state.plans.length,
       availability: state.availability.length,
       frolics: state.frolics.map((row) => row._id),
-      places: state.places.map((row) => row.slug),
     }).toEqual({
       runs: ["run-1"],
       users: ["Dev", "Jordan", "Maya", "Priya"],
@@ -683,8 +683,10 @@ describe("the e2e admin surface", () => {
       plans: 1,
       availability: 1,
       frolics: [second.frolicId],
-      places: ["indian-rock"],
     });
+    const rock = state.places.find((row) => row.slug === "indian-rock");
+    expect(rock?.address).toBe("950 Indian Rock Ave, Berkeley");
+    expect(rock?.blurb).toBe(PLACE_BY_SLUG.get("indian-rock")!.fallbackWhy);
     expect(await t.run(async (ctx) => await ctx.db.get("groups", first.groupId))).toBeNull();
     expect(await t.run(async (ctx) => await ctx.db.get("frolics", first.frolicId))).toBeNull();
   });
@@ -725,7 +727,7 @@ describe("the e2e admin surface", () => {
       title: "Kayaks at the Marina",
       cost: 8,
       payUpFront: true,
-      duration: 90,
+      duration: 120,
       day: "2026-11-15",
     });
 
