@@ -20,6 +20,10 @@
   },
   "homepage": "https://github.com/arnavbonigala/frolic#readme",
   "dependencies": {
+    "@convex-dev/presence": "^0.4.0",
+    "@convex-dev/rate-limiter": "^0.4.3",
+    "@convex-dev/workflow": "^0.4.10",
+    "@convex-dev/workpool": "^0.4.16",
     "convex": "^1.50.0"
   },
   "devDependencies": {
