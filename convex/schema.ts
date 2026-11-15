@@ -46,6 +46,7 @@ export default defineSchema({
     name: v.string(),
     createdBy: v.id("users"),
     timezone: v.string(),
+    holdEnabled: v.optional(v.boolean()),
     e2eRun: v.optional(v.string()),
   }).index("by_e2eRun", ["e2eRun"]),
 

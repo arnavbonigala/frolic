@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { holdCents } from "./lib/hold";
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
 import { timeWindow } from "./schema";
@@ -15,6 +16,10 @@ export const crew = query({
   args: { deviceToken: v.string(), groupId: v.id("groups"), day: v.string() },
   returns: v.object({
     groupName: v.string(),
+    holdEnabled: v.optional(v.boolean()),
+    holdCents: v.number(),
+    memberCount: v.number(),
+    createdAt: v.number(),
     members: v.array(
       v.object({
         userId: v.id("users"),
@@ -63,7 +68,14 @@ export const crew = query({
           : null,
       });
     }
-    return { groupName: group.name, members };
+    return {
+      groupName: group.name,
+      holdEnabled: group.holdEnabled,
+      holdCents: holdCents(),
+      memberCount: memberships.length,
+      createdAt: group._creationTime,
+      members,
+    };
   },
 });
 
@@ -145,6 +157,17 @@ export const disconnect = mutation({
   returns: v.null(),
   handler: async (ctx, { sessionToken }) => {
     await presence.disconnect(ctx, sessionToken);
+    return null;
+  },
+});
+
+export const setHold = mutation({
+  args: { deviceToken: v.string(), groupId: v.id("groups"), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    await requireMember(ctx, args.groupId, user._id);
+    await ctx.db.patch("groups", args.groupId, { holdEnabled: args.enabled });
     return null;
   },
 });
