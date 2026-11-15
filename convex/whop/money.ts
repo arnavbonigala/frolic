@@ -193,6 +193,22 @@ export async function applySignal(
   return next;
 }
 
+async function callOffMoney(ctx: MutationCtx, frolicId: Id<"frolics">, going: Set<Id<"users">>): Promise<void> {
+  const shares = await ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(200);
+  for (const s of shares) {
+    if (s.status === "due" || s.status === "failed") await setStatus(ctx, s, "waived");
+    else if (!going.has(s.userId)) continue;
+    else if (s.status === "held") await beginRelease(ctx, s);
+    else if (s.status === "paid") await beginRefund(ctx, s);
+  }
+  const entries = await ctx.db.query("fundLedger").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(500);
+  const spent = entries.filter((e) => e.entry === "payout" || (e.entry === "adjustment" && !e.shareId)).reduce((sum, e) => sum + e.amountCents, 0);
+  if (spent < 0) {
+    const frolic = await ctx.db.get("frolics", frolicId);
+    if (frolic) await ctx.db.insert("fundLedger", { groupId: frolic.groupId, frolicId, entry: "adjustment", amountCents: -spent, at: Date.now() });
+  }
+}
+
 export const onReveal = internalMutation({
   args: { frolicId: v.id("frolics") },
   returns: v.null(),
@@ -227,12 +243,12 @@ export const onBail = internalMutation({
     const frolic = await ctx.db.get("frolics", frolicId);
     const share = await shareFor(ctx, frolicId, userId);
     if (!frolic || !share) return null;
-    if (share.status === "due" || share.status === "failed") {
-      await setStatus(ctx, share, "waived");
-      return null;
-    }
     const early = frolic.startsAt === undefined || frolic.startsAt - Date.now() >= policy.bailWindowMs;
-    if (share.kind === "deposit" && share.status === "held" && early) await beginRelease(ctx, share);
+    if (share.status === "due" || share.status === "failed") await setStatus(ctx, share, "waived");
+    else if (share.kind === "deposit" && share.status === "held" && early) await beginRelease(ctx, share);
+    const going = await goingAttendees(ctx, frolicId);
+    const beforeStart = frolic.startsAt === undefined || Date.now() < frolic.startsAt;
+    if (frolic.status === "on" && beforeStart && going.length < 2) await callOffMoney(ctx, frolicId, new Set(going.map((g) => g.userId)));
     return null;
   },
 });
@@ -266,7 +282,7 @@ export const confirmExpired = internalMutation({
   handler: async (ctx, { shareId }) => {
     const share = await ctx.db.get("shares", shareId);
     if (!share || (share.status !== "due" && share.status !== "failed")) return null;
-    if (Date.now() - share.updatedAt < policy.confirmWindowMs - 1000 && share.status === "failed") {
+    if (Date.now() - share.updatedAt < policy.confirmWindowMs - 1000) {
       await ctx.scheduler.runAt(share.updatedAt + policy.confirmWindowMs, internal.whop.money.confirmExpired, { shareId });
       return null;
     }
@@ -305,7 +321,10 @@ export const payView = internalQuery({
     const share = await ctx.db.query("shares").withIndex("by_token", (q) => q.eq("token", token)).unique();
     if (!share) return { ok: false as const, message: "This link has expired." };
     const frolic = await ctx.db.get("frolics", share.frolicId);
-    if (!frolic || frolic.status !== "on" || frolic.revealAt === undefined) return { ok: false as const, message: "This one is not happening right now." };
+    const now = Date.now();
+    if (!frolic || frolic.status !== "on" || frolic.revealAt === undefined || frolic.revealAt > now || (frolic.endsAt !== undefined && now >= frolic.endsAt)) {
+      return { ok: false as const, message: "This one is not happening right now." };
+    }
     if (share.status !== "due" && share.status !== "failed") return { ok: false as const, message: "You're already set for this one." };
     const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
     return { ok: true as const, title: plan?.title ?? "Today's frolic", kind: share.kind, amountCents: share.amountCents };
@@ -384,6 +403,10 @@ export const recordCharge = internalMutation({
   handler: async (ctx, args) => {
     const share = await ctx.db.get("shares", args.shareId);
     if (!share) return null;
+    if (share.whopPaymentId && share.whopPaymentId !== args.whopPaymentId) {
+      await ctx.scheduler.runAfter(0, internal.whop.actions.voidOrphan, { shareId: share._id, paymentId: args.whopPaymentId });
+      return null;
+    }
     await ctx.db.patch("shares", share._id, { whopPaymentId: args.whopPaymentId, updatedAt: Date.now() });
     await applySignal(ctx, (await ctx.db.get("shares", share._id))!, args.signal);
     return null;

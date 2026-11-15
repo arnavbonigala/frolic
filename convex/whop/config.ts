@@ -20,5 +20,6 @@ export const policy = {
   reconcileMs: 2 * 60 * 1000,
   stuckPendingMs: 30 * 60 * 1000,
   maxRefundTries: 3,
+  maxReconcileErrors: 15,
   anonymousCredits: true,
 };

@@ -51,6 +51,14 @@ export const ingest = internalMutation({
       await ctx.db.patch("webhookEvents", rowId, { processedAt: now, error: "no share" });
       return "ignored" as const;
     }
+    if (share.whopPaymentId && paymentId && share.whopPaymentId !== paymentId && !isRefund && !isDispute) {
+      const s = signalFrom(data.status, data.substatus);
+      if (type === "payment.authorized" || type === "payment.succeeded" || s === "authorized" || s === "succeeded") {
+        await ctx.scheduler.runAfter(0, internal.whop.actions.voidOrphan, { shareId: share._id, paymentId });
+      }
+      await ctx.db.patch("webhookEvents", rowId, { processedAt: now, error: "orphan payment" });
+      return "ignored" as const;
+    }
     if (!share.whopPaymentId && paymentId && !isRefund && !isDispute) {
       await ctx.db.patch("shares", share._id, { whopPaymentId: paymentId });
       share = (await ctx.db.get("shares", share._id))!;

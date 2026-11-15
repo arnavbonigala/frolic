@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
-import { findUserByToken, requireMember, userFromToken } from "../lib/identity";
+import { findMembership, findUserByToken, userFromToken } from "../lib/identity";
 import { fundBalance, shareFor } from "./money";
 import { linkFor, linkResult } from "./links";
 
@@ -101,8 +101,7 @@ export const fund = query({
   }),
   handler: async (ctx, { deviceToken, groupId }) => {
     const user = await findUserByToken(ctx, deviceToken);
-    if (!user) return { balanceCents: 0, entries: [] };
-    await requireMember(ctx, groupId, user._id);
+    if (!user || !(await findMembership(ctx, groupId, user._id))) return { balanceCents: 0, entries: [] };
     const balanceCents = await fundBalance(ctx, groupId);
     const entries = [];
     for (const e of await recentEntries(ctx, groupId)) {
