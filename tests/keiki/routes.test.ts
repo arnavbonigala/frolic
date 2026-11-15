@@ -996,9 +996,8 @@ describe("im_free", () => {
     const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
     expect(result.body).toEqual({
       ok: true,
-      plan: "A walk at the marina",
-      startsAt: expect.any(String),
-      say: "Say the plan is going to the crew without naming who started it. Tell them they are counted as down.",
+      started: true,
+      say: "Say a plan is being made now and goes to the crew in a minute. Never name who started it. Tell them they are counted as down and will get the plan by text.",
     });
     expect(JSON.stringify(result.body)).not.toContain("Sam");
     delete testEnv().KEIKI_IM_FREE;
@@ -1010,21 +1009,30 @@ describe("im_free", () => {
     const t = makeT();
     await seedCrew(t);
     const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
-    expect(result.body).toMatchObject({ ok: true, plan: null, startsAt: null });
+    expect(result.body).toMatchObject({ ok: true, started: true });
     expect(JSON.stringify(result.body)).not.toContain("Sam");
     const again = await toolResult(t, "im_free", { phone: ANA_PHONE, input: { for_minutes: 90 } });
-    expect(again.body.ok).toBe(false);
+    expect(again.body).toMatchObject({ ok: true, started: false });
     delete testEnv().KEIKI_IM_FREE;
   });
 
-  it("answers in words when the crew already has a plan open", async () => {
+  it("says the plan is already open without naming anyone", async () => {
     testEnv().KEIKI_IM_FREE = "1";
     vi.setSystemTime(new Date(nowFor()));
     const t = makeT(frolicsRefusingImFree);
     await seedCrew(t);
     const result = await toolResult(t, "im_free", { phone: SAM_PHONE });
-    expect(result.body.ok).toBe(false);
-    expect(result.body.say).toBe("That did not start. Offer today's plan instead.");
+    expect(result.body).toMatchObject({ ok: true, started: false });
+    expect(result.body.say).toContain("today's plan is already open");
+    expect(JSON.stringify(result.body)).not.toContain("Sam");
+    delete testEnv().KEIKI_IM_FREE;
+  });
+
+  it("asks how long they are free for when the window is outside an hour to four", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    const { t } = await seeded();
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 30 } });
+    expect(result.body).toMatchObject({ ok: false, error: "bad_minutes" });
     delete testEnv().KEIKI_IM_FREE;
   });
 });
