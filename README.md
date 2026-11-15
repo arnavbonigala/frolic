@@ -15,47 +15,37 @@
 
 ## The problem
 
-Your group chat says "we should hang out" every week, and you never do. Nobody wants to be the one who asks. Nobody can pick what to do. When a plan does happen, someone drops out an hour before.
+Every friend group has the same chat. Someone says "we should hang out," everyone agrees, and then nothing happens. Nobody wants to be the one who asks, nobody wants to pick the place, and when a plan finally comes together, someone bails an hour before.
 
-In the week before the hackathon, we interviewed 100 people about making plans with friends, and read 1,446 TikTok comments on the same topic. Those three pains came up again and again.
+We talked to 100 people about this in the week before the hackathon, and read 1,446 TikTok comments on the same topic. Those three things came up over and over.
 
 ## How it works
 
-1. **Every afternoon your crew gets one plan.** A real place nearby, a time, the cost and the walk, picked to fit everyone's budget, distance and curfew, and the crew's taste.
-2. **Tap "I'm down."** Nobody sees it. If no friend joins, the plan quietly fades and nobody knows you asked.
-3. **Once two of you are down, it's on.** Every phone that said yes flips to **"It's on"** at the same second, with who's coming and when to leave.
-4. **Show up.** A $3 hold comes back when you check in. Snap a group photo, and the night grows a flower in your crew's garden.
+Every afternoon, your crew gets one plan: a real place nearby, with the time, the cost and how long it takes to get there. Frolic picks it around everyone's budget, how far they'll travel, when they need to be home, and what your crew likes.
 
-Free right now? Tap **I'm free now** and Frolic builds a plan for whoever's around.
+If you want to go, tap **I'm down**. Nobody can see that you did. Once a second friend taps it too, it's on, and both your phones flip to "It's on" at the same moment, with who's coming and when to leave. If nobody else bites, the plan fades out and no one ever knows you asked.
 
-## Why you'd open it every day
+To keep people from flaking, going puts a $3 hold on your card, and you get it back when you check in. Take a group photo while you're there and the night grows a new flower in your crew's garden.
 
-- **One plan lands every afternoon,** so there's always a reason to check.
-- **Saying yes costs nothing.** Your yes stays secret until a friend matches it.
-- **Your garden grows** with every hangout, and any night shares as an Instagram story.
-- **More than one crew:** roommates, your club and your home friends each get their own plan.
+If you're free right now, tap **I'm free now** and Frolic will put something together for whoever's around.
 
-## Built with
+## Why you'd come back
 
-**Convex** runs the whole backend: 38 tables, live queries, scheduled jobs and crons. The secret yes is built into the data model. No app query can read who tapped. Only the server's matcher sees taps, and it decides a match inside one transaction, so two taps in the same instant can't reveal twice. Every phone keeps a clock offset from the server, so the reveal lands on the same frame everywhere.
+There's a new plan every afternoon, so there's a reason to open it every day. Saying yes is free because nobody sees it unless a friend says yes too. The garden fills up as you go out more, and any night can go straight to your Instagram story. You can also be in more than one crew, so your roommates and your club each get their own plan.
 
-**Whop** handles the $3 anti-flake hold, using the full payment lifecycle, not just a checkout button:
-- **Hold, then capture or void:** Frolic authorizes the hold at the reveal. Checking in voids it; a no-show captures it.
-- **Late cancels and refunds,** each a separate path.
-- **A per-crew fund:** no-shows feed it, every credit is traced to a Whop payment ID, and it pays toward the crew's next paid plan.
-- **Splits:** a paid plan's cost is split across the friends who matched, with the fund applied first.
-- **A signed webhook,** verified on every call, plus a reconcile job that recovers lost or orphaned payments.
-- **An Apple Pay page** served from Convex.
+## What we built it with
 
-Everything runs in the Whop sandbox.
+**Convex** is the whole backend. The tricky part was keeping a yes secret: the app has no way to read who tapped. Only the matcher on the server sees taps, and it settles a match in a single transaction, so two people tapping at the same instant can't trigger two reveals. Each phone also tracks its clock offset from the server, which is how the reveal lands at the same moment on everyone's screen.
 
-**Supermemory** keeps one memory per person and one per crew: what you skipped, what you loved, where you went. Plans stop offering boba to a crew that skipped it twice, and each plan's "why" quotes a real memory.
+**Whop** runs the $3 hold. When a plan is on, we authorize the hold. If you check in, we void it. If you don't show, we capture it, and that money goes into a fund for your crew that pays toward its next paid plan. Paid plans get split between the people going, with the fund taken off first. Every credit in the fund points back to a Whop payment. We verify the signature on every webhook, and a reconcile job catches payments that got lost along the way. The checkout page with Apple Pay is served from Convex. It all runs in Whop's sandbox.
 
-**Keiki** is an iMessage agent. A friend who won't install the app can text "down" and gets the same reveal at the same second.
+**Supermemory** remembers what each person and each crew skipped, loved and went to. That's why a crew that passed on boba twice stops getting boba, and why each plan's "why" line can point to something real.
 
-**Capy** agents wrote most of the code. Captain threads ran dozens of parallel workers that opened, tested and merged 160+ pull requests in one day. Each PR links back to the Capy thread that wrote it.
+**Keiki** puts Frolic in iMessage. A friend who won't download the app can text "down" and gets the reveal at the same time as everyone else.
 
-**Revyl** tests the app on cloud iPhones. 48 flows cover signup, the secret yes, the reveal, check-in and the garden.
+**Capy** agents wrote most of the code. Captain threads ran dozens of workers in parallel and merged more than 160 pull requests in one day. Each PR links to the Capy thread that wrote it.
+
+**Revyl** runs the app on cloud iPhones. There are 48 test flows covering signup, the secret yes, the reveal, check-in and the garden.
 
 ## Architecture
 
@@ -71,9 +61,9 @@ flowchart LR
   V -- tags only --> C
 ```
 
-Your photos never leave the phone. Apple's Vision framework tags them on device, and only the tags (like "sunsets" or "games") reach the server.
+Your photos stay on your phone. Apple's Vision framework tags them there, and only the tags, like "sunsets" or "games," get sent to the server.
 
-The core of the data model:
+Here are the main tables:
 
 ```mermaid
 erDiagram
@@ -92,6 +82,6 @@ erDiagram
   groups ||--o| tasteProfiles : taste
 ```
 
-**Tests:** about 1,270 backend tests, including a 14-day simulation where four people tap, bail, rejoin and flake while every rule holds, and privacy tests that check a secret yes changes nothing another member can query.
+The backend has about 1,270 tests. One simulates four people over 14 days, tapping, bailing, rejoining and flaking, and checks that the rules hold the whole time. Others make sure a secret yes doesn't change anything another member can see.
 
-Setup, tests and the repo layout live in [`docs/development.md`](docs/development.md).
+Setup instructions and the repo layout are in [`docs/development.md`](docs/development.md).
