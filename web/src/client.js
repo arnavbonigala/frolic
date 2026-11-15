@@ -33,8 +33,11 @@ function packet(card) {
 }
 
 const store = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
-let guest = store.get("frolic.guest");
-if (!guest) { guest = crypto.randomUUID(); store.set("frolic.guest", guest); }
+let device = store.get("frolic.device");
+if (!device || device.length < 32) {
+  device = crypto.randomUUID() + crypto.randomUUID();
+  store.set("frolic.device", device);
+}
 
 const ui = {view: null, offline: !navigator.onLine, name: store.get("frolic.name") || "", busy: false, error: "", flipped: false, subError: false};
 let offset = 0;
@@ -42,10 +45,8 @@ let offset = 0;
 async function syncClock() {
   try {
     const t0 = Date.now();
-    const r = await fetch("/web/clock", {cache: "no-store"});
-    const t1 = Date.now();
-    const {now} = await r.json();
-    offset = now - (t0 + t1) / 2;
+    const now = await client.mutation(anyApi.clock.now);
+    offset = now - (t0 + Date.now()) / 2;
   } catch (e) {}
 }
 const serverNow = () => Date.now() + offset;
@@ -59,11 +60,14 @@ function body(v) {
   if (!v) return '<div class="below"><div class="skel" style="height:56px"></div><div class="skel" style="height:54px;border-radius:999px;margin-top:12px"></div></div>';
   if (ui.subError) return '<div class="below"><div class="card center" role="alert"><b style="font-size:17px">Something went wrong</b><p class="sub">We could not load this plan. Your yes, if you sent one, is safe.</p></div><button class="btn" id="retry">Try again</button></div>';
   if (v.phase === "on") {
-    const who = names(["You"].concat(v.mates || []).map(n => n === "You" ? "You" : n));
-    return '<div class="below"><div class="card center bloomin" role="status"><div class="blooms">' + [guestName(v)].concat(v.mates || []).slice(0, 4).map(n => bloom(n, 26, 0)).join("") + '</div><h1 style="margin-top:6px">It\u2019s on.</h1><p class="sub">' + esc(who) + ", " + esc(v.meet || "") + (v.time ? " at " + esc(v.time) : "") + '.</p></div><a class="btn" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
+    const mates = (v.mates || []).filter(n => n !== guestName(v));
+    const who = names((v.me ? ["You"] : []).concat(mates));
+    const blooms = (v.me ? [guestName(v)] : []).concat(mates).slice(0, 4);
+    return '<div class="below"><div class="card center bloomin" role="status"><div class="blooms">' + blooms.map(n => bloom(n, 26, 0)).join("") + '</div><h1 style="margin-top:6px">It\u2019s on.</h1><p class="sub">' + esc(who || "It\u2019s on") + (who ? ", " + esc(v.meet || "") : "") + (who && v.time ? " at " + esc(v.time) : "") + '.</p></div><a class="btn" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
   }
+  if (v.phase === "planted" && !v.me) return body(Object.assign({}, v, {phase: "open"}));
   if (v.phase === "planted") return '<div class="below"><div class="card"><div class="row" role="status"><div class="fl bud new" style="flex:none">' + bud(guestName(v), 16, 6) + '</div><div><b>You\u2019re down, ' + esc(guestName(v)) + '</b><small>Only you know. Keep this page open: it blooms the moment someone else says yes.</small></div></div></div><span class="cap">Waiting for a friend<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>';
-  if (v.phase === "drifted") return '<div class="below"><div class="card center" role="status"><div class="blooms" style="opacity:.55">' + bud(guestName(v), 20, 14) + '</div><h1 style="margin-top:6px">Drifted off.</h1><p class="sub">Nobody else said yes in time, so nobody ever knew you did. Nothing was shared.</p></div><a class="btn sec" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
+  if (v.phase === "drifted") return '<div class="below"><div class="card center" role="status"><div class="blooms" style="opacity:.55">' + bud(v.me || "Frolic", 20, 14) + '</div><h1 style="margin-top:6px">Drifted off.</h1><p class="sub">' + (v.me ? "Nobody else said yes in time, so nobody ever knew you did. Nothing was shared." : "Nobody could make it this time. Nothing was shared.") + '</p></div><a class="btn sec" style="text-decoration:none" href="' + esc(boot.appUrl) + '">Get Frolic for the next one</a></div>';
   return '<form class="below" id="f" novalidate><label class="sr" for="wn">Your first name</label><input id="wn" class="field" autocomplete="given-name" autocapitalize="words" maxlength="24" placeholder="Your first name" value="' + esc(ui.name) + '"' + (ui.busy ? " disabled" : "") + '><button class="btn" type="submit"' + (ui.busy || ui.offline ? " disabled" : "") + ">" + (ui.busy ? "Planting\u2026" : "I\u2019m down") + "</button>" + (ui.error ? '<p class="err" role="alert">' + esc(ui.error) + "</p>" : "") + '<p class="hush">' + LOCK + " Nobody sees you\u2019re down unless someone else is too. No app needed.</p></form>";
 }
 function guestName(v) { return v.me || ui.name || "You"; }
@@ -100,18 +104,22 @@ function petals() {
   }
 }
 
-let client, unsub, flipTimer;
+let client, unsub, flipTimer, queryArgs;
+const DEBUG = location.search.indexOf("debug") !== -1;
 function apply(raw) {
+  if (DEBUG) console.log("apply", raw.phase, raw.revealAt, "offset", offset, "now", serverNow());
   ui.subError = false;
-  if (raw.phase === "on" && !ui.flipped) {
+  if (!ui.flipped && raw.revealAt && serverNow() < raw.revealAt) {
     const wait = raw.revealAt - serverNow();
-    if (wait > 0) {
-      ui.view = Object.assign({}, raw, {phase: "planted"});
+    {
+      ui.view = raw.phase === "on" ? Object.assign({}, raw, {phase: "planted"}) : raw;
       render();
       clearTimeout(flipTimer);
-      flipTimer = setTimeout(() => apply(raw), wait);
+      flipTimer = setTimeout(subscribe, wait + 150);
       return;
     }
+  }
+  if (raw.phase === "on" && !ui.flipped) {
     ui.flipped = true;
     ui.view = raw;
     render();
@@ -124,7 +132,7 @@ function apply(raw) {
 }
 function subscribe() {
   if (unsub) unsub();
-  unsub = client.onUpdate(anyApi.web.share.watch, {code: boot.code, guest}, apply, () => { ui.subError = true; render(); });
+  unsub = client.onUpdate(anyApi.web.share.watch, queryArgs, apply, () => { ui.subError = true; render(); });
 }
 async function submit(name) {
   name = name.trim();
@@ -133,7 +141,7 @@ async function submit(name) {
   store.set("frolic.name", name);
   ui.busy = true; ui.error = ""; render();
   try {
-    await client.mutation(anyApi.web.share.join, {code: boot.code, guest, name});
+    await client.mutation(anyApi.web.share.join, {code: boot.code, deviceToken: device, name});
     ui.busy = false;
   } catch (e) {
     ui.busy = false;
@@ -149,8 +157,13 @@ if (boot.phase === "invalid" || boot.phase === "expired") {
   render();
   syncClock();
   client = new ConvexClient(boot.cloudUrl);
+  queryArgs = {code: boot.code, deviceToken: device};
   subscribe();
   addEventListener("offline", () => { ui.offline = true; render(); });
   addEventListener("online", () => { ui.offline = false; syncClock(); render(); });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) syncClock(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    syncClock();
+    if (!ui.flipped) subscribe();
+  });
 }

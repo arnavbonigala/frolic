@@ -55,16 +55,6 @@ export function registerWebRoutes(http: ReturnType<typeof httpRouter>): void {
   });
 
   http.route({
-    path: "/web/clock",
-    method: "GET",
-    handler: httpAction(async () => {
-      return new Response(JSON.stringify({ now: Date.now() }), {
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      });
-    }),
-  });
-
-  http.route({
     pathPrefix: "/p/",
     method: "GET",
     handler: httpAction(async (ctx, req) => {
