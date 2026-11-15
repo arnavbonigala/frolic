@@ -8,9 +8,19 @@ final class CheckInFlowCoordinator {
 
     var frolicId: String?
     var isPresented = false
+    var plantedFrolicId: String?
+
+    var opensOnSnap = false
 
     func open(frolicId: String? = nil) {
         self.frolicId = frolicId
+        opensOnSnap = false
+        isPresented = true
+    }
+
+    func openSnap(frolicId: String? = nil) {
+        self.frolicId = frolicId
+        opensOnSnap = true
         isPresented = true
     }
 }
@@ -57,7 +67,7 @@ struct CheckInFlowScreen: View {
                     onSnapped: { store.noteSnapTaken($0) }
                 )
             case .collage:
-                SnapCollage(store: store, onPlant: onClose, onAgain: {
+                SnapCollage(store: store, onPlant: plant, onAgain: {
                     snapModel.reset()
                     store.step = .snap
                 })
@@ -85,10 +95,10 @@ struct CheckInFlowScreen: View {
             watcher.begin(place: store.place, simulation: location)
             Task { await store.refreshRoute() }
         }
-        .onChange(of: watcher.arrived) { _, arrived in
-            guard arrived, store.phase == .ready, !store.checkedIn else { return }
-            store.checkIn(method: "geofence")
-        }
+        .onChange(of: watcher.arrived) { _, _ in checkInIfArrived() }
+        .onChange(of: store.phase) { _, _ in checkInIfArrived() }
+        .onChange(of: store.snapAt) { _, _ in joinLiveSnap() }
+        .onChange(of: store.checkedIn) { _, _ in joinLiveSnap() }
         .onChange(of: watcher.currentCoordinate?.latitude) { _, _ in
             Task { await store.refreshRoute() }
         }
@@ -105,10 +115,29 @@ struct CheckInFlowScreen: View {
         Task { await store.load(backend: backend) }
     }
 
+    private func checkInIfArrived() {
+        guard watcher.arrived, store.phase == .ready, !store.checkedIn else { return }
+        store.checkIn(method: "geofence")
+    }
+
+    private func joinLiveSnap() {
+        guard store.checkedIn, store.step == .onTheWay, let snapAt = store.snapAt else { return }
+        let now = Date().timeIntervalSince1970 * 1000 + store.clockOffset
+        guard now < snapAt + 1000 else { return }
+        store.step = .snap
+    }
+
+    private func plant() {
+        CheckInFlowCoordinator.shared.plantedFrolicId = store.frolicId
+        router.tab = .garden
+        onClose()
+    }
+
     private func prepare() async {
         guard !prepared else { return }
         prepared = true
         store.attach(watcher: watcher)
+        if CheckInFlowCoordinator.shared.opensOnSnap { store.step = .snap }
         if let route = router.e2eRoute {
             seed(route)
         }
