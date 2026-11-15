@@ -81,7 +81,7 @@ Read this before promising the run to anyone. Each item is a beat that has no pa
 5. **A live Supermemory read in plan generation.** The memory layer is tested, but no plan calls it yet. Until plan generation reads `getMemoryContext`, beat 13 shows the garden and the quoted memory from a seeded record, which is honest if the presenter says "seeded" once.
 6. **A no-show on cue.** Capture runs 45 minutes after the start, so beat 9 needs a seeded frolic whose start has already passed, and the sweep run once from the dashboard while Jordan's phone is face down. If the sweep is not the demo's to run, the fund tick is a screenshot and the presenter says so.
 7. **Hold sheet copy and accessibility ids.** The mock has no hold sheet, so beat 7's "Hold $3 to lock it in" and its card entry exist only as a spec proposal. The iOS lane needs to add the ids and labels, or the beat runs with the presenter saying the words are new.
-8. **A web yes that matches an app yes.** The page and its routes are built and 13 of its 18 tests pass. The five that fail are the five that need the tap mutation, which the matcher lane has not written: `Could not find module for: "taps"`. The QR code in the after-demo section only works once that lands.
+8. **A web yes that matches an app yes.** The page and its routes are built on branch `web-im-down` and 13 of its 18 tests pass. The five that fail did so because the tap module did not exist on the branch it was cut from, `convex/taps.ts`, which is on `main` now, so they should clear on that branch's next push. Until they do, that branch's web yes cannot be shown to reach the matcher. The QR code in the after-demo section waits on the same thing.
 
 ## The taps
 
