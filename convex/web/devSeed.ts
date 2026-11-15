@@ -151,3 +151,29 @@ export const setAvatar = internalMutation({
     return "ok";
   },
 });
+
+export const attachDrop = internalMutation({
+  args: { frolicId: v.id("frolics") },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const frolic = await ctx.db.get(args.frolicId);
+    if (!frolic?.planId) return "no plan";
+    const dropId = await ctx.db.insert("drops", {
+      key: "cal-kayak-sunset-" + Date.now(),
+      sellerName: "Cal Kayak Club",
+      title: "Sunset kayaks",
+      priceCents: 800,
+      capacity: 12,
+      placeSlug: "berkeley-marina",
+      tags: ["water"],
+      imageKey: "plan-sunsets",
+      active: true,
+      validDays: [0, 1, 2, 3, 4, 5, 6],
+      startMinute: 900,
+      endMinute: 1140,
+      durationMinutes: 90,
+    });
+    await ctx.db.patch(frolic.planId, { dropId });
+    return "ok";
+  },
+});
