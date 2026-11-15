@@ -26,6 +26,7 @@ import * as dailyPickBank from "../../../convex/dailyPickBank";
 import * as drops from "../../../convex/drops";
 import * as e2e_admin from "../../../convex/e2e/admin";
 import * as e2e_routes from "../../../convex/e2e/routes";
+import * as e2e_friends from "../../../convex/e2e/friends";
 import * as e2e_rehearse from "../../../convex/e2e/rehearse";
 import * as etas from "../../../convex/etas";
 import * as frolics from "../../../convex/frolics";
@@ -141,6 +142,7 @@ const MODULE_TABLE: Record<string, Record<string, unknown>> = {
   "drops": drops as unknown as Record<string, unknown>,
   "e2e/admin": e2e_admin as unknown as Record<string, unknown>,
   "e2e/routes": e2e_routes as unknown as Record<string, unknown>,
+  "e2e/friends": e2e_friends as unknown as Record<string, unknown>,
   "e2e/rehearse": e2e_rehearse as unknown as Record<string, unknown>,
   "etas": etas as unknown as Record<string, unknown>,
   "frolics": frolics as unknown as Record<string, unknown>,
