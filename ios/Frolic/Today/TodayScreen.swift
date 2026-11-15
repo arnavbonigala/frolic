@@ -358,7 +358,7 @@ private struct TodayWaitingView: View {
         VStack(spacing: 0) {
             TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson]) { router.tab = .crew }
                 .accessibilityIdentifier("today.meadow")
-            TodayCaption(text: onlyIf.isEmpty ? "Waiting for a friend" : "Waiting for " + TodayCopy.either(onlyIf), identifier: "today.caption.waiting", showsDots: true)
+            TodayCaption(text: onlyIf.isEmpty ? "Waiting for a friend" : "Waiting for " + TodayCopy.names(onlyIf), identifier: "today.caption.waiting", showsDots: true)
             TodayPlanPacket(store: store, showsWhy: false)
             TodayStatusCard(
                 title: TodayCopy.downLine(onlyIf),
