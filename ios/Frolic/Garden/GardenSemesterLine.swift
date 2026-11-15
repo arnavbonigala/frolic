@@ -45,8 +45,17 @@ struct GardenSemesterLine: View {
 
 extension GardenOverview {
     func semester(me: String?) -> (frolics: Int, places: Int, friends: Int) {
-        let mine = memories.filter(\.youWent)
-        let friends: Set<String> = me.map { id in Set(mine.flatMap(\.going).map(\.userId).filter { $0 != id }) } ?? []
-        return (mine.count, Set(mine.map(\.title)).count, friends.count)
+        var frolics = 0
+        var places = Set<String>()
+        var friends = Set<String>()
+        for memory in memories where memory.youWent {
+            frolics += 1
+            places.insert(memory.title)
+            guard let me else { continue }
+            for person in memory.going where person.userId != me {
+                friends.insert(person.userId)
+            }
+        }
+        return (frolics, places.count, friends.count)
     }
 }
