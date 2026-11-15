@@ -176,7 +176,10 @@ async function keikiSeed(size: 2 | 3) {
 async function fadedOutbox(size: 2 | 3) {
   const { t, seed } = await keikiSeed(size);
   testEnv().KEIKI_API_KEY = API_KEY;
-  await t.mutation(internal.keiki.outbound.onFaded, { frolicId: seed.frolicId });
+  await t.mutation(internal.keiki.outbound.onFaded, {
+    frolicId: seed.frolicId,
+    userIds: size === 3 ? [seed.mayaId, seed.samId, seed.anaId] : [seed.mayaId, seed.samId],
+  });
   installFetch();
   await advance(t, 0);
   const rows = await outboxOf(t);

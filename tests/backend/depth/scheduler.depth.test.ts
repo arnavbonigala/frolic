@@ -262,7 +262,7 @@ describe("chat and memory stubs", () => {
     expect(
       await t.mutation(internal.keiki.outbound.onSnapWindow, { frolicId: crew.frolicId, snapAt: NOON }),
     ).toBeNull();
-    expect(await t.mutation(internal.keiki.outbound.onFaded, { frolicId: crew.frolicId })).toBeNull();
+    expect(await t.mutation(internal.keiki.outbound.onFaded, { frolicId: crew.frolicId, userIds: [crew.ids.Maya] })).toBeNull();
     expect(
       await t.mutation(internal.keiki.outbound.onCollage, { frolicId: crew.frolicId, storageId: photo }),
     ).toBeNull();

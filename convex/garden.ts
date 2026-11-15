@@ -640,8 +640,14 @@ export const nudgeCrew = internalMutation({
     const group = await ctx.db.get("groups", args.groupId);
     if (!group) return false;
     const now = Date.now();
-    const newest = (await blooms(ctx, args.groupId, true))[0] ?? null;
     const today = dayIn(group.timezone, now);
+    const carrier = await ctx.db
+      .query("frolics")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId))
+      .order("desc")
+      .first();
+    if (!carrier) return false;
+    const newest = (await blooms(ctx, args.groupId, true))[0] ?? null;
     if (gardenHealth(group, newest, newest ? 1 : 0, today, await lastWateredDay(ctx, args.groupId, today)).state !== "thirsty") return false;
     const anchor = newest?.frolic._id ?? null;
     const sent = await ctx.db
@@ -649,14 +655,9 @@ export const nudgeCrew = internalMutation({
       .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
       .order("desc")
       .take(20);
-    if (sent.some((row) => row.anchor === anchor)) return false;
+    if (sent.some((row) => row.anchor === anchor || dayIn(group.timezone, row.sentAt) === today)) return false;
     await ctx.db.insert("gardenNudges", { groupId: args.groupId, anchor, text: GARDEN_NUDGE_TEXT, sentAt: now });
-    const carrier = await ctx.db
-      .query("frolics")
-      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId))
-      .order("desc")
-      .first();
-    if (carrier) await gardenNudge(ctx, args.groupId, carrier._id, anchor ?? "none");
+    await gardenNudge(ctx, args.groupId, carrier._id, anchor ?? "none");
     return true;
   },
 });

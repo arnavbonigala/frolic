@@ -306,16 +306,19 @@ describe("due", () => {
 });
 
 describe("onFaded", () => {
-  it("tells every linked unpaused member the plan faded", async () => {
+  it("tells only the members who said yes, and never a member who passed", async () => {
     const { t, seed } = await seeded();
     const fetchMock = installFetch();
-    await t.mutation(internal.keiki.outbound.onFaded, { frolicId: seed.frolicId });
+    await t.mutation(internal.keiki.outbound.onFaded, {
+      frolicId: seed.frolicId,
+      userIds: [seed.samId],
+    });
     const rows = await outboxOf(t);
-    expect(rows.map((row) => row.target).sort()).toEqual([SAM_PHONE, ANA_PHONE].sort());
+    expect(rows.map((row) => row.target)).toEqual([SAM_PHONE]);
     expect(rows.every((row) => row.kind === "faded")).toBe(true);
 
     await advance(t, 0);
-    expect(fetchMock.notices.map((notice) => notice.phone).sort()).toEqual([SAM_PHONE, ANA_PHONE].sort());
+    expect(fetchMock.notices.map((notice) => notice.phone)).toEqual([SAM_PHONE]);
     expect(fetchMock.notices[0].text).toContain("This one drifted off. Nobody knows you said yes.");
   });
 });

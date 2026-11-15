@@ -231,12 +231,11 @@ export const onReveal = internalMutation({
 });
 
 export const onFaded = internalMutation({
-  args: { frolicId: v.id("frolics") },
-  handler: async (ctx, { frolicId }) => {
+  args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")) },
+  handler: async (ctx, { frolicId, userIds }) => {
     const frolic = await ctx.db.get("frolics", frolicId);
     if (!frolic) return null;
-    const members = await crewMembers(ctx, frolic.groupId);
-    const drafts = await personal(ctx, members.map((m) => m._id), (user) => ({
+    const drafts = await personal(ctx, userIds, (user) => ({
       key: "faded:" + frolicId + ":" + user._id,
       kind: "faded",
       text: FADED_TEXT,
