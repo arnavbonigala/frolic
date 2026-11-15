@@ -41,7 +41,7 @@ Every tab screen holds a `ScreenPhase` and renders through `PhasedContent`; `rou
 
 Painted art from `design/generated/` lives in the asset catalog under its exact file name, without the extension. Use it by name, because full-resolution versions with the same names replace the files later:
 
-- Plan heroes keyed by taste tag: `plan-sunsets`, `plan-outdoors`, `plan-late-night-food`, `plan-games`, `plan-free-stuff`. Pass the name as `SeedPacket(image:)`.
+- Plan heroes keyed by taste tag: `plan-sunsets`, `plan-outdoors`, `plan-late-night-food`, `plan-games`, `plan-free-stuff`. Pass the server's `plan.heroKey` straight to `SeedPacket(image:)`. An unknown key falls back to `plan-free-stuff` instead of rendering blank.
 - State illustrations (transparent): `state-garden-empty`, `state-faded`, `state-its-on`, `state-solo`, `state-waiting`.
 - Whop moments (transparent): `whop-deposit-back`, `whop-fund-jar`, `whop-noshow-coin`.
 - Demo portraits (fictional people), used for previews and the gallery: `portrait-maya`, `portrait-dev`, `portrait-jordan`, `portrait-priya`. At runtime, set `FlowerPerson.avatarURL` from Convex. The flower falls back to the initial.

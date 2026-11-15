@@ -78,6 +78,18 @@ const QUERY_REGISTRY: Record<string, ArgsFor> = {
     groupId: f.groupId,
     day: "2026-11-15",
   }),
+  "snaps:forFrolic": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    frolicId: f.frolicId,
+  }),
+  "garden:overview": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+  }),
+  "garden:memory": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    frolicId: f.frolicId,
+  }),
   "whop/pay:myPayment": (f, observer) => ({
     deviceToken: f.tokens[observer],
     frolicId: f.frolicId,
@@ -137,7 +149,12 @@ async function snapshot(
 ): Promise<Record<string, unknown>> {
   const out: Record<string, unknown> = {};
   for (const { entry, args } of callables) {
-    out[`${entry.module}:${entry.name}`] = scrub(await t.query(entry.ref, args), f);
+    const key = `${entry.module}:${entry.name}`;
+    try {
+      out[key] = scrub(await t.query(entry.ref, args), f);
+    } catch (error) {
+      out[key] = { rejected: error instanceof Error ? error.message : String(error) };
+    }
   }
   return out;
 }

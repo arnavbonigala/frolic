@@ -4,6 +4,7 @@ import { api, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { findMembership, findUserByToken } from "../lib/identity";
+import { photoUrlOf } from "../lib/photo";
 import { heroUrl } from "./hero";
 
 export const card = v.object({
@@ -56,7 +57,7 @@ type View = {
 type Today = {
   phase: string;
   myTap: { kind: string } | null;
-  reveal: { revealAt: number; going: { userId: string; name: string }[] } | null;
+  reveal: { revealAt: number; going: { userId: string; name: string; photoUrl: string | null }[] } | null;
 };
 
 const dead: View = {
@@ -77,11 +78,6 @@ async function inviteFor(ctx: QueryCtx | MutationCtx, code: string) {
     .query("invites")
     .withIndex("by_code", (q) => q.eq("code", code.trim().toUpperCase()))
     .unique();
-}
-
-async function avatarOf(ctx: QueryCtx, user: Doc<"users"> | null): Promise<string | null> {
-  if (!user?.photoId) return null;
-  return await ctx.storage.getUrl(user.photoId);
 }
 
 function timeIn(ms: number, timezone: string): string {
@@ -171,7 +167,7 @@ export const watch = query({
 
     const mine = today.myTap?.kind === "down";
     const me = mine ? user.name : null;
-    const avatar = await avatarOf(ctx, user);
+    const avatar = await photoUrlOf(ctx, user);
 
     if (today.reveal) {
       if (Date.now() < today.reveal.revealAt) {
@@ -181,8 +177,7 @@ export const watch = query({
       for (const person of today.reveal.going) {
         if (person.userId === user._id) continue;
         if (mates.some((m) => m.name === person.name)) continue;
-        const other = await ctx.db.get(person.userId as Id<"users">);
-        mates.push({ name: person.name, avatarUrl: await avatarOf(ctx, other) });
+        mates.push({ name: person.name, avatarUrl: person.photoUrl });
       }
       return { ...base, ...blank("on"), me, avatar, revealAt: today.reveal.revealAt, mates };
     }
