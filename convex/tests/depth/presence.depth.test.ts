@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../_generated/api";
 import { HOUR, NOON, makeT, token, type T } from "../setup.helpers";
@@ -213,6 +212,6 @@ describe("presence", () => {
       }),
     ).rejects.toThrow(/not signed in/);
     expect(await t.query(api.crew.looking, { roomToken: "not-a-room" })).toEqual([]);
-    await t.mutation(api.crew.disconnect, { sessionToken: "not-a-session" });
+    await expect(t.mutation(api.crew.disconnect, { sessionToken: "not-a-session" })).resolves.toBeNull();
   });
 });

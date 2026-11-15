@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
 import { HOUR, NOON, flipDue, makeT, setupCrew, tap, token, type Crew, type T } from "../setup.helpers";
@@ -191,7 +190,7 @@ describe("group snap", () => {
     expect(rows[1].storageId).toBe(second);
   });
 
-  test("a snap before the countdown finishes or from someone not going is refused", async () => {
+  test("a snap before the countdown finishes, or without a check in, is refused", async () => {
     const t = makeT();
     const crew = await revealed(t);
     const photo = await t.run(async (ctx) => await ctx.storage.store(new Blob(["x"])));
@@ -213,6 +212,25 @@ describe("group snap", () => {
         takenAt: snapAt,
       }),
     ).rejects.toThrow(/Check in first/);
+  });
+
+  test.skip("BUG-3 someone who checked in and then sat out cannot snap", async () => {
+    const t = makeT();
+    const crew = await revealed(t);
+    const photo = await t.run(async (ctx) => await ctx.storage.store(new Blob(["x"])));
+    await t.mutation(api.checkins.checkInMe, { deviceToken: token("Maya"), frolicId: crew.frolicId, method: "manual" });
+    await t.mutation(api.snaps.start, { deviceToken: token("Dev"), frolicId: crew.frolicId });
+    await t.mutation(api.frolics.sitOut, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    vi.advanceTimersByTime(3000);
+    await expect(
+      t.mutation(api.snaps.addMine, {
+        deviceToken: token("Maya"),
+        frolicId: crew.frolicId,
+        storageId: photo,
+        takenAt: Date.now(),
+      }),
+    ).rejects.toThrow(/people going/);
+    expect(await t.run(async (ctx) => await ctx.db.query("snaps").collect())).toHaveLength(0);
   });
 
   test("the group snap is refused once the frolic is done", async () => {

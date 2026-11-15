@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
 import crons from "../../crons";
@@ -155,15 +154,20 @@ describe("fade", () => {
 });
 
 describe("crons", () => {
-  test("the registry holds the memory flush and the memory close", () => {
+  test("the registry holds the memory and plan jobs", () => {
     const registered = crons.crons as Record<string, { name: string; schedule: Record<string, unknown>; args: unknown[] }>;
-    expect(Object.keys(registered).sort()).toEqual(["memory close day", "memory flush"]);
+    expect(Object.keys(registered).sort()).toEqual(["daily drop", "memory close day", "memory flush", "weekend drop"]);
     expect(registered["memory flush"].name).toBe("memory/ingest:flushDue");
     expect(registered["memory flush"].schedule).toEqual({ minutes: 1, type: "interval" });
     expect(registered["memory flush"].args).toEqual([{}]);
     expect(registered["memory close day"].name).toBe("daily:closeMemoryDay");
     expect(registered["memory close day"].schedule).toEqual({ cron: "15 8 * * *", type: "cron" });
     expect(registered["memory close day"].args).toEqual([{}]);
+    expect(registered["daily drop"].name).toBe("plans/drop:dailyDrop");
+    expect(registered["daily drop"].schedule).toEqual({ cron: "0 23 * * *", type: "cron" });
+    expect(registered["weekend drop"].name).toBe("plans/drop:weekendDrop");
+    expect(registered["weekend drop"].schedule).toEqual({ cron: "0 17 * * 4", type: "cron" });
+    for (const job of Object.values(registered)) expect(job.args).toEqual([{}]);
   });
 
   test("the memory flush cron target runs and reports nothing to flush", async () => {
@@ -173,6 +177,7 @@ describe("crons", () => {
 
   test("the memory close walks every crew and passes yesterday in its own timezone", async () => {
     const t = makeT();
+    vi.setSystemTime(NOON);
     const created = await t.mutation(api.users.createGroup, {
       deviceToken: token("Maya"),
       firstName: "Maya",
@@ -275,9 +280,11 @@ describe("chat and memory stubs", () => {
         groupId: crew.groupId,
         userId: crew.ids.Maya,
         frolicId: crew.frolicId,
-        payload: { day: "2026-11-15" },
+        revealAt: NOON,
+        payload: { day: "2026-11-15", title: "Indian Rock", tags: ["sunset"] },
       });
     }
+    expect(await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect())).toHaveLength(kinds.length);
     expect(await t.mutation(internal.memory.stats.closeDay, { groupId: crew.groupId, day: "2026-11-15" })).toEqual({
       counted: [],
     });

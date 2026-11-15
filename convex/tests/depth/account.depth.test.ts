@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import type { FunctionReference } from "convex/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../_generated/api";
@@ -14,11 +13,6 @@ afterEach(() => {
 });
 
 describe("account deletion", () => {
-  test("no backend function deletes an account or a person's data yet", () => {
-    const exported = Object.keys(users);
-    expect(exported.filter((name) => /delete|purge|erase|forget/i.test(name))).toEqual([]);
-  });
-
   test.skip("BUG-2 two taps delete the account: the person and everything they left behind", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev"]);

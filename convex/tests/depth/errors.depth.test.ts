@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
@@ -188,15 +187,32 @@ describe("actor errors", () => {
   test("the free status write refuses a bad day, a bad window and bad minutes before writing", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev"]);
-    for (const args of [
-      { day: "tomorrow", state: "now" as const },
-      { day: DAY, state: "window" as const, window: { start: NOON + HOUR, end: NOON } },
-      { day: DAY, state: "now" as const, minutesAway: -1 },
-    ]) {
-      await expect(
-        t.mutation(api.crew.setFree, { deviceToken: token("Maya"), groupId: crew.groupId, ...args }),
-      ).rejects.toBeTruthy();
-    }
+    await expect(
+      t.mutation(api.crew.setFree, {
+        deviceToken: token("Maya"),
+        groupId: crew.groupId,
+        day: "tomorrow",
+        state: "now",
+      }),
+    ).rejects.toThrow(/Day must be YYYY-MM-DD/);
+    await expect(
+      t.mutation(api.crew.setFree, {
+        deviceToken: token("Maya"),
+        groupId: crew.groupId,
+        day: DAY,
+        state: "window",
+        window: { start: NOON + HOUR, end: NOON },
+      }),
+    ).rejects.toThrow(/That window does not work/);
+    await expect(
+      t.mutation(api.crew.setFree, {
+        deviceToken: token("Maya"),
+        groupId: crew.groupId,
+        day: DAY,
+        state: "now",
+        minutesAway: -1,
+      }),
+    ).rejects.toThrow(/Minutes away is out of range/);
     expect(await t.run(async (ctx) => await ctx.db.query("availability").collect())).toHaveLength(0);
   });
 

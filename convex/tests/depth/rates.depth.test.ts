@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../_generated/api";
 import { HOUR, NOON, flipDue, makeT, setupCrew, tap, token } from "../setup.helpers";
@@ -57,7 +56,7 @@ describe("rate limits", () => {
     await expect(
       t.mutation(api.frolics.hopIn, { deviceToken: token("Jordan"), frolicId: crew.frolicId }),
     ).rejects.toThrow(rateLimited);
-    await expect(tap(t, crew, "Dev")).resolves.toBeNull();
+    await expect(tap(t, crew, "Jordan")).resolves.toBeNull();
   });
 
   test("one device may join thirty crews an hour", async () => {
