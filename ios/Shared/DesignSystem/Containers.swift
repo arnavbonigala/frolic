@@ -89,9 +89,9 @@ struct FrolicCard<Content: View>: View {
         content
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
-            .shadow(color: Color(hex: 0x78501E, opacity: 0.08), radius: 13, y: 10)
+            .padding(.horizontal, -16)
+            .overlay(alignment: .top) { Rectangle().fill(FrolicColor.line).frame(height: 1) }
+            .overlay(alignment: .bottom) { Rectangle().fill(FrolicColor.line).frame(height: 1) }
     }
 }
 
@@ -102,8 +102,7 @@ struct FrolicGroup<Content: View>: View {
         VStack(spacing: 0) {
             content
         }
-        .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+        .padding(.horizontal, -16)
     }
 }
 
@@ -181,7 +180,7 @@ struct ScreenTitle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .frolicFont(.largeTitle)
+                .font(.system(.largeTitle, design: .serif, weight: .heavy))
                 .foregroundStyle(FrolicColor.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier(identifier.map { "\($0).title" } ?? "")

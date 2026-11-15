@@ -39,7 +39,6 @@ struct OnboardingGate<Content: View>: View {
                 content
             } else if let model {
                 OnboardingView(model: model)
-                    .environment(\.colorScheme, .light)
             } else {
                 SkyBackground().ignoresSafeArea()
             }

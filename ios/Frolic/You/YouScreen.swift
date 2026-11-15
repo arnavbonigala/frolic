@@ -1,3 +1,4 @@
+import ConvexMobile
 import SwiftUI
 
 struct YouScreen: View {
@@ -9,6 +10,7 @@ struct YouScreen: View {
     @State private var showsTaste = false
     @State private var onboarding: OnboardingModel?
     @State private var retries = 0
+    @State private var totals = YouTotals()
 
     private var shownPhase: ScreenPhase {
         router.resolve(model.loadPhase, isOnline: connectivity.isOnline)
@@ -34,7 +36,8 @@ struct YouScreen: View {
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
         .background(SkyBackground())
         .accessibilityIdentifier("you.screen")
-        .task(id: "\(router.e2eRoute?.screen ?? "")\(FrolicIdentity.shared.deviceToken)\(retries)") { await model.run(backend: backend, router: router) }
+        .task(id: "\(router.e2eRoute?.screen ?? "")\(FrolicIdentity.shared.deviceToken)\(FrolicIdentity.shared.groupId ?? "")\(retries)") { await model.run(backend: backend, router: router) }
+        .task(id: FrolicIdentity.shared.groupId) { await totals.load(backend: backend) }
         .sheet(isPresented: $showsPrivacy) {
             YouPrivacyScreen(model: model)
         }
@@ -59,6 +62,7 @@ struct YouScreen: View {
         if model.loadPhase == .ready, phase == .ready || phase == .offline {
             YouContent(
                 model: model,
+                totals: totals,
                 offline: phase == .offline,
                 onPrivacy: { showsPrivacy = true },
                 onTaste: { showsTaste = true },
@@ -83,6 +87,7 @@ struct YouScreen: View {
 
 private struct YouContent: View {
     @Bindable var model: YouModel
+    var totals: YouTotals
     @Environment(FrolicBackend.self) private var backend
     var offline: Bool
     var onPrivacy: () -> Void
@@ -98,7 +103,7 @@ private struct YouContent: View {
     }
 
     private var limitsNote: String {
-        "Plans quietly fit everyone's limits. Nobody has to say \"I can't afford that.\""
+        "Plans fit everyone's limits. Nobody sees yours."
     }
 
     var body: some View {
@@ -113,8 +118,6 @@ private struct YouContent: View {
                 .padding(.top, 18)
                 .accessibilityIdentifier("state.offline")
             }
-            card
-                .padding(.top, 18)
             SectionHeader(title: "Only you see these", systemImage: "lock.fill")
                 .accessibilityIdentifier("you.privateHeader")
             limitsGroup
@@ -152,6 +155,9 @@ private struct YouContent: View {
     }
 
     private var identityLine: String? {
+        if totals.crews > 1 {
+            return "\(totals.frolics) \(totals.frolics == 1 ? "frolic" : "frolics") across \(totals.crews) crews"
+        }
         guard let crew = model.crewName else { return nil }
         guard let count = model.wentCount else { return crew }
         if count == 0 { return "Your first frolic is one tap away." }
@@ -159,29 +165,28 @@ private struct YouContent: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        VStack(spacing: 10) {
             YouFlowerHead(
                 name: model.profile?.name ?? "You",
                 color: model.myColor,
                 photoURL: model.profile?.photoUrl,
-                radius: 36
+                radius: 46
             )
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.profile?.name ?? "You")
-                    .font(.system(size: nameSize, weight: .heavy, design: .rounded))
-                    .foregroundStyle(FrolicColor.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("you.title")
-                if let line = identityLine {
-                    Text(line)
-                        .frolicFont(.subheadline)
-                        .foregroundStyle(FrolicColor.secondaryText)
-                }
+            Text(model.profile?.name ?? "You")
+                .font(.system(size: nameSize + 6, weight: .heavy, design: .serif))
+                .foregroundStyle(FrolicColor.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("you.title")
+            if let line = identityLine {
+                Text(line)
+                    .frolicFont(.subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
             }
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
     }
 
     private var hasWent: Bool {
@@ -303,7 +308,7 @@ private struct YouContent: View {
                         in: 5...45,
                         step: 5
                     )
-                    .tint(FrolicColor.ink)
+                    .tint(Color(hex: 0x34A160))
                     .opacity(model.travel == nil ? 0.45 : 1)
                     .accessibilityLabel("Travel up to")
                     .accessibilityValue(travelLabel)
@@ -364,3 +369,27 @@ private struct YouContent: View {
     }
 }
 extension OnboardingModel: Identifiable {}
+
+@MainActor
+@Observable
+final class YouTotals {
+    private struct Wire: Decodable {
+        let frolics: Double
+        let crews: Double
+    }
+
+    var frolics = 0
+    var crews = 0
+
+    func load(backend: FrolicBackend) async {
+        guard let client = try? backend.requireClient(),
+              let stream = try? client.subscribe(to: "you:totals", with: ["deviceToken": FrolicIdentity.shared.deviceToken], yielding: Wire.self).values
+        else { return }
+        do {
+            for try await wire in stream {
+                frolics = Int(wire.frolics)
+                crews = Int(wire.crews)
+            }
+        } catch {}
+    }
+}

@@ -20,21 +20,18 @@ struct RootView: View {
             }
             Tab(value: AppTab.crew) {
                 CrewScreen()
-                    .environment(\.colorScheme, .light)
             } label: {
                 Label(AppTab.crew.title, systemImage: AppTab.crew.systemImage)
                     .accessibilityIdentifier("tab.crew")
             }
             Tab(value: AppTab.garden) {
                 GardenScreen()
-                    .environment(\.colorScheme, .light)
             } label: {
                 Label(AppTab.garden.title, systemImage: AppTab.garden.systemImage)
                     .accessibilityIdentifier("tab.garden")
             }
             Tab(value: AppTab.you) {
                 YouScreen()
-                    .environment(\.colorScheme, .light)
             } label: {
                 Label {
                     Text(AppTab.you.title)

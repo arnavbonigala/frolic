@@ -17,7 +17,7 @@ struct GardenScreen: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ScreenTitle(
                         title: "Garden",
-                        subtitle: shown == .ready ? store.overview?.subtitle : nil,
+                        subtitle: nil,
                         identifier: "garden"
                     )
                     content
@@ -43,6 +43,10 @@ struct GardenScreen: View {
         .task {
             store.start(backend: backend, route: router.e2eRoute)
             openRoutedMemory()
+        }
+        .onChange(of: FrolicIdentity.shared.groupId) { _, _ in
+            path = []
+            store.start(backend: backend, route: router.e2eRoute)
         }
         .onChange(of: router.e2eRoute) { _, _ in
             store.start(backend: backend, route: router.e2eRoute)
@@ -79,32 +83,18 @@ struct GardenScreen: View {
                 GardenOnThisDayCard(card: card)
                     .padding(.top, 16)
             }
-            GardenBed(countLine: overview.countLine, sinceLine: overview.cleanSinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { row in row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
-                .padding(.top, 16)
+            GardenBed(countLine: "", sinceLine: "", yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { row in row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
+                .padding(.horizontal, -18)
+                .padding(.top, 8)
             if let health = overview.health {
                 GardenHealthRow(health: health) {
                     NotificationCenter.default.post(name: .gardenImFree, object: nil)
                     toast = "Your crew will see you're free"
                 }
             }
-            if let milestone = overview.milestone {
-                GardenMilestoneRow(milestone: milestone, count: overview.flowerCount)
-            }
-            Button {
-                showsStory = true
-            } label: {
-                GardenWeekRow(line: String(overview.weekLine.prefix(1)).uppercased() + String(overview.weekLine.dropFirst()))
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("garden.week")
-            .accessibilityLabel(overview.weekLine)
-            .padding(.top, 12)
             if let fund = overview.fund {
                 GardenFundRow(title: fund.frolicTitle, line: fund.line)
                     .padding(.top, 12)
-            }
-            if let collection = overview.collection {
-                GardenCollectionShelf(collection: collection)
             }
             SectionHeader(title: "Frolics")
             VStack(spacing: 10) {
@@ -243,9 +233,8 @@ private struct GardenMemoryRowView: View {
         }
         .padding(8)
         .frame(minHeight: 88)
-        .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
-        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.horizontal, -8)
+        .contentShape(Rectangle())
     }
 }
 

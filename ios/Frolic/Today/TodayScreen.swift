@@ -7,7 +7,6 @@ struct TodayScreen: View {
     @Environment(FrolicIdentity.self) private var identity
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var systemScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var store = TodayStore()
 
@@ -88,7 +87,6 @@ struct TodayScreen: View {
             }
         }
         .accessibilityIdentifier("today.screen")
-        .environment(\.colorScheme, bleeds && store.scene == .open ? systemScheme : .light)
         .environment(\.todayOnline, connectivity.isOnline)
         .task(id: routeKey) {
             if let location = router.simulatedLocation {
@@ -110,7 +108,7 @@ struct TodayScreen: View {
         }
         .sheet(item: $store.sheet) { sheet in
             TodaySheetHost(sheet: sheet, store: store)
-                .environment(\.colorScheme, .light)
+
         }
         .sheet(item: Binding(get: { store.payPage }, set: { if $0 == nil { store.closePayPage() } })) { page in
             TodaySafari(url: page.url)
@@ -166,9 +164,7 @@ private struct TodayTopBar: View {
             Wordmark(color: StoryColor.ink, width: 74)
                 .padding(.horizontal, 16)
                 .frame(minHeight: 44)
-                .background(Capsule().fill(StoryColor.control))
-                .overlay(Capsule().stroke(StoryColor.controlStroke, lineWidth: 1))
-                .shadow(color: Color(hex: 0x3C5078, opacity: 0.08), radius: 6, y: 4)
+                .glassEffect(.regular, in: .capsule)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Frolic")
             Spacer()

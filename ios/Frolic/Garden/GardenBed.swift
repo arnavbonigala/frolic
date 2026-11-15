@@ -48,6 +48,7 @@ struct GardenBed: View {
             .padding(.horizontal, 8)
             .padding(.bottom, 6)
             .accessibilityHidden(true)
+            if !countLine.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
                 Text(countLine)
                     .font(.system(size: countSize, weight: .heavy, design: .rounded))
@@ -57,12 +58,12 @@ struct GardenBed: View {
                     .font(.system(size: captionSize, weight: .medium))
                     .foregroundStyle(FrolicColor.secondaryText)
             }
-            .padding(.leading, 16)
-            .padding(.top, 14)
+            .padding(.leading, 18)
+            .padding(.top, 34)
+            }
         }
-        .frame(height: 200)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+        .frame(height: 220)
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.18), .init(color: .black, location: 0.8), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
         .accessibilityElement(children: .contain)
     }
 }
@@ -73,10 +74,10 @@ struct GardenToast: View {
     var body: some View {
         Text(text)
             .frolicFont(.subheadline)
-            .foregroundStyle(FrolicColor.cream)
+            .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Capsule().fill(FrolicColor.ink))
+            .background(Capsule().fill(Color(hex: 0x34A160)))
             .accessibilityIdentifier("garden.toast")
     }
 }

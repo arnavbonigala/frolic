@@ -55,12 +55,12 @@ private struct FrolicButtonBody: View {
 
     private var foreground: Color {
         guard isEnabled else { return FrolicColor.secondaryText }
-        return kind == .primary ? FrolicColor.cream : FrolicColor.ink
+        return kind == .primary ? .white : FrolicColor.ink
     }
 
     private var background: Color {
         guard isEnabled else { return .clear }
-        return kind == .primary ? FrolicColor.ink : FrolicColor.paper
+        return kind == .primary ? Color(hex: 0x34A160) : FrolicColor.paper
     }
 
     private var border: Color {
@@ -87,7 +87,7 @@ struct CircleIconButton: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(FrolicColor.ink)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(.white.opacity(0.8)))
+                .background(Circle().fill(FrolicColor.paper.opacity(0.9)))
                 .overlay(Circle().stroke(FrolicColor.ink.opacity(0.1), lineWidth: 0.5))
                 .shadow(color: .black.opacity(0.1), radius: 6, y: 4)
         }
