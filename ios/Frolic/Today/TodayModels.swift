@@ -131,6 +131,24 @@ struct TodayImFreeResult: Codable, Hashable {
     var started: Bool
 }
 
+struct TodayGardenHealth: Codable, Hashable {
+    var state: String?
+    var line: String?
+    var cta: String?
+}
+
+struct TodayGardenOverview: Codable, Hashable {
+    var health: TodayGardenHealth?
+}
+
+struct TodayOnThisDay: Codable, Hashable {
+    var frolicId: String?
+    var label: String?
+    var title: String?
+    var heroKey: String?
+    var photoUrl: String?
+}
+
 struct TodayShareLink: Codable, Hashable {
     var code: String
     var url: String

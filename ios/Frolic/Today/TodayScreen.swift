@@ -68,6 +68,10 @@ struct TodayScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: TodayInbox.openOnlyIfNotification)) { _ in
             store.takePendingAction()
         }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("frolic.garden.imFree"))) { _ in
+            router.tab = .today
+            store.sheet = .imFree
+        }
         .sheet(item: $store.sheet) { sheet in
             TodaySheetHost(sheet: sheet, store: store)
         }
@@ -722,6 +726,7 @@ private struct TodayDoneView: View {
 
 private struct TodayNoPlanStart: View {
     var store: TodayStore
+    @Environment(AppRouter.self) private var router
     @Environment(\.todayOnline) private var online
 
     var body: some View {
@@ -740,18 +745,39 @@ private struct TodayNoPlanStart: View {
         } else {
             VStack(spacing: 0) {
                 TodayNoPlan(title: "No plan yet", message: "Today's plan arrives at 3.")
+                if let line = store.gardenHealth?.line, !line.isEmpty {
+                    Text(line)
+                        .todayFont(15, .semibold, relativeTo: .subheadline)
+                        .foregroundStyle(FrolicColor.ink)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 10)
+                        .accessibilityIdentifier("today.garden.health")
+                }
                 if let error = store.startError {
                     TodayStatusCard(title: error, message: "Nobody was told.")
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
                         .accessibilityIdentifier("today.imFree.error")
                 }
-                Button("I'm free") { store.sheet = .imFree }
+                Button(store.gardenHealth?.cta ?? "I'm free") { store.sheet = .imFree }
                     .buttonStyle(.frolicPrimary)
                     .disabled(!online)
                     .padding(.horizontal, 16)
                     .padding(.top, 18)
                     .accessibilityIdentifier("today.imFree")
+                if let past = store.onThisDay, let title = past.title {
+                    TodayRowLink(
+                        thumb: past.heroKey.flatMap { UIImage(named: $0) != nil ? $0 : nil } ?? "plan-free-stuff",
+                        thumbRemote: past.photoUrl,
+                        prefix: (past.label ?? "On this day") + ":",
+                        text: title,
+                        identifier: "today.onThisDay",
+                        action: { router.tab = .garden }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                }
                 TodayTomorrowRow(store: store)
             }
         }

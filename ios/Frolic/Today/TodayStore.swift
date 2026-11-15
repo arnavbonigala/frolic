@@ -55,6 +55,8 @@ final class TodayStore {
     private(set) var startError: String?
     private(set) var drop: TodayDrop?
     private(set) var tomorrow: TodayView?
+    private(set) var gardenHealth: TodayGardenHealth?
+    private(set) var onThisDay: TodayOnThisDay?
     var walkFrom: (Double, Double)?
     var hintSeen = AppGroup.defaults.bool(forKey: "today.hint.down")
 
@@ -529,6 +531,26 @@ final class TodayStore {
         })
         tasks.append(Task { [weak self] in
             do {
+                let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
+                for try await value in client.subscribe(to: "garden:overview", with: args, yielding: TodayGardenOverview.self).values {
+                    self?.gardenHealth = value.health
+                }
+            } catch {
+                self?.gardenHealth = nil
+            }
+        })
+        tasks.append(Task { [weak self] in
+            do {
+                let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
+                for try await value in client.subscribe(to: "garden:onThisDay", with: args, yielding: TodayOnThisDay?.self).values {
+                    self?.onThisDay = value
+                }
+            } catch {
+                self?.onThisDay = nil
+            }
+        })
+        tasks.append(Task { [weak self] in
+            do {
                 let args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId, "day": TodayCopy.tomorrowString()]
                 for try await view in client.subscribe(to: "frolics:today", with: args, yielding: TodayView.self).values {
                     guard let self else { return }
@@ -619,6 +641,8 @@ final class TodayStore {
         drop = route.query["drop"] != nil ? TodayDrop(hostedBy: "Cal Kayak Club", priceLabel: "$8", seatsLeft: 4) : nil
         tomorrow = route.query["tomorrow"] != nil ? TodayFixture.tomorrow() : nil
         startingPlan = route.state == "planning"
+        gardenHealth = route.query["garden"] != nil ? TodayGardenHealth(state: "thirsty", line: "Your garden's getting thirsty", cta: "I'm free") : nil
+        onThisDay = route.query["garden"] != nil ? TodayOnThisDay(frolicId: "fixture-past", label: "1 week ago today", title: "Cheese Board pizza", heroKey: "plan-late-night-food", photoUrl: nil) : nil
         if route.query["hint"] != nil { hintSeen = false }
         if fixture.sheet == .onlyIf {
             picks = Set(route.query["picks"].map { $0.split(separator: ",").map(String.init) } ?? [])
