@@ -121,7 +121,7 @@ struct ComponentGallery: View {
             SectionHeader(title: "Buttons")
             HStack(spacing: 10) {
                 Button("I'm down") {}.buttonStyle(.frolicPrimary)
-                Button("Only if…") {}.buttonStyle(.frolicSecondary)
+                Button("Only with…") {}.buttonStyle(.frolicSecondary)
             }
             Button("Pick 3 more") {}.buttonStyle(.frolicPrimary).disabled(true)
             Button("See the garden") {}.buttonStyle(.frolicSecondaryWide)

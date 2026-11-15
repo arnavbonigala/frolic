@@ -4,7 +4,6 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   CHECKIN_RADIUS_METERS,
-  clockTime,
   DEFAULT_WALK_MINUTES,
   crewMembers,
   crewOf,
@@ -406,25 +405,36 @@ export const imFree = internalMutation({
     const me = await who(ctx, phone);
     if (!me) return notMember;
     if (!keikiEnv().imFree) return { ok: false, error: "not_ready", say: "Starting a plan from a text is not on yet. Offer today's plan instead." };
-    const minutes = Math.max(60, Math.min(240, Math.round(forMinutes)));
-    let result: { planTitle?: string; startsAt?: number; error?: string } | null;
+    if (!Number.isFinite(forMinutes) || forMinutes < 60 || forMinutes > 240) {
+      return { ok: false, error: "bad_minutes", say: "Ask how long they are free for, an hour to four hours. Nothing was started." };
+    }
+    let result: { error: string } | null;
     try {
-      result = await ctx.runMutation(imFreeAs, { userId: me.user._id, groupId: me.group._id, forMinutes: minutes });
-    } catch {
+      result = await ctx.runMutation(imFreeAs, { userId: me.user._id, groupId: me.group._id, forMinutes: Math.round(forMinutes) });
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        const data = error.data as { code?: string; kind?: string } | undefined;
+        if (data?.code === "BAD_MINUTES") return { ok: false, error: "bad_minutes", say: "Ask how long they are free for, an hour to four hours. Nothing was started." };
+        if (data?.code === "NOT_A_MEMBER" || data?.code === "UNKNOWN_DEVICE") return notMember;
+        if (data?.kind === "RateLimited" || data?.code === "RateLimited") return slowDownAnswer;
+      }
       return { ok: false, error: "not_ready", say: "Starting a plan from a text did not go through. Offer today's plan instead." };
     }
     if (result?.error === "planning") {
-      return { ok: true, plan: null, startsAt: null, say: "Say a plan is being made now and goes to the crew in a minute without naming who started it. Tell them they are counted as down and will get the plan by text." };
+      return {
+        ok: true,
+        started: true,
+        say: "Say a plan is being made now and goes to the crew in a minute. Never name who started it. Tell them they are counted as down and will get the plan by text.",
+      };
     }
-    if (!result || result.error || result.planTitle === undefined || result.startsAt === undefined) {
-      return { ok: false, error: result?.error ?? "not_ready", say: "That did not start. Offer today's plan instead." };
+    if (result?.error === "already_open") {
+      return {
+        ok: true,
+        started: false,
+        say: "Say today's plan is already open, and they can tap down for it. Never say who started it, and never say who is down.",
+      };
     }
-    return {
-      ok: true,
-      plan: result.planTitle,
-      startsAt: clockTime(result.startsAt, me.group.timezone),
-      say: "Say the plan is going to the crew without naming who started it. Tell them they are counted as down.",
-    };
+    return { ok: false, error: "not_ready", say: "That did not start. Offer today's plan instead." };
   },
 });
 

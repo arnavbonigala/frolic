@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { HOUR, NOON, flipDue, makeT, setupCrew, tap, token, type T } from "../setup.helpers";
+import { HOUR, NOON, flipDue, makeT, setupCrew as baseCrew, tap, token, type Crew, type T } from "../setup.helpers";
+
+async function setupCrew(t: T, names: string[], opts: Parameters<typeof baseCrew>[2] = {}): Promise<Crew> {
+  const crew = await baseCrew(t, names, opts);
+  await t.run(async (ctx) => await ctx.db.patch("groups", crew.groupId, { holdEnabled: true }));
+  return crew;
+}
 
 declare const process: { env: Record<string, string | undefined> };
 
