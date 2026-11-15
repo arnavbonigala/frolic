@@ -474,8 +474,8 @@ final class CrewStore {
             wentToday: iWent && todayDone,
             todayTitle: todayTitle,
             holdEnabled: crew.holdEnabled ?? false,
-            fundLoaded: fundLoaded,
-            holdCents: Int(crew.holdCents ?? 300)
+            holdCents: Int(crew.holdCents ?? 300),
+            fundLoaded: fundLoaded
         )
         phase = rows.count <= 1 ? .empty : .ready
     }
