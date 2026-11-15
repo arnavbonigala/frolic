@@ -105,6 +105,7 @@ import * as whop_routes from "../../../convex/whop/routes";
 import * as whop_signature from "../../../convex/whop/signature";
 import * as whop_split from "../../../convex/whop/split";
 import * as whop_webhooks from "../../../convex/whop/webhooks";
+import * as taste from "../../../convex/taste";
 import * as you from "../../../convex/you";
 
 export type Visibility = "public" | "internal";
@@ -221,6 +222,7 @@ const MODULE_TABLE: Record<string, Record<string, unknown>> = {
   "whop/signature": whop_signature as unknown as Record<string, unknown>,
   "whop/split": whop_split as unknown as Record<string, unknown>,
   "whop/webhooks": whop_webhooks as unknown as Record<string, unknown>,
+  "taste": taste as unknown as Record<string, unknown>,
   "you": you as unknown as Record<string, unknown>,
 };
 
