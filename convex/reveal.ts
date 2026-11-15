@@ -14,7 +14,12 @@ export const flip = internalMutation({
       .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
       .unique();
     if (!frolic || !pending || frolic.status !== "open" || pending.revealAt !== revealAt) return null;
-    const flippedAt = Date.now();
+    const now = Date.now();
+    if (now < revealAt) {
+      await ctx.scheduler.runAt(revealAt, internal.reveal.flip, { frolicId, revealAt });
+      return null;
+    }
+    const flippedAt = now;
     const endsAt = pending.startsAt + frolic.durationMinutes * 60 * 1000;
     for (const userId of pending.userIds) {
       await ctx.db.insert("attendees", {
