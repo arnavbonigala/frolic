@@ -35,6 +35,10 @@ async function addSnap(
     .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
     .unique();
   if (!checkin) throw new ConvexError({ code: "NOT_CHECKED_IN", message: "Check in first" });
+  const attendee = await findAttendee(ctx, frolicId, userId);
+  if (attendee?.status !== "going") {
+    throw new ConvexError({ code: "NOT_GOING", message: "The group snap is for people going" });
+  }
   const snapAt = frolic.snapAt;
   const now = Date.now();
   if (snapAt === undefined || now < snapAt - 1000 || now > snapAt + SNAP_WINDOW_MS) {

@@ -29,11 +29,12 @@ const ONLY_IF_TITLE = constant("ONLY_IF_TITLE");
 
 const BINARY = /\.(png|jpe?g|gif|webp|avif|heic|ico|icns|ttf|otf|woff2?|mp4|mov|pdf|zip|gz|jar|mp3|wav)$/i;
 const SKIP = new Set(["package-lock.json", "e2e/tools/copy-lint.mjs"]);
+const SKIP_PREFIX = ["e2e/reports/"];
 
 const files = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
   .split("\n")
   .filter(Boolean)
-  .filter((file) => !BINARY.test(file) && !SKIP.has(file));
+  .filter((file) => !BINARY.test(file) && !SKIP.has(file) && !SKIP_PREFIX.some((prefix) => file.startsWith(prefix)));
 
 const OLD_PHRASES = [
   {
@@ -45,12 +46,12 @@ const OLD_PHRASES = [
     why: "the bail sheet must never tell anyone that someone bailed",
   },
   {
-    re: /only with\s*[,.?"”…]/i,
-    why: "the button and the sheet say only if, not only with",
+    re: /Only if…/,
+    why: "the button and the sheet use the mock's words: only with",
   },
   {
-    re: /I'm down only with/i,
-    why: "the only-if sheet says I'm down only if",
+    re: /I'm down only if/i,
+    why: "the sheet title is I'm down only with",
   },
 ];
 

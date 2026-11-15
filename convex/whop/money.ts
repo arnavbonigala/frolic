@@ -69,9 +69,11 @@ async function insertShare(
   return shareId;
 }
 
+const NO_HOLD = "no-hold";
+
 export async function openMoney(ctx: MutationCtx, frolic: Doc<"frolics">): Promise<void> {
   const existing = await ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id)).first();
-  if (existing) return;
+  if (existing || (await noHold(ctx, frolic._id))) return;
   const going = await goingAttendees(ctx, frolic._id);
   if (going.length === 0) return;
   const per = await perPersonCents(ctx, frolic);
@@ -88,6 +90,11 @@ export async function openMoney(ctx: MutationCtx, frolic: Doc<"frolics">): Promi
     }
     for (const [i, a] of going.entries()) await insertShare(ctx, frolic, a.userId, "chipIn", split.shares[i]);
   } else {
+    const group = await ctx.db.get("groups", frolic.groupId);
+    if (group?.holdEnabled !== true) {
+      await ctx.db.insert("fundLedger", { groupId: frolic.groupId, frolicId: frolic._id, entry: "adjustment", amountCents: 0, whopPaymentId: NO_HOLD, at: Date.now() });
+      return;
+    }
     for (const a of going) await insertShare(ctx, frolic, a.userId, "deposit", policy.holdCents);
   }
   if (frolic.startsAt !== undefined) {
@@ -123,7 +130,12 @@ function confirmBy(frolic: Doc<"frolics">, from: number): number {
 
 async function calledOff(ctx: QueryCtx, frolicId: Id<"frolics">): Promise<boolean> {
   const rows = await ctx.db.query("fundLedger").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(500);
-  return rows.some((r) => r.entry === "adjustment" && r.amountCents === 0 && !r.shareId);
+  return rows.some((r) => r.entry === "adjustment" && r.amountCents === 0 && !r.shareId && r.whopPaymentId === undefined);
+}
+
+export async function noHold(ctx: QueryCtx, frolicId: Id<"frolics">): Promise<boolean> {
+  const rows = await ctx.db.query("fundLedger").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(500);
+  return rows.some((r) => r.entry === "adjustment" && r.amountCents === 0 && r.whopPaymentId === NO_HOLD);
 }
 
 async function setStatus(ctx: MutationCtx, share: Doc<"shares">, status: ShareStatus, extra: Partial<Doc<"shares">> = {}) {

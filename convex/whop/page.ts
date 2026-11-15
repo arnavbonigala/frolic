@@ -117,6 +117,7 @@ try {
   const whop = window.WhopElements(C.sandbox ? { environment: "sandbox" } : {});
   const payments = whop.payments.create({ accountId: C.accountId, currency: "usd", amount: C.amount, returnUrl: location.origin + location.pathname });
   payments.create("email").mount("#email");
+  document.querySelector("#payment").replaceChildren();
   payments.create("payment", { onChange: (e) => (btn.disabled = !e.complete) }).mount("#payment");
   payments.create("branding").mount("#branding");
   window.__frolic.ready();

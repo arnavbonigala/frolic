@@ -1,7 +1,7 @@
 import { makeFunctionReference } from "convex/server";
 import type { Id } from "../_generated/dataModel";
 
-export type ImFreeResult = { planTitle: string; startsAt: number } | { error: string } | null;
+export type ImFreeResult = { error: string } | null;
 
 export const imFreeAs = makeFunctionReference<
   "mutation",
