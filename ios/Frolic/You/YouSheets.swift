@@ -92,8 +92,6 @@ struct YouTasteSheet: View {
                             .frolicFont(.sheetTitle)
                             .foregroundStyle(FrolicColor.ink)
                             .accessibilityAddTraits(.isHeader)
-                        Spacer(minLength: 12)
-                        CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
                     }
                     FlowLayout(spacing: 6) {
                         ForEach(options, id: \.self) { tag in

@@ -21,7 +21,9 @@ struct YouPrivacyScreen: View {
                             .accessibilityAddTraits(.isHeader)
                             .accessibilityIdentifier("you.privacy.title")
                         Spacer(minLength: 12)
-                        CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
+                        Button("Done") { dismiss() }
+                            .buttonStyle(.frolicText)
+                            .accessibilityIdentifier("you.privacy.done")
                     }
                     .padding(.top, 12)
                     Text("Nobody sees you're down unless they are too.")
