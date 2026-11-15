@@ -438,9 +438,10 @@ describe("holds, check ins, no shows", () => {
     expect((await shareOf(t, early, "Maya")).status).toBe("released");
     expect(calls.some((c) => c.method === "POST" && c.path === "/payments/pay_1/void")).toBe(true);
 
-    const late = await setupCrew(t, ["Priya", "Noah"], { window });
+    const late = await setupCrew(t, ["Priya", "Noah", "Jordan"], { window });
     await tap(t, late, "Priya");
     await tap(t, late, "Noah");
+    await tap(t, late, "Jordan");
     await flipDue(t);
     await drain(t);
     expect(await hold(t, late, "Priya")).toMatchObject({ status: "held", whopPaymentId: "pay_2" });
@@ -486,9 +487,8 @@ describe("holds, check ins, no shows", () => {
     await drain(t);
 
     expect((await shareOf(t, crew, "Maya")).status).toBe("refunded");
-    expect((await shareOf(t, crew, "Dev")).status).toBe("paid");
-    expect(calls.some((c) => c.method === "POST" && c.path === "/payments/pay_1/refund")).toBe(true);
-    expect(calls.some((c) => c.path === "/payments/pay_2/refund")).toBe(false);
+    expect((await shareOf(t, crew, "Dev")).status).toBe("refunded");
+    expect(calls.filter((c) => c.path.endsWith("/refund")).map((c) => c.path).sort()).toEqual(["/payments/pay_1/refund", "/payments/pay_2/refund"]);
     const rows = await ledgerRows(t, crew.groupId);
     expect(rows.reduce((sum, r) => sum + r.amountCents, 0)).toBe(300);
   });
@@ -605,16 +605,17 @@ describe("holds, check ins, no shows", () => {
     expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
   });
 
-  test("an unconfirmed hold expires ten minutes after the reveal and sits the person out", async () => {
+  test("an unconfirmed hold lasts until the plan's leave time, then sits the person out", async () => {
     const t = makeT();
     const crew = await heldCrew(t);
     expect((await shareOf(t, crew, "Maya")).status).toBe("due");
 
-    vi.advanceTimersByTime(9 * 60 * 1000);
+    vi.advanceTimersByTime(50 * 60 * 1000);
     await t.finishInProgressScheduledFunctions();
+    await drain(t);
     expect((await shareOf(t, crew, "Maya")).status).toBe("due");
 
-    vi.advanceTimersByTime(2 * 60 * 1000);
+    vi.advanceTimersByTime(3 * 60 * 1000);
     await t.finishInProgressScheduledFunctions();
     await drain(t);
 
@@ -660,6 +661,80 @@ describe("holds, check ins, no shows", () => {
   });
 });
 
+describe("review fixes", () => {
+  test("a hold placed after the sweep time is still captured from a no show", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    await drain(t);
+    vi.setSystemTime(NOON + HOUR + 46 * 60 * 1000);
+    await t.finishInProgressScheduledFunctions();
+    await drain(t);
+    expect((await shareOf(t, crew, "Maya")).status).toBe("due");
+    await t.run(async (ctx) => {
+      const s = (await ctx.db.query("shares").withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", crew.frolicId).eq("userId", crew.ids.Maya)).unique())!;
+      await ctx.db.patch("shares", s._id, { updatedAt: Date.now() });
+    });
+    await hold(t, crew, "Maya");
+    await drain(t);
+    expect((await shareOf(t, crew, "Maya")).status).toBe("forfeited");
+    expect(calls.some((c) => c.path === "/payments/pay_1/capture")).toBe(true);
+  });
+
+  test("a hold placed after the sweep time by someone who checked in is released", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    vi.setSystemTime(NOON + HOUR + 46 * 60 * 1000);
+    await t.mutation(internal.checkins.checkInAs, { userId: crew.ids.Maya, frolicId: crew.frolicId, method: "geofence" });
+    await drain(t);
+    const share = await shareOf(t, crew, "Maya");
+    if (share.status === "due") {
+      await hold(t, crew, "Maya");
+      await drain(t);
+      expect((await shareOf(t, crew, "Maya")).status).toBe("released");
+    } else {
+      expect(share.status).toBe("waived");
+    }
+    expect(calls.some((c) => c.path.endsWith("/capture"))).toBe(false);
+  });
+
+  test("a called off frolic is never swept, and a hold that lands after the call off is released", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t, ["Maya", "Dev"]);
+    const maya = await shareOf(t, crew, "Maya");
+    const begun = await t.mutation(internal.whop.money.beginCharge, { token: maya.token! });
+    expect(begun.ok).toBe(true);
+    await t.mutation(api.frolics.sitOut, { deviceToken: token("Dev"), frolicId: crew.frolicId });
+    await drain(t);
+    const late = JSON.stringify({ type: "payment.authorized", data: { id: "pay_9", status: "authorized", substatus: "requires_capture", metadata: { shareId: maya._id } } });
+    await t.mutation(internal.whop.webhooks.ingest, { eventId: "evt_late", type: "payment.authorized", payload: late });
+    await drain(t);
+    expect(["releasing", "released"]).toContain((await shareOf(t, crew, "Maya")).status);
+    await t.mutation(internal.whop.money.noShowSweep, { frolicId: crew.frolicId });
+    await drain(t);
+    expect(calls.some((c) => c.path.endsWith("/capture"))).toBe(false);
+    const fund = await t.query(api.whop.pay.fund, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(fund.entries).toEqual([]);
+  });
+
+  test("a declined charge is reported as a failure, never as you're in", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    created = { status: "failed", substatus: "failed" };
+    const share = await shareOf(t, crew, "Maya");
+    const out = await t.action(internal.whop.actions.charge, { token: share.token!, confirmationToken: "ctok_x" });
+    expect(out).toEqual({ ok: false, message: "That didn't go through. Try again." });
+    expect((await shareOf(t, crew, "Maya")).status).toBe("failed");
+  });
+
+  test("the pay page only says you're in on a success status", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    const html = await (await t.fetch(`/pay/${(await shareOf(t, crew, "Maya")).token}`)).text();
+    expect(html).toContain("Your bank is still checking this.");
+    expect(html).not.toMatch(/\}\s*finish\(\);\s*\} catch/);
+  });
+});
+
 describe("money messages over iMessage", () => {
   test("a released hold tells that friend once", async () => {
     const t = makeT();
@@ -681,7 +756,7 @@ describe("money messages over iMessage", () => {
     await t.mutation(internal.whop.money.noShowSweep, { frolicId: crew.frolicId });
     await drain(t);
     const told = await onMoneyCalls(t);
-    expect(told.every((c) => c.event === "noShowCredit" && c.amountCents === 300)).toBe(true);
+    expect(told.every((c) => c.event === "noShowCredit" && c.amountCents === 262)).toBe(true);
     expect(told.map((c) => c.userId).sort()).toEqual([crew.ids.Dev, crew.ids.Jordan].sort());
   });
 
@@ -775,7 +850,7 @@ describe("webhooks", () => {
 });
 
 describe("pay views", () => {
-  test("the fund hides a no show line until the frolic is done", async () => {
+  test("the fund shows a no show line as soon as the money counts", async () => {
     const t = makeT();
     const crew = await heldCrew(t);
     await hold(t, crew, "Maya");
@@ -784,7 +859,7 @@ describe("pay views", () => {
 
     const before = await t.query(api.whop.pay.fund, { deviceToken: token("Maya"), groupId: crew.groupId });
     expect(before.balanceCents).toBe(262);
-    expect(before.entries).toEqual([]);
+    expect(before.entries.map((e) => e.line)).toEqual(["A no-show added $2.62."]);
 
     await t.run(async (ctx) => await ctx.db.patch("frolics", crew.frolicId, { status: "done" }));
     const after = await t.query(api.whop.pay.fund, { deviceToken: token("Maya"), groupId: crew.groupId });
