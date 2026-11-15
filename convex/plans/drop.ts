@@ -130,7 +130,7 @@ const toStored = (plan: Plan): StoredPlan => ({
   whyMemoryId: plan.whyMemoryId,
   whyInputs: plan.whyInputs,
   chips: plan.chips,
-  cost: plan.costPerPersonCents,
+  cost: plan.costPerPersonCents / 100,
   costLabel: plan.costLabel,
   payUpFront: plan.payUpFront,
   startsAt: plan.startsAt,
