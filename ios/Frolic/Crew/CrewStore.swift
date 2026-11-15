@@ -15,13 +15,12 @@ final class CrewStore {
     var friend: CrewRow?
     var showsInvite = false
 
-    private var identity = CrewIdentity()
     private var client: ConvexClient?
     private var groupId: String?
     private var meWire: CrewMeWire?
     private var crewWire: CrewWire?
     private var todayWire: CrewTodayWire?
-    private var tomorrowWire: CrewTodayWire?
+    private var tomorrowPlan: CrewPlanViewWire?
     private var historyWire: [String: CrewTodayWire] = [:]
     private var fundWire: FundWire?
     private var online: Set<String> = []
@@ -45,7 +44,7 @@ final class CrewStore {
             phase = .ready
             return
         }
-        guard route?.screen == "crew", route?.query["token"] != nil else { return }
+        guard isStandIn || route?.query["token"] != nil || route?.query["deviceToken"] != nil else { return }
         isStandIn = false
         retry(backend: backend, router: router)
     }
@@ -64,13 +63,9 @@ final class CrewStore {
             return
         }
         self.client = client
-        identity = CrewIdentity.resolve(route: router.e2eRoute)
         siteURL = ConvexConfig.siteURL
-        guard let token = identity.deviceToken else {
-            phase = .error(BackendError.notConfigured.localizedDescription)
-            return
-        }
-        subscribeMe(client: client, token: token)
+        FrolicIdentity.shared.refresh()
+        subscribeMe(client: client, token: FrolicIdentity.shared.deviceToken)
     }
 
     func retry(backend: FrolicBackend, router: AppRouter) {
@@ -80,7 +75,7 @@ final class CrewStore {
         groupStarted = false
         crewWire = nil
         todayWire = nil
-        tomorrowWire = nil
+        tomorrowPlan = nil
         historyWire = [:]
         fundWire = nil
         view = nil
@@ -102,8 +97,8 @@ final class CrewStore {
                     for try await me in stream {
                         guard let self else { return }
                         self.meWire = me
-                        if let discovered = me?.groups.first?.groupId {
-                            self.identity.adopt(groupId: discovered)
+                        if FrolicIdentity.shared.groupId == nil, let discovered = me?.groups.first?.groupId {
+                            FrolicIdentity.shared.setGroup(discovered)
                         }
                         self.startGroup(client: client, token: token)
                     }
@@ -116,10 +111,8 @@ final class CrewStore {
 
     private func startGroup(client: ConvexClient, token: String) {
         guard !groupStarted else { return }
-        guard let groupId = identity.groupId else {
-            if !identity.hasToken {
-                phase = .error(BackendError.notConfigured.localizedDescription)
-            }
+        guard let groupId = FrolicIdentity.shared.groupId else {
+            phase = .empty
             return
         }
         groupStarted = true
@@ -136,8 +129,8 @@ final class CrewStore {
             self?.rebuild()
         }
 
-        subscribe("frolics:today", args: base.merging(["day": CrewDay.tomorrow()]) { _, new in new }) { [weak self] (tomorrow: CrewTodayWire) in
-            self?.tomorrowWire = tomorrow
+        subscribe("plans:today", args: ["token": token, "groupId": groupId, "day": CrewDay.tomorrow()]) { [weak self] (plan: CrewPlanViewWire?) in
+            self?.tomorrowPlan = plan
             self?.rebuild()
         }
 
@@ -221,7 +214,7 @@ final class CrewStore {
     }
 
     func setFree(_ option: CrewFreeOption) async {
-        guard let client, let groupId, let token = identity.deviceToken else {
+        guard let client, let groupId, case let token = FrolicIdentity.shared.deviceToken else {
             if isStandIn { showsFreeSheet = false }
             return
         }
@@ -234,18 +227,12 @@ final class CrewStore {
             "day": CrewDay.today(),
         ]
         var optimistic: CrewFreeWire
-        switch option {
-        case .tillEight:
-            let window = ["start": nowMs, "end": CrewDay.todayAt(hour: 20)]
+        switch option.kind {
+        case .window(let start, let end):
             args["state"] = "window"
-            args["window"] = window as [String: ConvexEncodable?]
-            optimistic = CrewFreeWire(state: "window", window: CrewWindow(start: nowMs, end: CrewDay.todayAt(hour: 20)), minutesAway: nil, updatedAt: nowMs)
-        case .afterFive:
-            let window = ["start": CrewDay.todayAt(hour: 17), "end": CrewDay.todayAt(hour: 20)]
-            args["state"] = "window"
-            args["window"] = window as [String: ConvexEncodable?]
-            optimistic = CrewFreeWire(state: "window", window: CrewWindow(start: CrewDay.todayAt(hour: 17), end: CrewDay.todayAt(hour: 20)), minutesAway: nil, updatedAt: nowMs)
-        case .notToday:
+            args["window"] = ["start": start, "end": end] as [String: ConvexEncodable?]
+            optimistic = CrewFreeWire(state: "window", window: CrewWindow(start: start, end: end), minutesAway: nil, updatedAt: nowMs)
+        case .busy:
             args["state"] = "busy"
             optimistic = CrewFreeWire(state: "busy", window: nil, minutesAway: nil, updatedAt: nowMs)
         }
@@ -278,7 +265,7 @@ final class CrewStore {
             view?.holdEnabled = enabled
             return
         }
-        guard let client, let groupId, let token = identity.deviceToken, let crew = crewWire else { return }
+        guard let client, let groupId, case let token = FrolicIdentity.shared.deviceToken, let crew = crewWire else { return }
         actionError = nil
         let previous = crew
         crewWire = CrewWire(groupName: crew.groupName, members: crew.members, memberCount: crew.memberCount, createdAt: crew.createdAt, holdEnabled: enabled, holdCents: crew.holdCents)
@@ -293,7 +280,7 @@ final class CrewStore {
     }
 
     func inviteCode() async -> String? {
-        guard let client, let groupId, let token = identity.deviceToken else { return nil }
+        guard let client, let groupId, case let token = FrolicIdentity.shared.deviceToken else { return nil }
         do {
             let code: String = try await client.mutation(
                 "users:createInvite",
@@ -374,7 +361,7 @@ final class CrewStore {
             rows.append(
                 CrewRow(
                     id: member.userId,
-                    name: member.isMe ? "You" : member.name,
+                    name: member.name,
                     color: member.flowerColor,
                     photoURL: absolutePhoto(member.photoUrl),
                     photoAsset: nil,
@@ -393,15 +380,13 @@ final class CrewStore {
         let nobodyFree = !friends.isEmpty && friends.allSatisfy { !$0.isFree }
 
         var comingUp: CrewComingUp?
-        if let frolic = tomorrowWire?.frolic, let plan = frolic.plan {
-            let start = frolic.startsAt ?? plan.startsAt ?? 0
-            let lead = "\(CrewCopy.weekday(frolic.day)) \(CrewCopy.hourWithMeridiem(start)):"
-            var body = "\(plan.title)."
-            let names = (tomorrowWire?.reveal?.going ?? []).map(\.name)
-            if !names.isEmpty {
-                body += " \(CrewCopy.names(names)) \(names.count == 1 ? "is" : "are") going."
-            }
-            comingUp = CrewComingUp(lead: lead, body: body, heroAsset: PlanPainted.hero(for: plan.title))
+        if let plan = tomorrowPlan {
+            let when = CrewCopy.hourWithMeridiem(plan.startsAt)
+            comingUp = CrewComingUp(
+                lead: "\(CrewCopy.weekday(CrewDay.tomorrow())) \(when):",
+                body: "\(plan.title).",
+                heroAsset: plan.heroKey
+            )
         }
 
         var blooms: [(day: String, title: String, names: [String], colors: [FlowerColor], wentWithMe: Bool)] = []
@@ -424,7 +409,7 @@ final class CrewStore {
         let lately = blooms.prefix(3).map { bloom in
             CrewLatelyRow(
                 id: bloom.day + bloom.title,
-                title: "Bloomed at \(bloom.title)",
+                title: bloom.title,
                 names: CrewCopy.names(bloom.names),
                 day: CrewCopy.shortDay(bloom.day),
                 colors: bloom.colors
@@ -480,34 +465,29 @@ final class CrewStore {
     }
 }
 
-enum CrewFreeOption: String, CaseIterable, Identifiable {
-    case tillEight
-    case afterFive
-    case notToday
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .tillEight: "Free now till 8 PM"
-        case .afterFive: "Free 5 PM to 8 PM"
-        case .notToday: "Not today"
-        }
+struct CrewFreeOption: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case window(start: Double, end: Double)
+        case busy
     }
 
-    var detail: String {
-        switch self {
-        case .tillEight: "From your calendar"
-        case .afterFive: "Set by you, just for today"
-        case .notToday: "No plan for you today. Nobody gets told."
-        }
-    }
+    var id: String
+    var title: String
+    var kind: Kind
+    var identifier: String
 
-    var identifier: String {
-        switch self {
-        case .tillEight: "free.sheet.till8"
-        case .afterFive: "free.sheet.after5"
-        case .notToday: "free.sheet.notToday"
-        }
+    static func options(now: Date = Date()) -> [CrewFreeOption] {
+        let calendar = CrewDay.calendar
+        let nowMs = now.timeIntervalSince1970 * 1000
+        let hourMs = 3_600_000.0
+        let nextHour = (calendar.nextDate(after: now, matching: DateComponents(minute: 0, second: 0), matchingPolicy: .nextTime)?.timeIntervalSince1970 ?? now.timeIntervalSince1970 + 3600) * 1000
+        let endNow = nextHour + 2 * hourMs
+        let laterStart = nextHour + 2 * hourMs
+        let laterEnd = laterStart + 3 * hourMs
+        return [
+            CrewFreeOption(id: "now", title: "Free till \(CrewCopy.hourWithMeridiem(endNow))", kind: .window(start: nowMs, end: endNow), identifier: "free.sheet.till8"),
+            CrewFreeOption(id: "later", title: "Free \(CrewCopy.hourWithMeridiem(laterStart)) to \(CrewCopy.hourWithMeridiem(laterEnd))", kind: .window(start: laterStart, end: laterEnd), identifier: "free.sheet.after5"),
+            CrewFreeOption(id: "busy", title: "Not today", kind: .busy, identifier: "free.sheet.notToday"),
+        ]
     }
 }

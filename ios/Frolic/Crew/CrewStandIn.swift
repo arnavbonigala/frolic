@@ -72,16 +72,16 @@ enum CrewStandIn {
             rows[2].minutesAway = nil
         }
         var lately: [CrewLatelyRow] = [
-            CrewLatelyRow(id: "cheese", title: "Bloomed at Cheese Board", names: "Maya, Dev and Jordan", day: "Nov 8",
+            CrewLatelyRow(id: "cheese", title: "Cheese Board", names: "Maya, Dev and Jordan", day: "Nov 8",
                           colors: [.pink, .cobalt, .moss]),
-            CrewLatelyRow(id: "bowling", title: "Bloomed at bowling", names: "Dev, Jordan, Priya and Maya", day: "Nov 2",
+            CrewLatelyRow(id: "bowling", title: "Bowling", names: "Dev, Jordan, Priya and Maya", day: "Nov 2",
                           colors: [.cobalt, .moss, .marigold, .pink]),
-            CrewLatelyRow(id: "glade", title: "Bloomed at the Glade picnic", names: "Priya and Maya", day: "Oct 26",
+            CrewLatelyRow(id: "glade", title: "The Glade picnic", names: "Priya and Maya", day: "Oct 26",
                           colors: [.marigold, .pink]),
         ]
         if went {
             lately.insert(
-                CrewLatelyRow(id: "rock", title: "Bloomed at Indian Rock", names: "You, Maya and Dev", day: "Today",
+                CrewLatelyRow(id: "rock", title: "Indian Rock", names: "You, Maya and Dev", day: "Today",
                               colors: [.tomato, .pink, .cobalt]),
                 at: 0
             )

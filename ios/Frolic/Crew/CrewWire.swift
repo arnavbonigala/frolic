@@ -113,3 +113,9 @@ struct HeartbeatWire: Decodable {
     let roomToken: String
     let sessionToken: String
 }
+
+struct CrewPlanViewWire: Decodable {
+    let title: String
+    let startsAt: Double
+    let heroKey: String?
+}

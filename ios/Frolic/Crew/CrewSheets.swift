@@ -32,6 +32,7 @@ struct CrewSheetShell<Content: View>: View {
 
 struct CrewFreeSheet: View {
     var current: String
+    var options: [CrewFreeOption]
     var error: String?
     var onPick: (CrewFreeOption) -> Void
     var onDone: () -> Void
@@ -39,19 +40,14 @@ struct CrewFreeSheet: View {
     var body: some View {
         CrewSheetShell(title: "When are you free today?", identifier: "free.sheet.title") {
             VStack(spacing: 0) {
-                ForEach(Array(CrewFreeOption.allCases.enumerated()), id: \.element.id) { index, option in
+                ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
                     Button {
                         onPick(option)
                     } label: {
                         HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(option.title)
-                                    .frolicFont(.bodyEmphasis)
-                                    .foregroundStyle(FrolicColor.ink)
-                                Text(option.detail)
-                                    .frolicFont(.subheadline)
-                                    .foregroundStyle(FrolicColor.secondaryText)
-                            }
+                            Text(option.title)
+                                .frolicFont(.bodyEmphasis)
+                                .foregroundStyle(FrolicColor.ink)
                             Spacer(minLength: 0)
                             if current == option.title {
                                 Image(systemName: "checkmark")

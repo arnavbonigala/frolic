@@ -21,7 +21,7 @@ struct CrewScreen: View {
                     identifier: "crew"
                 )
                 if let view = store.view, shown == .ready {
-                    CrewFreeControl(text: view.me.status == .notSaid ? "Tell your crew when you are free" : view.me.detail, isFree: view.me.isFree) {
+                    CrewFreeControl(text: view.me.status == .notSaid ? "I'm free" : view.me.detail, isFree: view.me.isFree) {
                         store.showsFreeSheet = true
                     }
                     .padding(.top, 14)
@@ -31,7 +31,7 @@ struct CrewScreen: View {
                     copy: PlaceholderCopy(
                         loading: "Finding your crew",
                         emptyTitle: "Your crew starts with one friend",
-                        emptyMessage: "Send a link to the group chat. Anyone who taps I'm down joins your crew.",
+                        emptyMessage: "Anyone who taps joins your crew.",
                         emptyAction: "Invite a friend",
                         errorTitle: "Couldn't load your crew"
                     ),
@@ -55,6 +55,8 @@ struct CrewScreen: View {
             store.start(router: router, backend: backend)
             applyRoute()
         }
+        .onChange(of: FrolicIdentity.shared.groupId) { _, _ in store.retry(backend: backend, router: router) }
+        .onChange(of: FrolicIdentity.shared.deviceToken) { _, _ in store.retry(backend: backend, router: router) }
         .onChange(of: router.e2eRoute) { _, _ in
             store.routeChanged(router: router, backend: backend)
             applyRoute()
@@ -62,6 +64,7 @@ struct CrewScreen: View {
         .sheet(isPresented: $store.showsFreeSheet) {
             CrewFreeSheet(
                 current: store.view?.me.detail ?? "",
+                options: CrewFreeOption.options(),
                 error: store.actionError,
                 onPick: { option in
                     Task { await store.setFree(option) }
@@ -132,7 +135,7 @@ private struct CrewContent: View {
                 CrewPersonRowView(row: row, showsDivider: true, onTap: { store.friend = row })
             }
         }
-        Text("Distances are rough on purpose. Nobody sees exactly where you are.")
+        Text("Nobody sees exactly where you are.")
             .frolicFont(.footnote)
             .foregroundStyle(FrolicColor.secondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
