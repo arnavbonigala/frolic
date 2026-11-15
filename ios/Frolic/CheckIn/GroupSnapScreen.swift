@@ -202,7 +202,7 @@ struct GroupSnapScreen: View {
     private var cameraOffCard: some View {
         darkCard(
             title: "The camera is off",
-            message: "Turn it on in Settings for the group snap, or add a photo you already have.",
+            message: "",
             identifier: "checkin.cameraOff"
         ) {
             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -230,10 +230,12 @@ struct GroupSnapScreen: View {
                 .font(.system(.body, design: .rounded, weight: .bold))
                 .foregroundStyle(.white)
                 .accessibilityAddTraits(.isHeader)
-            Text(message)
-                .font(.footnote)
-                .foregroundStyle(.white.opacity(0.8))
-                .fixedSize(horizontal: false, vertical: true)
+            if !message.isEmpty {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             ViewThatFits {
                 HStack(spacing: 10) { actions() }
                 VStack(alignment: .leading, spacing: 10) { actions() }
@@ -339,7 +341,6 @@ struct OnDarkPhase: View {
             case .offline:
                 icon("wifi.slash")
                 title("You're offline")
-                message("The group snap needs every phone online. It's here when you're back.")
                 retry("Try again")
             case .error(let detail):
                 icon("exclamationmark.triangle")
@@ -348,7 +349,6 @@ struct OnDarkPhase: View {
                 retry("Try again")
             default:
                 title("This one's over")
-                message("The snap window closed with the frolic.")
                 retry("Back to today")
             }
         }

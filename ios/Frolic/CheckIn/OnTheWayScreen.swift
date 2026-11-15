@@ -32,7 +32,7 @@ struct OnTheWayScreen: View {
                             copy: PlaceholderCopy(
                                 loading: "Finding everyone",
                                 emptyTitle: "Nothing to walk to",
-                                emptyMessage: "When a plan is on and you're going, everyone's walk shows up here.",
+                                emptyMessage: "No plan is on right now.",
                                 emptyAction: "Back to today",
                                 errorTitle: "Couldn't follow today's frolic"
                             ),
@@ -90,14 +90,6 @@ struct OnTheWayScreen: View {
                 .accessibilityIdentifier("otw.shareNote")
             SectionHeader(title: "On your lock screen")
             lockPreview
-            if watcher.permission == .denied {
-                Text("Location is off, so tap I'm here when you get there.")
-                    .frolicFont(.footnote)
-                    .foregroundStyle(FrolicColor.secondaryText)
-                    .padding(.top, 14)
-                    .padding(.horizontal, 4)
-                    .accessibilityIdentifier("otw.locationOff")
-            }
             if let error = store.actionError {
                 Text(error)
                     .frolicFont(.footnote)

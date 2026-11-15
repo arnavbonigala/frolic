@@ -11,7 +11,7 @@ final class ArrivalWatcher: NSObject, CLLocationManagerDelegate {
     }
 
     static let radius: CLLocationDistance = 150
-    static let purposeLine = "Frolic checks your location while you walk over, to know you made it."
+    static let purposeLine = "Turn on location so Frolic knows when you arrive."
 
     var permission: Permission = .undecided
     var arrived = false

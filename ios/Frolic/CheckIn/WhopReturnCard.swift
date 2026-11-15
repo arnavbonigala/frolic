@@ -12,10 +12,6 @@ struct WhopReturnCard: View {
                     .frolicFont(.bodyEmphasis)
                     .foregroundStyle(FrolicColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(note)
-                    .frolicFont(.footnote)
-                    .foregroundStyle(FrolicColor.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
@@ -24,7 +20,7 @@ struct WhopReturnCard: View {
         .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(FrolicColor.cream))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title) \(note)")
+        .accessibilityLabel(title)
         .accessibilityIdentifier("checkin.money")
     }
 
@@ -33,14 +29,6 @@ struct WhopReturnCard: View {
         case "returning": "Sending your \(amount) back."
         case "returned": "You made it. Your \(amount) is back."
         default: "You made it."
-        }
-    }
-
-    private var note: String {
-        switch state {
-        case "returning": "This takes a moment on our side."
-        case "returned": "The hold is off your card."
-        default: ""
         }
     }
 
