@@ -20,17 +20,36 @@ struct TodayScreen: View {
         return store.load
     }
 
+    private var bleeds: Bool {
+        guard shown == .ready, store.plan != nil else { return false }
+        switch store.scene {
+        case .open, .waiting, .solo: return true
+        default: return false
+        }
+    }
+
     var body: some View {
         @Bindable var store = store
+        GeometryReader { geometry in
         ZStack(alignment: .top) {
             ScrollView {
-                VStack(spacing: 0) {
-                    TodayTopBar(store: store, ready: shown == .ready)
-                    content
+                if bleeds {
+                    ZStack(alignment: .top) {
+                        VStack(spacing: 0) { content }
+                        TodayTopBar(store: store, ready: true)
+                            .padding(.top, geometry.safeAreaInsets.top)
+                    }
+                    .padding(.bottom, 32)
+                } else {
+                    VStack(spacing: 0) {
+                        TodayTopBar(store: store, ready: shown == .ready)
+                        content
+                    }
+                    .padding(.bottom, 32)
                 }
-                .padding(.bottom, 32)
             }
-            .scrollBounceBehavior(.basedOnSize)
+            .scrollBounceBehavior(.always)
+            .ignoresSafeArea(edges: bleeds ? .top : [])
             if !connectivity.isOnline && store.today != nil && router.phaseOverride == nil {
                 TodayOfflineBanner()
                     .padding(.top, 4)
@@ -38,6 +57,7 @@ struct TodayScreen: View {
             }
             TodayBloomOverlay(trigger: store.bloomID)
                 .allowsHitTesting(false)
+        }
         }
         .overlay(alignment: .bottom) {
             if let notice = store.notice {
@@ -52,7 +72,13 @@ struct TodayScreen: View {
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: store.notice)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: connectivity.isOnline)
-        .background(SkyBackground())
+        .background {
+            if bleeds {
+                FrolicColor.cream.overlay(PaperGrain()).ignoresSafeArea()
+            } else {
+                SkyBackground()
+            }
+        }
         .accessibilityIdentifier("today.screen")
         .environment(\.todayOnline, connectivity.isOnline)
         .task(id: routeKey) {
@@ -228,7 +254,7 @@ private struct TodayPlanPacket: View {
             onFriends: onFriends
         ) {
             Text(title)
-                .storyFont(title.count > 22 ? 28 : 32)
+                .storyFont(title.count > 22 ? 32 : 38)
                 .foregroundStyle(FrolicColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -254,8 +280,6 @@ private struct TodayPlanPacket: View {
                     .accessibilityIdentifier("today.plan.hostedBy")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
     }
 }
 

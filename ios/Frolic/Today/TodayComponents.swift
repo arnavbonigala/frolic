@@ -14,85 +14,125 @@ struct TodayPacket<Content: View>: View {
     var friendsLine: String?
     var onFriends: (() -> Void)?
     @ViewBuilder var content: Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let stems: [CGFloat] = [30, 12, 38, 20, 26]
+    private let heroHeight: CGFloat = 470
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TodayHeroImage(asset: hero, remote: heroURL, description: heroDescription)
-                .frame(height: friends.isEmpty ? 220 : 280)
-                .frame(maxWidth: .infinity)
-                .overlay(alignment: .topLeading) {
-                    HStack(spacing: 5) {
-                        Text(label)
-                            .todayFont(13, .bold, rounded: true, relativeTo: .caption)
-                        if let number {
-                            Text(number)
-                                .todayFont(13, .medium, rounded: true, relativeTo: .caption)
-                                .opacity(0.72)
-                        }
-                    }
-                    .foregroundStyle(FrolicColor.ink)
-                    .lineLimit(1)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(FrolicColor.cream.opacity(0.94)))
-                    .padding(12)
-                    .accessibilityElement(children: .combine)
-                }
-                .overlay(alignment: .bottom) {
-                    if !friends.isEmpty || friendsLine != nil {
-                        Button { onFriends?() } label: {
-                            VStack(spacing: 6) {
-                                HStack(alignment: .bottom, spacing: 0) {
-                                    ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { index, person in
-                                        TodayFlower(person: person, radius: 22, stem: stems[index % stems.count], swayDelay: Double(index) * 0.6)
-                                            .frame(maxWidth: .infinity)
-                                    }
-                                }
-                                .padding(.horizontal, 24)
-                                if let friendsLine {
-                                    Text(friendsLine)
-                                        .todayFont(14, .semibold, rounded: true, relativeTo: .footnote)
-                                        .foregroundStyle(FrolicColor.ink)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.8)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(Capsule().fill(FrolicColor.cream.opacity(0.94)))
-                                        .accessibilityIdentifier("today.freeRow")
-                                }
-                            }
-                            .padding(.bottom, 12)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(onFriends == nil)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel(friendsLine ?? "")
-                        .accessibilityHint(onFriends == nil ? "" : "Opens your crew")
-                        .accessibilityIdentifier("today.meadow")
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .padding(8)
+            GeometryReader { proxy in
+                let pull = reduceMotion ? 0 : max(0, proxy.frame(in: .scrollView).minY)
+                TodayHeroImage(asset: hero, remote: heroURL, description: heroDescription)
+                    .frame(width: proxy.size.width, height: heroHeight + pull)
+                    .offset(y: -pull)
+            }
+            .frame(height: heroHeight)
+            .overlay(alignment: .bottom) { meadow }
+            .mask(alignment: .bottom) {
+                DeckleEdge()
+                    .frame(height: heroHeight + 600)
+            }
             VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text(label)
+                    if let number {
+                        Text("·")
+                        Text(number)
+                    }
+                }
+                .todayFont(14, .bold, rounded: true, relativeTo: .subheadline)
+                .foregroundStyle(FrolicColor.sun)
+                .lineLimit(1)
+                .accessibilityElement(children: .combine)
                 content
                 if showsWhy, let why {
                     WhyThis(text: why)
-                        .padding(.top, 4)
+                        .padding(.top, 6)
                         .accessibilityIdentifier("today.plan.why")
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
-            .padding(.bottom, 20)
+            .padding(.horizontal, 22)
+            .padding(.top, 10)
         }
-        .background(FrolicColor.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
-        .shadow(color: Color(hex: 0x78501E, opacity: 0.10), radius: 20, y: 12)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.plan.card")
+    }
+
+    @ViewBuilder
+    private var meadow: some View {
+        if !friends.isEmpty || friendsLine != nil {
+            Button { onFriends?() } label: {
+                VStack(spacing: 8) {
+                    HStack(alignment: .bottom, spacing: 0) {
+                        ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { index, person in
+                            TodayFlower(person: person, radius: 26, stem: stems[index % stems.count] + 10, swayDelay: Double(index) * 0.6)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.horizontal, 28)
+                    if let friendsLine {
+                        Text(friendsLine)
+                            .todayFont(15, .semibold, rounded: true, relativeTo: .footnote)
+                            .foregroundStyle(FrolicColor.ink)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.85)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(Capsule().fill(FrolicColor.cream.opacity(0.95)))
+                            .shadow(color: Color(hex: 0x78501E, opacity: 0.18), radius: 8, y: 3)
+                            .padding(.horizontal, 20)
+                            .accessibilityIdentifier("today.freeRow")
+                    }
+                }
+                .padding(.bottom, 34)
+            }
+            .buttonStyle(.plain)
+            .disabled(onFriends == nil)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(friendsLine ?? "")
+            .accessibilityHint(onFriends == nil ? "" : "Opens your crew")
+            .accessibilityIdentifier("today.meadow")
+        }
+    }
+}
+
+struct DeckleEdge: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let base = rect.maxY - 14
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: base))
+        let steps = Int(rect.width / 9)
+        for step in stride(from: steps, through: 0, by: -1) {
+            let x = rect.minX + CGFloat(step) / CGFloat(max(steps, 1)) * rect.width
+            let wave = sin(Double(step) * 0.55) * 3.2 + sin(Double(step) * 1.7 + 1.3) * 2.1
+            let jitter = Double((step * 7919) % 11) / 11.0 * 4.0
+            path.addLine(to: CGPoint(x: x, y: base + CGFloat(wave + jitter)))
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+struct PaperGrain: View {
+    var body: some View {
+        Canvas { context, size in
+            var seed: UInt64 = 0x9E3779B97F4A7C15
+            func next() -> Double {
+                seed = seed &* 6364136223846793005 &+ 1442695040888963407
+                return Double(seed >> 33) / Double(1 << 31)
+            }
+            let count = Int(size.width * size.height / 90)
+            for _ in 0..<count {
+                let rect = CGRect(x: next() * size.width, y: next() * size.height, width: 1.2, height: 1.2)
+                context.fill(Path(ellipseIn: rect), with: .color(FrolicColor.ink.opacity(0.05 + next() * 0.05)))
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
