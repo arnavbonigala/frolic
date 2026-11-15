@@ -95,6 +95,7 @@ struct TodayScreen: View {
             TodayNoPlanStart(store: store)
         case .ready:
             TodayPhaseView(store: store, router: router)
+            DailyPickSlot(scene: store.scene, me: store.meMember.map(TodayStore.person), todayFixture: store.isFixture)
         }
     }
 }
