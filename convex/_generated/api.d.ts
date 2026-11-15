@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as ai_copy from "../ai/copy.js";
+import type * as ai_openai from "../ai/openai.js";
+import type * as ai_pick from "../ai/pick.js";
 import type * as checkins from "../checkins.js";
 import type * as clock from "../clock.js";
 import type * as crew from "../crew.js";
@@ -36,7 +39,17 @@ import type * as memory_mapping from "../memory/mapping.js";
 import type * as memory_read from "../memory/read.js";
 import type * as memory_stats from "../memory/stats.js";
 import type * as memory_taste from "../memory/taste.js";
+import type * as places_data from "../places/data.js";
+import type * as places_seed from "../places/seed.js";
 import type * as plans_crons from "../plans/crons.js";
+import type * as plans_drop from "../plans/drop.js";
+import type * as plans_engine from "../plans/engine.js";
+import type * as plans_inputs from "../plans/inputs.js";
+import type * as plans_memoryContext from "../plans/memoryContext.js";
+import type * as plans_queries from "../plans/queries.js";
+import type * as plans_time from "../plans/time.js";
+import type * as plans_travel from "../plans/travel.js";
+import type * as plans_weather from "../plans/weather.js";
 import type * as reveal from "../reveal.js";
 import type * as snaps from "../snaps.js";
 import type * as taps from "../taps.js";
@@ -67,6 +80,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/copy": typeof ai_copy;
+  "ai/openai": typeof ai_openai;
+  "ai/pick": typeof ai_pick;
   checkins: typeof checkins;
   clock: typeof clock;
   crew: typeof crew;
@@ -95,7 +111,17 @@ declare const fullApi: ApiFromModules<{
   "memory/read": typeof memory_read;
   "memory/stats": typeof memory_stats;
   "memory/taste": typeof memory_taste;
+  "places/data": typeof places_data;
+  "places/seed": typeof places_seed;
   "plans/crons": typeof plans_crons;
+  "plans/drop": typeof plans_drop;
+  "plans/engine": typeof plans_engine;
+  "plans/inputs": typeof plans_inputs;
+  "plans/memoryContext": typeof plans_memoryContext;
+  "plans/queries": typeof plans_queries;
+  "plans/time": typeof plans_time;
+  "plans/travel": typeof plans_travel;
+  "plans/weather": typeof plans_weather;
   reveal: typeof reveal;
   snaps: typeof snaps;
   taps: typeof taps;

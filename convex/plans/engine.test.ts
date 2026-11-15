@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BERKELEY_PLACES, PLACE_BY_SLUG } from "../places/data";
+import { BERKELEY_PLACES, HERO_KEYS, PLACE_BY_SLUG, heroKeyFor } from "../places/data";
 import { EMPTY_MEMORY, type MemoryContext } from "./memoryContext";
 import { localTimeToMs, solarTimes } from "./time";
 import type { DayWeather } from "./weather";
@@ -113,6 +113,22 @@ describe("place set", () => {
       expect(p.hours.some((d) => d.length > 0)).toBe(true);
       for (const s of [p.title, p.tip, p.fallbackWhy, p.costLabel, p.meetSpot]) expect(copyOk(s)).toBe(true);
     }
+  });
+});
+
+describe("hero art", () => {
+  test("every place maps to one of the five painted plan heroes", () => {
+    for (const p of BERKELEY_PLACES) expect(HERO_KEYS).toContain(heroKeyFor(p));
+    expect(heroKeyFor(PLACE_BY_SLUG.get("indian-rock")!)).toBe("plan-sunsets");
+    expect(heroKeyFor(PLACE_BY_SLUG.get("cheese-board")!)).toBe("plan-late-night-food");
+    expect(heroKeyFor(PLACE_BY_SLUG.get("victory-point-cafe")!)).toBe("plan-games");
+    expect(heroKeyFor(PLACE_BY_SLUG.get("memorial-glade")!)).toBe("plan-outdoors");
+    expect(new Set(BERKELEY_PLACES.map(heroKeyFor)).size).toBe(5);
+  });
+
+  test("plans carry the hero key of their place", () => {
+    const plan = generatePlan(drop())!;
+    expect(plan.heroKey).toBe(heroKeyFor(PLACE_BY_SLUG.get(plan.placeSlug)!));
   });
 });
 

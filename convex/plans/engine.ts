@@ -1,4 +1,4 @@
-import { BERKELEY_PLACES, type Place, type PlaceTag } from "../places/data";
+import { BERKELEY_PLACES, heroKeyFor, type HeroKey, type Place, type PlaceTag } from "../places/data";
 import type { MemoryContext } from "./memoryContext";
 import { addDays, clockLabel, dateLabel, daysBetween, localParts, localTimeToMs, solarTimes } from "./time";
 import { conditionLabel, hourAt, isClear, isRainy, type DayWeather, type HourWeather } from "./weather";
@@ -50,6 +50,7 @@ export type WhyInputs = {
 
 export type Plan = {
   placeSlug: string;
+  heroKey: HeroKey;
   title: string;
   line: string;
   why: string;
@@ -417,6 +418,7 @@ function toPlan(c: Candidate, ctx: Ctx, candidates: Candidate[], source: Plan["s
   const topTags = [...ctx.weights.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, 3).map(([t]) => TAG_LABEL[t]);
   return {
     placeSlug: p.slug,
+    heroKey: heroKeyFor(p),
     title: p.title,
     line: writeLine(c, ctx, swap),
     why: w.why,

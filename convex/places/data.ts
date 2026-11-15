@@ -155,3 +155,22 @@ export const BERKELEY_PLACES: Place[] = [
 ];
 
 export const PLACE_BY_SLUG: Map<string, Place> = new Map(BERKELEY_PLACES.map((p) => [p.slug, p]));
+
+export const HERO_KEYS = ["plan-sunsets", "plan-outdoors", "plan-late-night-food", "plan-games", "plan-free-stuff"] as const;
+export type HeroKey = (typeof HERO_KEYS)[number];
+
+const FOOD_TAGS: PlaceTag[] = ["food", "late_night_food", "dessert", "coffee", "boba", "market"];
+const GAME_TAGS: PlaceTag[] = ["games", "play", "climbing", "books", "music", "art", "science"];
+
+const OUTDOOR_TAGS: PlaceTag[] = ["outdoors", "hiking", "picnic", "nature", "water", "animals", "views"];
+
+export function heroKeyFor(place: Place): HeroKey {
+  for (const t of place.tags) {
+    if (t === "sunsets") return "plan-sunsets";
+    if (FOOD_TAGS.includes(t)) return "plan-late-night-food";
+    if (GAME_TAGS.includes(t)) return "plan-games";
+    if (t === "free") return "plan-free-stuff";
+    if (OUTDOOR_TAGS.includes(t) && !place.indoor) return "plan-outdoors";
+  }
+  return "plan-free-stuff";
+}
