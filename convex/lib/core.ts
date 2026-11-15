@@ -278,9 +278,14 @@ export async function fadeFrolic(
   ctx: MutationCtx,
   frolicId: Id<"frolics">,
 ): Promise<void> {
+  const tapped = await ctx.db
+    .query("taps")
+    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
+    .take(MAX_TAPS);
+  const userIds = [...new Set(tapped.filter((tap) => tap.kind === "down").map((tap) => tap.userId))];
   await deleteTaps(ctx, frolicId);
   await ctx.db.patch("frolics", frolicId, { status: "faded" });
-  await ctx.scheduler.runAfter(0, internal.keiki.outbound.onFaded, { frolicId });
+  await ctx.scheduler.runAfter(0, internal.keiki.outbound.onFaded, { frolicId, userIds });
 }
 
 export async function removeTap(

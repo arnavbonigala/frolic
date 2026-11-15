@@ -1,6 +1,5 @@
 export const UNCOVERED_ALLOWLIST: string[] = [
   "internal.keiki.outbound.deliver",
-  "internal.keiki.outbound.due",
   "internal.keiki.outbound.settle",
   "internal.keiki.tools.checkIn",
   "internal.keiki.tools.depositTarget",
