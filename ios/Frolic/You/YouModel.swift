@@ -4,13 +4,13 @@ import Foundation
 import Observation
 import SwiftUI
 
-struct YouProfile: Decodable, Equatable {
+struct YouProfile: Codable, Equatable {
     var userId: String
     var name: String
     var photoUrl: String?
     var groups: [Group]
 
-    struct Group: Decodable, Equatable {
+    struct Group: Codable, Equatable {
         var groupId: String
         var name: String
         var color: String
@@ -127,7 +127,7 @@ enum YouAccountPhase: Equatable {
 @MainActor
 @Observable
 final class YouModel {
-    var profile: YouProfile?
+    var profile: YouProfile? = YouPreferences.cachedProfile()
     var loadPhase: ScreenPhase = .loading
     var card: YouCard = YouPreferences.cachedCard()
     var budget: YouBudget?
@@ -148,6 +148,9 @@ final class YouModel {
         tasteTags = YouPreferences.tasteTags
         if let cached = YouPreferences.cachedLimits() {
             apply(cached)
+        }
+        if profile != nil || YouPreferences.cachedLimits() != nil {
+            loadPhase = .ready
         }
     }
 
@@ -183,6 +186,7 @@ final class YouModel {
             group.addTask { await self.trackProfile(client: client, token: token) }
             group.addTask { await self.trackCard(client: client, token: token) }
             group.addTask { await self.trackCount(client: client, token: token) }
+            group.addTask { await self.watchLoad() }
         }
     }
 
@@ -296,6 +300,7 @@ final class YouModel {
         do {
             for try await me in publisher.values {
                 profile = me
+                YouPreferences.save(profile: me)
                 if let me {
                     hasLoaded = true
                     if loadPhase != .ready { loadPhase = .ready }
@@ -338,6 +343,12 @@ final class YouModel {
         } catch {
             card = cardOverride ?? YouCard.none
         }
+    }
+
+    private func watchLoad() async {
+        try? await Task.sleep(nanoseconds: 400_000_000)
+        guard !Task.isCancelled, loadPhase == .loading else { return }
+        loadPhase = .empty
     }
 
     private func trackCount(client: ConvexClient, token: String) async {
@@ -408,7 +419,7 @@ final class YouModel {
     }
 
     private func fail(_ error: Error) {
-        guard !hasLoaded else { return }
+        guard !hasLoaded, loadPhase != .ready else { return }
         if String(describing: error).contains("UNKNOWN_DEVICE") {
             loadPhase = .empty
             return

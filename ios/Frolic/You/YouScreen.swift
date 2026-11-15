@@ -7,6 +7,8 @@ struct YouScreen: View {
     @State private var model = YouModel()
     @State private var showsPrivacy = false
     @State private var showsTaste = false
+    @State private var showsOnboarding = false
+    @State private var retries = 0
 
     private var shownPhase: ScreenPhase {
         router.resolve(model.loadPhase, isOnline: connectivity.isOnline)
@@ -16,7 +18,7 @@ struct YouScreen: View {
         loading: "Loading your flower",
         emptyTitle: "No flower yet",
         emptyMessage: "Frolic plants your flower when you join a crew.",
-        emptyAction: nil,
+        emptyAction: "Make your flower",
         errorTitle: "Couldn't load your profile"
     )
 
@@ -27,13 +29,24 @@ struct YouScreen: View {
             }
             .padding(.horizontal, 18)
             .padding(.top, 24)
-            .padding(.bottom, 120)
+            .padding(.bottom, 140)
         }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
         .background(SkyBackground())
         .accessibilityIdentifier("you.screen")
-        .task(id: "\(router.e2eRoute?.screen ?? "")\(FrolicIdentity.shared.deviceToken)") { await model.run(backend: backend, router: router) }
+        .task(id: "\(router.e2eRoute?.screen ?? "")\(FrolicIdentity.shared.deviceToken)\(retries)") { await model.run(backend: backend, router: router) }
         .sheet(isPresented: $showsPrivacy) {
             YouPrivacyScreen(model: model)
+        }
+        .fullScreenCover(isPresented: $showsOnboarding) {
+            OnboardingView()
+                .overlay(alignment: .topTrailing) {
+                    Button("Back") { showsOnboarding = false }
+                        .buttonStyle(.frolicText)
+                        .padding(.top, 8)
+                        .padding(.trailing, 8)
+                        .accessibilityIdentifier("you.onboarding.back")
+                }
         }
         .sheet(isPresented: $showsTaste) {
             YouTasteSheet(model: model)
@@ -56,7 +69,8 @@ struct YouScreen: View {
                 phase: phase,
                 copy: copy,
                 color: model.myColor,
-                onRetry: { Task { await model.run(backend: backend, router: router) } }
+                onEmptyAction: { showsOnboarding = true },
+                onRetry: { retries += 1 }
             )
             .padding(.top, 40)
         }
@@ -272,7 +286,7 @@ private struct YouContent: View {
                     }
                     Slider(
                         value: Binding(
-                            get: { model.travel ?? 20 },
+                            get: { model.travel ?? 5 },
                             set: { value in
                                 model.choose(travel: value)
                                 model.save(backend: backend)
@@ -282,6 +296,7 @@ private struct YouContent: View {
                         step: 5
                     )
                     .tint(FrolicColor.ink)
+                    .opacity(model.travel == nil ? 0.45 : 1)
                     .accessibilityLabel("Travel up to")
                     .accessibilityValue(travelLabel)
                     .accessibilityIdentifier("you.travel")
