@@ -38,5 +38,5 @@ export function heroBytes(key: string): Uint8Array | null {
 export function heroUrl(tags: string[]): string | null {
   const key = heroKey(tags);
   if (!key || !Object.prototype.hasOwnProperty.call(HERO_IMAGES, key)) return null;
-  return `/p/hero/${key}.png`;
+  return `/p/hero/${key}.jpg`;
 }

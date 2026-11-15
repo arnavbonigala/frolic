@@ -130,3 +130,12 @@ export const who = internalQuery({
     };
   },
 });
+
+export const users = internalQuery({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("users").collect();
+    return rows.map((u) => ({ name: u.name, source: u.source }));
+  },
+});
