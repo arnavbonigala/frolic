@@ -1,0 +1,32 @@
+test:
+  metadata:
+    name: "frolic-taste-reading"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "onboarding"
+      - "feature-7"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/reading"
+    - type: "validation"
+      step_description: "A progress line reads \"Looking at your photos on your phone\""
+    - type: "manual"
+      step_type: "wait"
+      step_description: "4"
+    - type: "validation"
+      step_description: "Taste chips \"Sunsets\", \"Late-night food\" and \"Games\" appear one after another"
+    - type: "validation"
+      step_description: "The status line reads \"That's what Frolic will plan around.\""
+    - type: "validation"
+      step_description: "The \"Sounds like me\" button is enabled and a \"Pick different photos\" text button is visible"
+    - type: "instructions"
+      step_description: "Tap \"Sounds like me\""
+    - type: "validation"
+      step_description: "The heading \"Never type when you're free\" is visible"

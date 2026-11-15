@@ -1,0 +1,34 @@
+test:
+  metadata:
+    name: "frolic-lockscreen-not-today"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "lock-screen"
+      - "feature-3"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "manual"
+      step_type: "go_home"
+      step_description: ""
+    - type: "code_execution"
+      script: "push-daily-drop"
+      timeout_seconds: 60
+    - type: "manual"
+      step_type: "wait"
+      step_description: "3"
+    - type: "instructions"
+      step_description: "Swipe down from the top, long press the Frolic notification and tap \"Not today\""
+    - type: "instructions"
+      step_description: "Open the Frolic app"
+    - type: "validation"
+      step_description: "The headline \"Taking the day off\" is visible"
+    - type: "validation"
+      step_description: "The Crew tab shows nobody is told: no row mentions you passed"

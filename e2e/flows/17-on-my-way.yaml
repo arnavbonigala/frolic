@@ -1,0 +1,32 @@
+test:
+  metadata:
+    name: "frolic-on-my-way"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "after-match"
+      - "feature-1"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/otw"
+    - type: "validation"
+      step_description: "The heading \"Sunset at Indian Rock\" and \"It's on · 4:30\" are visible"
+    - type: "validation"
+      step_description: "A \"Who's where\" list shows Maya as \"Here\", Dev as \"4 min away\" and You with a walking time"
+    - type: "validation"
+      step_description: "The line \"Shared only with Maya and Dev, and only until you arrive.\" is visible"
+    - type: "validation"
+      step_description: "A lock screen preview reads \"Indian Rock at 4:30\" with \"Maya's there. Dev is 4 min out.\""
+    - type: "manual"
+      step_type: "wait"
+      step_description: "6"
+    - type: "validation"
+      step_description: "Your minutes away have dropped from the starting value"
+    - type: "validation"
+      step_description: "A primary button \"I'm here\" and a text button \"I can't make it\" are visible"

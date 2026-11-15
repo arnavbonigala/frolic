@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-hop-in"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "hop-in"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/hopin"
+    - type: "validation"
+      step_description: "The card reads \"Jordan, it's happening\" with \"Maya and Dev are going\""
+    - type: "validation"
+      step_description: "The plan line reads \"Indian Rock\" with a walking time from Jordan's location"
+    - type: "validation"
+      step_description: "A \"Hop in\" button is visible and no wording about declining or passing"
+    - type: "instructions"
+      step_description: "Tap \"Hop in\""
+    - type: "validation"
+      step_description: "Jordan's flower joins Maya and Dev and the headline \"It's on.\" is visible"

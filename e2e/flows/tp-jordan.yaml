@@ -1,0 +1,58 @@
+test:
+  metadata:
+    name: "frolic-tp-jordan"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "three-phone"
+      - "multi-device"
+      - "hop-in"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "{{jordan_link}}"
+    - type: "manual"
+      step_type: "set_location"
+      step_description: "37.8735,-122.2730"
+    - type: "validation"
+      step_description: "The Today screen is visible with a plan card and the buttons \"I'm down\" and \"Only with…\""
+    - type: "validation"
+      step_description: "The line \"Maya, Dev, Jordan and Priya are free\" or the seeded free line is visible"
+    - type: "code_execution"
+      script: "barrier-t0"
+      timeout_seconds: 240
+    - type: "validation"
+      step_description: "The Today screen shows the open plan and no sign that anyone is down"
+    - type: "code_execution"
+      script: "barrier-t30"
+      timeout_seconds: 240
+    - type: "validation"
+      step_description: "Still no sign that anyone is down: no bloom, no names attached to the plan, no count"
+    - type: "while"
+      condition: "A card reading \"Jordan, it's happening\" is not visible"
+      body:
+        - type: "manual"
+          step_type: "wait"
+          step_description: "1"
+    - type: "extraction"
+      step_description: "Read the clock in the status bar"
+      variable_name: "jordan_hopin_clock"
+    - type: "code_execution"
+      script: "stamp-server-time"
+      variable_name: "jordan_hopin_stamp"
+      timeout_seconds: 60
+    - type: "validation"
+      step_description: "The card reads \"Jordan, it's happening\" with \"Maya and Dev are going\""
+    - type: "validation"
+      step_description: "A \"Hop in\" button is visible"
+    - type: "instructions"
+      step_description: "Tap \"Hop in\""
+    - type: "validation"
+      step_description: "Jordan's flower joins Maya and Dev and the headline \"It's on.\" is visible"
+    - type: "validation"
+      step_description: "The line \"You, Maya and Dev\" is visible"

@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-today-day-off"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-3"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "instructions"
+      step_description: "Tap the \"Free till 8\" pill, select \"Not today\" and tap Done"
+    - type: "validation"
+      step_description: "The headline \"Taking the day off\" is visible"
+    - type: "validation"
+      step_description: "The text \"No plan for you today, and nobody gets told. If your crew's plan happens, you can still hop in.\" is visible"
+    - type: "instructions"
+      step_description: "Tap \"I'm free after all\""
+    - type: "validation"
+      step_description: "A toast reads \"Back in. Free till 8\""

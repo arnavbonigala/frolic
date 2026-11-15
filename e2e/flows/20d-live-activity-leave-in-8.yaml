@@ -1,0 +1,28 @@
+test:
+  metadata:
+    name: "frolic-live-activity"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "lock-screen"
+      - "feature-live-activity"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:on"
+    - type: "manual"
+      step_type: "go_home"
+      step_description: ""
+    - type: "instructions"
+      step_description: "Lock the device by pressing the side button"
+    - type: "validation"
+      step_description: "A Live Activity on the lock screen reads \"Indian Rock at 4:30\" with a countdown such as \"12 min away\""
+    - type: "instructions"
+      step_description: "Unlock and open the Dynamic Island by long pressing it"
+    - type: "validation"
+      step_description: "The expanded Dynamic Island shows the Frolic Live Activity"

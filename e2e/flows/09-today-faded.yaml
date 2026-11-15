@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-today-faded"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:faded"
+    - type: "validation"
+      step_description: "The headline \"This one drifted off\" is visible"
+    - type: "validation"
+      step_description: "The text \"Not everyone you picked said yes to Sunset at Indian Rock this time, so it quietly faded. Nobody knows you said yes. Tomorrow's plan arrives at 3.\" is visible"
+    - type: "validation"
+      step_description: "The words \"declined\", \"rejected\" and \"passed\" appear nowhere on the screen"
+    - type: "instructions"
+      step_description: "Tap the row starting \"Tomorrow at 3:\""
+    - type: "validation"
+      step_description: "A sheet titled \"Tomorrow's plan\" shows \"It arrives at 3 PM, picked for whoever's free. Here's the likely one.\" and a \"Sounds good\" button"

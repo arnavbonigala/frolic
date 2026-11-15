@@ -1,0 +1,35 @@
+test:
+  metadata:
+    name: "frolic-only-if"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "instructions"
+      step_description: "Tap \"Only with…\""
+    - type: "validation"
+      step_description: "A sheet titled \"I'm down only with…\" shows \"Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them.\""
+    - type: "validation"
+      step_description: "The primary button reads \"Pick at least one friend\" and is disabled"
+    - type: "instructions"
+      step_description: "Tap Maya"
+    - type: "validation"
+      step_description: "The primary button reads \"I'm down if Maya\""
+    - type: "instructions"
+      step_description: "Tap Dev"
+    - type: "validation"
+      step_description: "The primary button reads \"I'm down if Maya and Dev\""
+    - type: "instructions"
+      step_description: "Tap Dev again to deselect it, then tap \"I'm down if Maya\""
+    - type: "validation"
+      step_description: "The sheet closes and the card reads \"You're down, if Maya\""

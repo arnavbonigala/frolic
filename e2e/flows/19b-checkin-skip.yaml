@@ -1,0 +1,21 @@
+test:
+  metadata:
+    name: "frolic-checkin-skip"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "check-in"
+      - "feature-8"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/checkin"
+    - type: "instructions"
+      step_description: "Tap \"Skip photo\""
+    - type: "validation"
+      step_description: "The Garden screen is visible and the Today tab shows \"You went.\""

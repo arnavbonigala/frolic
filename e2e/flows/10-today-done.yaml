@@ -1,0 +1,25 @@
+test:
+  metadata:
+    name: "frolic-today-done"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-8"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:done"
+    - type: "validation"
+      step_description: "The headline \"You went.\" is visible with \"Your first flower is in the garden, and the crew saw it bloom.\""
+    - type: "validation"
+      step_description: "A \"See the garden\" button is visible"
+    - type: "instructions"
+      step_description: "Tap \"See the garden\""
+    - type: "validation"
+      step_description: "The Garden screen is visible with the heading \"Garden\""

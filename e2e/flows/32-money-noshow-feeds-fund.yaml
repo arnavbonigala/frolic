@@ -1,0 +1,28 @@
+test:
+  metadata:
+    name: "frolic-money-noshow-fund"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "money"
+      - "crew"
+      - "feature-money"
+    variables:
+      deposit_amount: "$5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/crew?deposit=forfeited"
+    - type: "validation"
+      step_description: "The Crew tab shows the Frolic Fund section with a balance that includes the forfeited {{deposit_amount}}"
+    - type: "validation"
+      step_description: "The row for the no-show says only that the fund grew, and does not name who forfeited"
+    - type: "instructions"
+      step_description: "Open the Garden tab"
+    - type: "validation"
+      step_description: "The Garden shows what the Frolic Fund has paid for"

@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-waiting-only-if"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "instructions"
+      step_description: "Tap \"Only with…\", tap Maya, then tap \"I'm down if Maya\""
+    - type: "validation"
+      step_description: "The status card reads \"You're down, if Maya\""
+    - type: "validation"
+      step_description: "The card says \"If Maya says yes too, you'll both bloom at once.\""
+    - type: "instructions"
+      step_description: "Tap \"Take it back\", tap \"Only with…\", select Maya, Dev and Jordan and tap \"I'm down if Maya, Dev and Jordan\""
+    - type: "validation"
+      step_description: "The card says \"If Maya, Dev and Jordan all say yes, you'll bloom together. The more people you need, the rarer it blooms.\""

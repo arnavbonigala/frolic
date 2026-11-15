@@ -1,0 +1,30 @@
+test:
+  metadata:
+    name: "frolic-money-split"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "money"
+      - "whop"
+      - "feature-money"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/sunday?split=1"
+    - type: "validation"
+      step_description: "The plan \"Kayaks at the Marina\" shows each matched friend's share, with the total divided by the number of matched friends"
+    - type: "validation"
+      step_description: "The fund balance is applied first and the remaining share is shown"
+    - type: "instructions"
+      step_description: "Tap the pay button and complete the Whop checkout"
+    - type: "validation"
+      step_description: "A card reads \"You're in. Paid\" with the remaining share amount"
+    - type: "instructions"
+      step_description: "Open the Crew tab"
+    - type: "validation"
+      step_description: "The fund balance is lower by the amount it applied"

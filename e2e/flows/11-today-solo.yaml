@@ -1,0 +1,33 @@
+test:
+  metadata:
+    name: "frolic-today-solo"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-1"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/solo"
+    - type: "validation"
+      step_description: "A plan card with the band \"TODAY · JUST FOR YOU\" and the label \"Your first frolic\" is visible"
+    - type: "validation"
+      step_description: "The line \"Your crew grows from here. Today's plan is still yours.\" is visible"
+    - type: "validation"
+      step_description: "Buttons \"Send to the group chat\" and \"I'm down\" are visible"
+    - type: "instructions"
+      step_description: "Tap \"Send to the group chat\""
+    - type: "validation"
+      step_description: "A sheet titled \"Send to the group chat\" opens"
+    - type: "instructions"
+      step_description: "Dismiss the sheet by tapping Close, then tap \"I'm down\""
+    - type: "validation"
+      step_description: "The line \"Your bud is planted. Waiting for a friend\" is visible"
+    - type: "validation"
+      step_description: "A card reads \"You're down\" with \"Send it to the group chat so someone can say yes too.\""

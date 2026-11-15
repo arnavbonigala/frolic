@@ -1,0 +1,33 @@
+test:
+  metadata:
+    name: "frolic-memory-detail"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "garden"
+      - "feature-8"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/garden"
+    - type: "instructions"
+      step_description: "Tap the row \"Cheese Board pizza\""
+    - type: "validation"
+      step_description: "A full-width photo, the date \"Nov 8\" and the title \"Cheese Board pizza\" are visible"
+    - type: "validation"
+      step_description: "Flowers for Maya, Dev and Jordan are visible under the title"
+    - type: "validation"
+      step_description: "A \"Photos\" section shows a horizontal strip of three photos"
+    - type: "instructions"
+      step_description: "Tap the Share button"
+    - type: "validation"
+      step_description: "A toast reads \"Saved. Ready for Stories\""
+    - type: "instructions"
+      step_description: "Tap the back button labelled \"Back to Garden\""
+    - type: "validation"
+      step_description: "The Garden screen is visible"

@@ -1,0 +1,31 @@
+test:
+  metadata:
+    name: "frolic-garden"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "garden"
+      - "feature-8"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/garden"
+    - type: "validation"
+      step_description: "The heading \"Garden\" and \"Every frolic grows a flower. It never wilts.\" are visible"
+    - type: "validation"
+      step_description: "A garden counter reads \"N frolics\" with a caption underneath"
+    - type: "validation"
+      step_description: "A row begins \"Your crew this week:\" and describes the crew's taste"
+    - type: "instructions"
+      step_description: "Tap the row starting \"Your crew this week:\""
+    - type: "validation"
+      step_description: "A sheet titled \"Share your crew\" shows a story card and a \"Share to Stories\" button"
+    - type: "instructions"
+      step_description: "Tap \"Share to Stories\""
+    - type: "validation"
+      step_description: "A toast reads \"Saved. Ready for Stories\""

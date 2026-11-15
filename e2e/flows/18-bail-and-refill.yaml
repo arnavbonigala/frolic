@@ -1,0 +1,29 @@
+test:
+  metadata:
+    name: "frolic-bail"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "after-match"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/otw"
+    - type: "instructions"
+      step_description: "Tap \"I can't make it\""
+    - type: "validation"
+      step_description: "A sheet titled \"Can't make it?\" shows \"Maya and Dev will just see one fewer. The others get a chance to hop in.\""
+    - type: "instructions"
+      step_description: "Tap \"I'll still go\""
+    - type: "validation"
+      step_description: "The sheet closes and the \"Who's where\" list is still visible"
+    - type: "instructions"
+      step_description: "Tap \"I can't make it\", then tap \"Sit this one out\""
+    - type: "validation"
+      step_description: "The Today screen is visible with a toast reading \"All good. Next time.\""

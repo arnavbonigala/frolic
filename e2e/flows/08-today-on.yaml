@@ -1,0 +1,31 @@
+test:
+  metadata:
+    name: "frolic-today-on"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:on"
+    - type: "validation"
+      step_description: "The headline \"It's on.\" is visible above the line \"You, Maya and Dev\""
+    - type: "validation"
+      step_description: "The text \"Top of Indian Rock at 4:30. Leave by 4:18 and bring a layer, it gets windy up there.\" is visible"
+    - type: "validation"
+      step_description: "Flowers for You, Maya and Dev are visible together"
+    - type: "validation"
+      step_description: "Buttons \"I'm on my way\" and \"Directions\" are visible"
+    - type: "validation"
+      step_description: "The line \"Jordan and Priya can still hop in.\" is visible"
+    - type: "instructions"
+      step_description: "Tap \"I'm on my way\""
+    - type: "validation"
+      step_description: "The heading \"Sunset at Indian Rock\" is visible with \"It's on · 4:30\" above it"

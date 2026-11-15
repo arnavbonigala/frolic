@@ -1,0 +1,32 @@
+test:
+  metadata:
+    name: "frolic-money-deposit"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "money"
+      - "whop"
+      - "feature-money"
+    variables:
+      deposit_amount: "$5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:on?deposit=1"
+    - type: "validation"
+      step_description: "A deposit prompt appears with the exact copy from the Frolic spec for the deposit amount {{deposit_amount}} and a Whop checkout button"
+    - type: "instructions"
+      step_description: "Tap the deposit button"
+    - type: "validation"
+      step_description: "The Whop checkout sheet opens for the Frolic deposit product with the amount {{deposit_amount}}"
+    - type: "instructions"
+      step_description: "Complete the checkout with the Whop test payment method"
+    - type: "validation"
+      step_description: "The deposit prompt closes and Today shows \"It's on.\" with a marker that the deposit is held"
+    - type: "validation"
+      step_description: "The Today screen does not offer a way to pay for anyone else"

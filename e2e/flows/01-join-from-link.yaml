@@ -1,0 +1,31 @@
+test:
+  metadata:
+    name: "frolic-join-from-link"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "onboarding"
+      - "feature-2"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://j/sunset-crew"
+    - type: "validation"
+      step_description: "The headline \"Sunset Crew\" is visible with the line \"Maya invited you to\" above it"
+    - type: "validation"
+      step_description: "The text \"Every afternoon, one plan for whoever's free. Say you're down in secret. It only happens if a friend is down too.\" is visible"
+    - type: "validation"
+      step_description: "Three explainer captions are visible: \"Friends who are free bloom\", \"Your yes is a secret bud\" and \"Both yes: it's on\""
+    - type: "validation"
+      step_description: "A \"Join Sunset Crew\" button and a \"No invite? Start on your own\" text button are visible"
+    - type: "validation"
+      step_description: "No contacts permission prompt, phone number field or sign-in code field is shown"
+    - type: "instructions"
+      step_description: "Tap \"Join Sunset Crew\""
+    - type: "validation"
+      step_description: "The screen asks \"What do your friends call you?\""
