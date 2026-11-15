@@ -156,10 +156,7 @@ describe("fade", () => {
 describe("crons", () => {
   test("the registry holds the memory and plan jobs", () => {
     const registered = crons.crons as Record<string, { name: string; schedule: Record<string, unknown>; args: unknown[] }>;
-    expect(Object.keys(registered).sort()).toEqual(["daily drop", "memory close day", "memory flush", "weekend drop"]);
-    expect(registered["memory flush"].name).toBe("memory/ingest:flushDue");
-    expect(registered["memory flush"].schedule).toEqual({ minutes: 1, type: "interval" });
-    expect(registered["memory flush"].args).toEqual([{}]);
+    expect(Object.keys(registered).sort()).toEqual(["daily drop", "memory close day", "weekend drop"]);
     expect(registered["memory close day"].name).toBe("daily:closeMemoryDay");
     expect(registered["memory close day"].schedule).toEqual({ cron: "15 8 * * *", type: "cron" });
     expect(registered["memory close day"].args).toEqual([{}]);
@@ -170,7 +167,7 @@ describe("crons", () => {
     for (const job of Object.values(registered)) expect(job.args).toEqual([{}]);
   });
 
-  test("the memory flush cron target runs and reports nothing to flush", async () => {
+  test("the memory sweep runs on demand and reports nothing to flush", async () => {
     const t = makeT();
     expect(await t.action(internal.memory.ingest.flushDue)).toBe(0);
   });

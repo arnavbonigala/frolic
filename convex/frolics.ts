@@ -155,125 +155,133 @@ export const today = query({
   handler: async (ctx, args) => {
     const user = await userFromToken(ctx, args.deviceToken);
     await requireMember(ctx, args.groupId, user._id);
-    const group = await ctx.db.get("groups", args.groupId);
-    if (!group) throw new ConvexError({ code: "NOT_FOUND", message: "This crew is gone" });
-    const memberships = await ctx.db
-      .query("memberships")
-      .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
-      .take(100);
-    const picked = args.frolicId ? await ctx.db.get("frolics", args.frolicId) : null;
-    if (picked && picked.groupId !== args.groupId) {
-      throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
-    }
-    const frolic = picked
-      ? picked
-      : args.day
-      ? (
-          await ctx.db
-            .query("frolics")
-            .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day!))
-            .order("desc")
-            .take(1)
-        )[0]
-      : await ctx.db
-          .query("frolics")
-          .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId))
-          .order("desc")
-          .first();
-    const base = { groupName: group.name, memberCount: memberships.length };
-    if (!frolic) {
-      return { ...base, phase: memberships.length <= 1 ? ("solo" as const) : ("none" as const), frolic: null, myTap: null, reveal: null };
-    }
-
-    const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
-    const place = plan ? await ctx.db.get("places", plan.placeId) : null;
-    const frolicView = {
-      frolicId: frolic._id,
-      day: frolic.day,
-      kind: frolic.kind,
-      deadline: frolic.deadline,
-      window: frolic.window,
-      durationMinutes: frolic.durationMinutes,
-      plan: plan
-        ? {
-            title: plan.title,
-            line: plan.line,
-            why: plan.why ?? null,
-            heroKey: place ? heroKeyOf(place.slug) : "plan-free-stuff",
-            cost: plan.cost,
-            costLabel: plan.costLabel,
-            payUpFront: plan.payUpFront,
-            startsAt: frolic.startsAt ?? plan.startsAt,
-            sunsetAt: plan.sunsetAt ?? null,
-            place: place
-              ? {
-                  placeId: place._id,
-                  name: place.name,
-                  lat: place.lat,
-                  lng: place.lng,
-                  photoUrl: place.photoUrl ?? null,
-                  neighborhood: place.neighborhood ?? null,
-                }
-              : null,
-          }
-        : null,
-    };
-
-    const tap =
-      frolic.status === "open" || frolic.status === "on"
-        ? await ctx.db
-            .query("taps")
-            .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolic._id).eq("userId", user._id))
-            .unique()
-        : null;
-    const myTap = tap
-      ? { kind: tap.kind, onlyIf: await people(ctx, memberships, tap.onlyIf), window: tap.window ?? null }
-      : null;
-
-    if (frolic.status === "faded") {
-      return { ...base, phase: "faded" as const, frolic: frolicView, myTap: null, reveal: null };
-    }
-    if (frolic.status === "open") {
-      const p = myTap?.kind === "down" ? "waiting" : memberships.length <= 1 ? "solo" : "open";
-      return { ...base, phase: p as "waiting" | "solo" | "open", frolic: frolicView, myTap, reveal: null };
-    }
-
-    const attendees = await ctx.db
-      .query("attendees")
-      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
-      .take(200);
-    const going = attendees.filter((a) => a.status === "going");
-    const mine = attendees.find((a) => a.userId === user._id) ?? null;
-    const goingPeople = await people(ctx, memberships, going.map((a) => a.userId));
-    const hop = await ctx.db
-      .query("hopIns")
-      .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolic._id).eq("userId", user._id))
-      .unique();
-    const amGoing = mine?.status === "going";
-    const room = frolic.capacity === undefined || going.length < frolic.capacity;
-    return {
-      ...base,
-      phase: frolic.status === "on" ? ("on" as const) : ("done" as const),
-      frolic: frolicView,
-      myTap,
-      reveal: {
-        revealAt: frolic.revealAt!,
-        bloomAt: frolic.bloomAt!,
-        startsAt: frolic.startsAt!,
-        endsAt: frolic.endsAt!,
-        snapAt: frolic.snapAt ?? null,
-        going: goingPeople.map((p) => ({ ...p, role: going.find((a) => a.userId === p.userId)!.role })),
-        me: {
-          going: amGoing,
-          role: amGoing ? mine!.role : null,
-          bloomAt: amGoing ? mine!.bloomAt : null,
-          hopInWaiting: hop?.status === "waiting",
-          canHopIn: frolic.status === "on" && !amGoing && hop?.status !== "waiting" && room,
-        },
-      },
-    };
+    return await todayFor(ctx, user, args);
   },
 });
+
+export async function todayFor(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  args: { groupId: Id<"groups">; day?: string; frolicId?: Id<"frolics"> },
+) {
+  const group = await ctx.db.get("groups", args.groupId);
+  if (!group) throw new ConvexError({ code: "NOT_FOUND", message: "This crew is gone" });
+  const memberships = await ctx.db
+    .query("memberships")
+    .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
+    .take(100);
+  const picked = args.frolicId ? await ctx.db.get("frolics", args.frolicId) : null;
+  if (picked && picked.groupId !== args.groupId) {
+    throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
+  }
+  const frolic = picked
+    ? picked
+    : args.day
+    ? (
+        await ctx.db
+          .query("frolics")
+          .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day!))
+          .order("desc")
+          .take(1)
+      )[0]
+    : await ctx.db
+        .query("frolics")
+        .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId))
+        .order("desc")
+        .first();
+  const base = { groupName: group.name, memberCount: memberships.length };
+  if (!frolic) {
+    return { ...base, phase: memberships.length <= 1 ? ("solo" as const) : ("none" as const), frolic: null, myTap: null, reveal: null };
+  }
+
+  const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
+  const place = plan ? await ctx.db.get("places", plan.placeId) : null;
+  const frolicView = {
+    frolicId: frolic._id,
+    day: frolic.day,
+    kind: frolic.kind,
+    deadline: frolic.deadline,
+    window: frolic.window,
+    durationMinutes: frolic.durationMinutes,
+    plan: plan
+      ? {
+          title: plan.title,
+          line: plan.line,
+          why: plan.why ?? null,
+          heroKey: place ? heroKeyOf(place.slug) : "plan-free-stuff",
+          cost: plan.cost,
+          costLabel: plan.costLabel,
+          payUpFront: plan.payUpFront,
+          startsAt: frolic.startsAt ?? plan.startsAt,
+          sunsetAt: plan.sunsetAt ?? null,
+          place: place
+            ? {
+                placeId: place._id,
+                name: place.name,
+                lat: place.lat,
+                lng: place.lng,
+                photoUrl: place.photoUrl ?? null,
+                neighborhood: place.neighborhood ?? null,
+              }
+            : null,
+        }
+      : null,
+  };
+
+  const tap =
+    frolic.status === "open" || frolic.status === "on"
+      ? await ctx.db
+          .query("taps")
+          .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolic._id).eq("userId", user._id))
+          .unique()
+      : null;
+  const myTap = tap
+    ? { kind: tap.kind, onlyIf: await people(ctx, memberships, tap.onlyIf), window: tap.window ?? null }
+    : null;
+
+  if (frolic.status === "faded") {
+    return { ...base, phase: "faded" as const, frolic: frolicView, myTap: null, reveal: null };
+  }
+  if (frolic.status === "open") {
+    const p = myTap?.kind === "down" ? "waiting" : memberships.length <= 1 ? "solo" : "open";
+    return { ...base, phase: p as "waiting" | "solo" | "open", frolic: frolicView, myTap, reveal: null };
+  }
+
+  const attendees = await ctx.db
+    .query("attendees")
+    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+    .take(200);
+  const going = attendees.filter((a) => a.status === "going");
+  const mine = attendees.find((a) => a.userId === user._id) ?? null;
+  const goingPeople = await people(ctx, memberships, going.map((a) => a.userId));
+  const hop = await ctx.db
+    .query("hopIns")
+    .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolic._id).eq("userId", user._id))
+    .unique();
+  const amGoing = mine?.status === "going";
+  const room = frolic.capacity === undefined || going.length < frolic.capacity;
+  return {
+    ...base,
+    phase: frolic.status === "on" ? ("on" as const) : ("done" as const),
+    frolic: frolicView,
+    myTap,
+    reveal: {
+      revealAt: frolic.revealAt!,
+      bloomAt: frolic.bloomAt!,
+      startsAt: frolic.startsAt!,
+      endsAt: frolic.endsAt!,
+      snapAt: frolic.snapAt ?? null,
+      going: goingPeople.map((p) => ({ ...p, role: going.find((a) => a.userId === p.userId)!.role })),
+      me: {
+        going: amGoing,
+        role: amGoing ? mine!.role : null,
+        bloomAt: amGoing ? mine!.bloomAt : null,
+        hopInWaiting: hop?.status === "waiting",
+        canHopIn: frolic.status === "on" && !amGoing && hop?.status !== "waiting" && room,
+      },
+    },
+  };
+}
 
 export const hopIn = mutation({
   args: { deviceToken: v.string(), frolicId: v.id("frolics") },

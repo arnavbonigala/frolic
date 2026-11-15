@@ -71,19 +71,19 @@ export async function applyTap(
     }
   }
 
-  const fields = {
-    kind: input.kind,
-    onlyIf: input.kind === "down" ? onlyIf : [],
-    window: input.kind === "down" ? input.window : undefined,
-    source: input.source,
-    updatedAt: now,
-  };
   const existing = await ctx.db
     .query("taps")
     .withIndex("by_frolicId_and_userId", (q) =>
       q.eq("frolicId", frolic._id).eq("userId", userId),
     )
     .unique();
+  const fields = {
+    kind: input.kind,
+    onlyIf: input.kind === "down" ? onlyIf : [],
+    window: input.kind === "down" ? input.window : undefined,
+    source: input.source,
+    updatedAt: existing?.kind === "down" && input.kind === "down" ? existing.updatedAt : now,
+  };
   const doc = { frolicId: frolic._id, groupId: frolic.groupId, userId, ...fields };
   let tapId;
   if (existing) {
