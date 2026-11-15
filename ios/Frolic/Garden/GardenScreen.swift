@@ -95,7 +95,6 @@ struct GardenScreen: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("garden.week")
             .accessibilityLabel("Your crew this week: \(overview.weekLine)")
-            .accessibilityHint("Share your crew")
             .padding(.top, 12)
             if let fund = overview.fund {
                 GardenFundRow(title: fund.frolicTitle, line: fund.line)
@@ -198,9 +197,6 @@ private struct GardenFundRow: View {
                     .frolicFont(.subheadline)
                     .foregroundStyle(FrolicColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("From the crew's Frolic Fund")
-                    .frolicFont(.footnote)
-                    .foregroundStyle(FrolicColor.secondaryText)
             }
             Spacer(minLength: 0)
         }
