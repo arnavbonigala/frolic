@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { findAttendee } from "../lib/core";
-import { openMoney, payUrl, shareFor } from "./money";
+import { noHold, openMoney, payUrl, shareFor } from "./money";
 
 export const linkResult = v.union(
   v.object({
@@ -19,13 +19,14 @@ export const linkResult = v.union(
       v.literal("already_paid"),
       v.literal("covered"),
       v.literal("closed"),
+      v.literal("no_hold"),
     ),
   }),
 );
 
 type LinkResult =
   | { kind: "hold" | "share"; url: string; amountCents: number; expiresAt: number }
-  | { kind: "none"; reason: "not_revealed" | "not_member" | "already_paid" | "covered" | "closed" };
+  | { kind: "none"; reason: "not_revealed" | "not_member" | "already_paid" | "covered" | "closed" | "no_hold" };
 
 export async function linkFor(ctx: MutationCtx, userId: Id<"users">, frolicId: Id<"frolics">): Promise<LinkResult> {
   const now = Date.now();
@@ -41,7 +42,7 @@ export async function linkFor(ctx: MutationCtx, userId: Id<"users">, frolicId: I
     await openMoney(ctx, frolic);
     share = await shareFor(ctx, frolicId, userId);
   }
-  if (!share) return { kind: "none", reason: "closed" };
+  if (!share) return { kind: "none", reason: (await noHold(ctx, frolicId)) ? "no_hold" : "closed" };
   if (share.status === "waived" && share.amountCents === 0) return { kind: "none", reason: "covered" };
   if (share.status !== "due" && share.status !== "failed") return { kind: "none", reason: "already_paid" };
   if (!share.token) return { kind: "none", reason: "closed" };

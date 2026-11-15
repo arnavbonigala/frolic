@@ -3,7 +3,13 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { signWebhook, verifyWebhook } from "../../convex/whop/signature";
 import { nextStatus, splitCost } from "../../convex/whop/split";
-import { HOUR, NOON, flipDue, makeT, setupCrew, tap, token, type Crew, type T } from "./setup.helpers";
+import { HOUR, NOON, flipDue, makeT, setupCrew as baseCrew, tap, token, type Crew, type T } from "./setup.helpers";
+
+async function setupCrew(t: T, names: string[], opts: Parameters<typeof baseCrew>[2] = {}): Promise<Crew> {
+  const crew = await baseCrew(t, names, opts);
+  await t.run(async (ctx) => await ctx.db.patch("groups", crew.groupId, { holdEnabled: true }));
+  return crew;
+}
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -732,6 +738,75 @@ describe("review fixes", () => {
     const html = await (await t.fetch(`/pay/${(await shareOf(t, crew, "Maya")).token}`)).text();
     expect(html).toContain("Your bank is still checking this.");
     expect(html).not.toMatch(/\}\s*finish\(\);\s*\} catch/);
+  });
+});
+
+describe("per crew hold setting", () => {
+  test("a crew with the hold off gets no hold, no link, no drop and no capture", async () => {
+    const t = makeT();
+    const crew = await baseCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    expect(await sharesOf(t, crew.frolicId)).toHaveLength(0);
+    expect(await t.mutation(internal.whop.links.checkoutLink, { userId: crew.ids.Maya, frolicId: crew.frolicId })).toEqual({ kind: "none", reason: "no_hold" });
+    expect(await sharesOf(t, crew.frolicId)).toHaveLength(0);
+    const mine = await t.query(api.whop.pay.myPayment, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    expect(mine).toMatchObject({ state: "none", kind: "none", noHold: true });
+    vi.advanceTimersByTime(HOUR + 50 * 60 * 1000);
+    await drain(t);
+    await t.mutation(internal.whop.money.noShowSweep, { frolicId: crew.frolicId });
+    await drain(t);
+    const going = await t.run(async (ctx) => await ctx.db.query("attendees").withIndex("by_frolicId", (q) => q.eq("frolicId", crew.frolicId)).collect());
+    expect(going.filter((a) => a.status === "going")).toHaveLength(2);
+    expect(calls).toHaveLength(0);
+    const fund = await t.query(api.whop.pay.fund, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(fund).toEqual({ balanceCents: 0, holdLine: null, entries: [] });
+  });
+
+  test("a paid plan still splits when the hold is off", async () => {
+    const t = makeT();
+    const crew = await paidCrew(t, ["Maya", "Dev"]);
+    await t.run(async (ctx) => await ctx.db.patch("groups", crew.groupId, { holdEnabled: false }));
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    const shares = await sharesOf(t, crew.frolicId);
+    expect(shares.map((s) => [s.kind, s.amountCents])).toEqual([["chipIn", 650], ["chipIn", 650]]);
+  });
+
+  test("turning the hold on after the reveal does not add one to that frolic", async () => {
+    const t = makeT();
+    const crew = await baseCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    await t.run(async (ctx) => await ctx.db.patch("groups", crew.groupId, { holdEnabled: true }));
+    expect(await t.mutation(internal.whop.links.checkoutLink, { userId: crew.ids.Dev, frolicId: crew.frolicId })).toEqual({ kind: "none", reason: "no_hold" });
+    expect(await sharesOf(t, crew.frolicId)).toHaveLength(0);
+  });
+
+  test("turning the hold off after the reveal keeps that frolic's hold", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    await t.run(async (ctx) => await ctx.db.patch("groups", crew.groupId, { holdEnabled: false }));
+    const link = await t.mutation(internal.whop.links.checkoutLink, { userId: crew.ids.Maya, frolicId: crew.frolicId });
+    expect(link).toMatchObject({ kind: "hold", amountCents: 300 });
+    expect((await hold(t, crew, "Maya")).status).toBe("held");
+  });
+
+  test("the crew line names the crew and the amount when the hold is on", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    const fund = await t.query(api.whop.pay.fund, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(fund.holdLine).toBe("Sunset Crew plays for $3. Show up, it's released.");
   });
 });
 

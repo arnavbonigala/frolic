@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { mutation, query, type QueryCtx } from "../_generated/server";
 import { findMembership, findUserByToken, userFromToken } from "../lib/identity";
-import { fundBalance, shareFor } from "./money";
+import { fundBalance, noHold, shareFor } from "./money";
+import { policy } from "./config";
 import { linkFor, linkResult } from "./links";
 
 export const link = mutation({
@@ -64,14 +65,15 @@ export const myPayment = query({
     amountCents: v.number(),
     error: v.union(v.string(), v.null()),
     paidNames: v.array(v.string()),
+    noHold: v.boolean(),
   }),
   handler: async (ctx, { deviceToken, frolicId }) => {
-    const empty = { state: "none" as const, kind: "none" as const, amountCents: 0, error: null, paidNames: [] };
+    const empty = { state: "none" as const, kind: "none" as const, amountCents: 0, error: null, paidNames: [], noHold: false };
     const user = await findUserByToken(ctx, deviceToken);
     const frolic = await ctx.db.get("frolics", frolicId);
     if (!user || !frolic || frolic.revealAt === undefined || frolic.status === "open") return empty;
     const share = await shareFor(ctx, frolicId, user._id);
-    if (!share) return empty;
+    if (!share) return { ...empty, noHold: await noHold(ctx, frolicId) };
     const all = await ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(200);
     const paidNames: string[] = [];
     for (const s of all) {
@@ -85,6 +87,7 @@ export const myPayment = query({
       amountCents: share.amountCents,
       error: share.status === "failed" ? "That didn't go through. Try again." : null,
       paidNames,
+      noHold: false,
     };
   },
 });
@@ -97,11 +100,15 @@ export const fund = query({
   args: { deviceToken: v.string(), groupId: v.id("groups") },
   returns: v.object({
     balanceCents: v.number(),
+    holdLine: v.union(v.string(), v.null()),
     entries: v.array(v.object({ amountCents: v.number(), line: v.string(), at: v.number(), frolicId: v.union(v.id("frolics"), v.null()) })),
   }),
   handler: async (ctx, { deviceToken, groupId }) => {
     const user = await findUserByToken(ctx, deviceToken);
-    if (!user || !(await findMembership(ctx, groupId, user._id))) return { balanceCents: 0, entries: [] };
+    if (!user || !(await findMembership(ctx, groupId, user._id))) return { balanceCents: 0, holdLine: null, entries: [] };
+    const group = await ctx.db.get("groups", groupId);
+    const hold = `$${(policy.holdCents / 100).toFixed(policy.holdCents % 100 === 0 ? 0 : 2)}`;
+    const holdLine = group?.holdEnabled === true ? `${group.name} plays for ${hold}. Show up, it's released.` : null;
     const balanceCents = await fundBalance(ctx, groupId);
     const entries = [];
     for (const e of await recentEntries(ctx, groupId)) {
@@ -115,6 +122,6 @@ export const fund = query({
             : `${dollars} went back.`;
       entries.push({ amountCents: e.amountCents, line, at: e.at, frolicId: e.frolicId ?? null });
     }
-    return { balanceCents, entries };
+    return { balanceCents, holdLine, entries };
   },
 });
