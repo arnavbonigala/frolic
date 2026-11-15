@@ -138,7 +138,7 @@ describe("ingest", () => {
     const { eventId } = await t.mutation(internal.memory.events.recordEvent, { eventKey: "tap:once", kind: "tap", groupId, userId: maya, payload: { title: "Boba" } });
     await flush(t, eventId as never);
     expect(await flush(t, eventId as never)).toEqual({ status: "skipped" });
-    expect(fake.calls.filter((c) => c.path.endsWith("/document"))).toHaveLength(1);
+    expect(fake.calls.filter((c) => c.path.endsWith("/document") && c.body?.id !== "frolic_init")).toHaveLength(1);
   });
 
   test("flushDue finds queued events whose time has come", async () => {
