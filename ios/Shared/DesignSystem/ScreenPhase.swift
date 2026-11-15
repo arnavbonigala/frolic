@@ -53,7 +53,7 @@ struct PhasePlaceholder: View {
                 FlowerView(state: .bud, color: color, radius: 26, stem: 30)
                     .accessibilityHidden(true)
                 HStack(spacing: 10) {
-                    ProgressView().tint(FrolicColor.ink)
+                    SproutLoader()
                     Text(copy.loading)
                         .frolicFont(.subheadline)
                         .foregroundStyle(FrolicColor.secondaryText)
@@ -112,5 +112,31 @@ struct PhasePlaceholder: View {
         }
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct SproutLoader: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hop = false
+    private let colors: [FlowerColor] = [.pink, .marigold, .lilac]
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(colors.indices, id: \.self) { index in
+                Capsule()
+                    .fill(colors[index].petal)
+                    .frame(width: 7, height: 10)
+                    .scaleEffect(y: hop ? 1.15 : 0.8, anchor: .bottom)
+                    .offset(y: hop ? -4 : 1)
+                    .rotationEffect(.degrees(hop ? 8 : -8))
+                    .animation(
+                        reduceMotion ? nil : .easeInOut(duration: 0.7).repeatForever(autoreverses: true).delay(Double(index) * 0.2),
+                        value: hop
+                    )
+            }
+        }
+        .frame(height: 18)
+        .onAppear { hop = true }
+        .accessibilityHidden(true)
     }
 }

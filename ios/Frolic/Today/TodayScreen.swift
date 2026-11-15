@@ -1025,6 +1025,9 @@ private struct TodaySkeleton: View {
                         Circle().fill(FrolicColor.paper.opacity(0.7)).frame(width: 56, height: 56)
                         Capsule().fill(FrolicColor.stem.opacity(0.25)).frame(width: 4, height: [36, 14, 44, 24][index])
                     }
+                    .scaleEffect(reduceMotion ? 1 : (pulse ? 1 : 0.86), anchor: .bottom)
+                    .rotationEffect(.degrees(reduceMotion ? 0 : (pulse ? 2.5 : -2.5)), anchor: .bottom)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 1.1).repeatForever().delay(Double(index) * 0.22), value: pulse)
                     .frame(maxWidth: .infinity)
                 }
             }
@@ -1047,7 +1050,7 @@ private struct TodaySkeleton: View {
             .padding(.horizontal, 16)
             .padding(.top, 14)
             HStack(spacing: 8) {
-                ProgressView().tint(FrolicColor.secondaryText)
+                SproutLoader()
                 Text("Checking who's free")
                     .todayFont(13, relativeTo: .footnote)
                     .foregroundStyle(FrolicColor.secondaryText)
