@@ -4,6 +4,7 @@ import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { requireMember, userFromToken } from "./lib/identity";
+import { photoUrlOf } from "./lib/photo";
 import { timeWindow } from "./schema";
 
 export const presence = new Presence<Id<"groups">, Id<"users">>(components.presence);
@@ -55,7 +56,7 @@ export const crew = query({
         userId: u._id,
         name: u.name,
         color: m.color,
-        photoUrl: u.photoId ? await ctx.storage.getUrl(u.photoId) : null,
+        photoUrl: await photoUrlOf(ctx, u),
         isMe: u._id === user._id,
         free: a
           ? { state: a.state, window: a.window ?? null, minutesAway: a.minutesAway ?? null, updatedAt: a.updatedAt }

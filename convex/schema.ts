@@ -34,6 +34,7 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     photoId: v.optional(v.id("_storage")),
+    avatarUrl: v.optional(v.string()),
     tokenHash: v.optional(v.string()),
     phone: v.optional(v.string()),
     source: v.union(v.literal("app"), v.literal("web"), v.literal("imessage")),

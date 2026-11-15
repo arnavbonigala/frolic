@@ -261,6 +261,7 @@ export const seed = internalMutation({
         name,
         tokenHash: await hashToken(token),
         source: "app",
+        avatarUrl: `/p/avatar/${name.toLowerCase()}.jpg`,
       });
     }
     const { groupId, inviteCode } = await createGroupFor(ctx, ids.Maya, "Sunset Crew", ZONE, args.run);

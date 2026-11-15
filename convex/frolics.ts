@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOutAndRefill } from "./lib/core";
 import { requireMember, userFromToken } from "./lib/identity";
+import { photoUrlOf } from "./lib/photo";
 import { rateLimiter } from "./lib/rateLimits";
 import { timeWindow } from "./schema";
 
@@ -69,7 +70,7 @@ async function people(
       userId,
       name: u.name,
       color: m.color,
-      photoUrl: u.photoId ? await ctx.storage.getUrl(u.photoId) : null,
+      photoUrl: await photoUrlOf(ctx, u),
     });
   }
   return out;
@@ -102,6 +103,8 @@ export const today = query({
             line: v.string(),
             why: v.union(v.string(), v.null()),
             cost: v.number(),
+            costLabel: v.string(),
+            payUpFront: v.boolean(),
             startsAt: v.number(),
             sunsetAt: v.union(v.number(), v.null()),
             place: v.union(
@@ -194,6 +197,8 @@ export const today = query({
             line: plan.line,
             why: plan.why ?? null,
             cost: plan.cost,
+            costLabel: plan.costLabel,
+            payUpFront: plan.payUpFront,
             startsAt: frolic.startsAt ?? plan.startsAt,
             sunsetAt: plan.sunsetAt ?? null,
             place: place

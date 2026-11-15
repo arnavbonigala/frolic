@@ -11,6 +11,8 @@
 import type * as ai_copy from "../ai/copy.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_pick from "../ai/pick.js";
+import type * as avatars_portraits from "../avatars/portraits.js";
+import type * as avatars_routes from "../avatars/routes.js";
 import type * as checkins from "../checkins.js";
 import type * as clock from "../clock.js";
 import type * as crew from "../crew.js";
@@ -27,6 +29,7 @@ import type * as lib_core from "../lib/core.js";
 import type * as lib_hooks from "../lib/hooks.js";
 import type * as lib_identity from "../lib/identity.js";
 import type * as lib_matcher from "../lib/matcher.js";
+import type * as lib_photo from "../lib/photo.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as limits from "../limits.js";
 import type * as memory_account from "../memory/account.js";
@@ -83,6 +86,8 @@ declare const fullApi: ApiFromModules<{
   "ai/copy": typeof ai_copy;
   "ai/openai": typeof ai_openai;
   "ai/pick": typeof ai_pick;
+  "avatars/portraits": typeof avatars_portraits;
+  "avatars/routes": typeof avatars_routes;
   checkins: typeof checkins;
   clock: typeof clock;
   crew: typeof crew;
@@ -99,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   "lib/hooks": typeof lib_hooks;
   "lib/identity": typeof lib_identity;
   "lib/matcher": typeof lib_matcher;
+  "lib/photo": typeof lib_photo;
   "lib/rateLimits": typeof lib_rateLimits;
   limits: typeof limits;
   "memory/account": typeof memory_account;

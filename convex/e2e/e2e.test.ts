@@ -214,6 +214,40 @@ describe("demo scenario", () => {
     const { frolicId } = (await advanced.json()) as { run: string; frolicId: Id<"frolics"> };
     expect(frolicId).not.toBe(body.frolicId);
 
+    const paid = await t.query(api.frolics.today, {
+      deviceToken: body.users.maya.deviceToken,
+      groupId: body.groupId,
+    });
+    expect(paid.frolic!.plan!.cost).toBe(8);
+    expect(paid.frolic!.plan!.costLabel).toBe("$8");
+    expect(paid.frolic!.plan!.payUpFront).toBe(true);
+
+    await t.mutation(api.taps.tap, {
+      deviceToken: body.users.dev.deviceToken,
+      frolicId,
+      kind: "down",
+    });
+    await t.mutation(api.taps.tap, {
+      deviceToken: body.users.priya.deviceToken,
+      frolicId,
+      kind: "down",
+    });
+    await flipDue(t);
+    const kayak = (await t.query(api.frolics.today, {
+      deviceToken: body.users.jordan.deviceToken,
+      groupId: body.groupId,
+      frolicId,
+    })) as { phase: string; reveal: { going: { name: string }[] } | null };
+    expect(kayak.phase).toBe("on");
+    expect(kayak.reveal!.going.map((p) => p.name).sort()).toEqual(["Dev", "Priya"]);
+    const rock = await t.query(api.frolics.today, {
+      deviceToken: body.users.maya.deviceToken,
+      groupId: body.groupId,
+      frolicId: body.frolicId,
+    });
+    expect(rock.phase).toBe("open");
+    expect(rock.reveal).toBeNull();
+
     const second = await t.query(api.frolics.today, {
       deviceToken: body.users.maya.deviceToken,
       groupId: body.groupId,
@@ -296,4 +330,34 @@ describe("reveal log", () => {
 
     expect(await reveals(t, "another-run")).toEqual([]);
   });
+});describe("demo portraits", () => {
+  beforeEach(() => vi.stubEnv("E2E_SECRET", SECRET));
+  afterEach(() => vi.unstubAllEnvs());
+
+  test("every seeded friend has a portrait and a flower color", async () => {
+    vi.stubEnv("CONVEX_SITE_URL", "https://frolic.convex.site");
+    const t = makeT();
+    const body = await seed(t, "demo-portraits", "demo");
+    const expected: Record<string, [string, string]> = {
+      Maya: ["maya", "pink"],
+      Dev: ["dev", "cobalt"],
+      Jordan: ["jordan", "moss"],
+      Priya: ["priya", "marigold"],
+    };
+    const crew = (await t.query(api.crew.crew, {
+      deviceToken: body.users.maya.deviceToken,
+      groupId: body.groupId,
+      day: new Date().toISOString().slice(0, 10),
+    })) as { members: { name: string; color: string; photoUrl: string | null }[] };
+    expect(crew.members).toHaveLength(4);
+    for (const member of crew.members) {
+      const [key, color] = expected[member.name];
+      expect(member.photoUrl).toBe(`https://frolic.convex.site/p/avatar/${key}.jpg`);
+      expect(member.color).toBe(color);
+    }
+    const me = (await t.query(api.users.me, { deviceToken: body.users.jordan.deviceToken })) as { photoUrl: string | null };
+    expect(me.photoUrl).toBe("https://frolic.convex.site/p/avatar/jordan.jpg");
+  });
 });
+
+

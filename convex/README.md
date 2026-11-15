@@ -13,7 +13,9 @@ There is no login. A client mints a random `deviceToken` of 32 to 256 characters
 - The first call that carries a token creates the user (`users.createGroup`, `users.joinGroup`). Every other call resolves an existing user or fails with `UNKNOWN_DEVICE`.
 - `createGroup` and `joinGroup` also carry `firstName`, which is trimmed, collapses whitespace, and must be 1 to 40 characters. Calling either again with the same token updates the stored name instead of creating a second user.
 - Six flower colors are handed out per crew, one per member, in `memberships.color`: `pink`, `cobalt`, `moss`, `marigold`, `tomato`, `lilac`. The client never picks a color.
-- Photos are uploaded with `users.generateUploadUrl`, then attached with `users.updateProfile({ photoId })`. Reads return a served URL in `photoUrl`, or `null`.
+- Every person object carries one avatar URL field, `photoUrl`, or `null`. It resolves from `users.avatarUrl` when that is set, otherwise from an uploaded `photoId`, so the app, the web page and Keiki all read the same field.
+- `users.avatarUrl` holds a path such as `/p/avatar/maya.jpg`, served by `GET /p/avatar/<key>` from the portraits in `convex/avatars/portraits.ts`. Reads return it absolute, prefixed with the deployment's site URL.
+- Photos are uploaded with `users.generateUploadUrl`, then attached with `users.updateProfile({ photoId })`. A portrait is chosen with `users.updateProfile({ avatarKey })`, where the key is one of maya, dev, jordan or priya.
 
 ## Errors
 
@@ -131,7 +133,7 @@ Args: `{ deviceToken, groupId, day?, frolicId? }`. Returns:
 
 Pick the frolic with `frolicId` when you have one, else with `day`, else with the newest row for the crew. A `frolicId` from another crew is `NOT_FOUND`. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND`.
 
-`plan.startsAt` is the frolic's matched start once it is `on`, and the plan's own start before that. `cost` is a number in the plan's own units and `plan.costLabel` does not reach the client, so render `cost` with the app's own formatting.
+`plan.startsAt` is the frolic's matched start once it is `on`, and the plan's own start before that. `cost` is dollars per person, `plan.costLabel` is the display string such as "$8" or "Free", and `plan.payUpFront` says whether the plan needs a chip-in before the reveal.
 
 `reveal.me`:
 
@@ -324,3 +326,9 @@ Triggering the frolics in the demo scenario:
 1. `POST /e2e/seed` with `{ run, scenario: "demo" }` opens frolic one, today's sunset at Indian Rock. Every seeded phone shows it as today's plan.
 2. Taps on frolic one from two of the four people reveal it. The route's `frolicId` is the one to tap, and `GET /e2e/reveals?run=` lists nothing until the scheduled flip at `revealAt` runs.
 3. `POST /e2e/advance` opens frolic two, the kayaks on the next day, at whatever time it is called. Because it is the newest row for the crew, every phone's `frolics.today` returns it. Its taps reveal independently of frolic one, so one run can show two reveals in sequence.
+
+## Avatars
+
+`GET /p/avatar/<key>` serves the demo portraits: maya (pink), dev (cobalt), jordan (moss), priya (marigold), 800x800 JPEG with the face centred for the circular crop inside a flower. The bytes live in `convex/avatars/portraits.ts`, so a deployment needs no extra assets, and the route caches for a year. Every person object in `today`, `crew` and `me` returns the absolute URL in `photoUrl`.
+
+The e2e demo seed sets those four portraits and flower colours, so the app, the web page and Keiki show the same faces.
