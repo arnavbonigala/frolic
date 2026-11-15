@@ -14,6 +14,7 @@ import {
 import { keikiEnv } from "./env";
 import { fence, noticeToken } from "./notice";
 import { FADED_TEXT } from "../lib/copy";
+import { titleNamesPlace } from "../lib/names";
 import { ensurePick } from "../dailyPick";
 import { smsLine } from "../dailyPickBank";
 
@@ -102,7 +103,7 @@ function heroLine(key: string) {
 }
 
 export function dropText(view: { title: string; place: string | null; startsAt: string; why: string | null; heroKey: string }, inGroup: boolean, pick: string | null = null) {
-  const where = view.place && view.place !== view.title ? " at " + view.place : "";
+  const where = view.place && !titleNamesPlace(view.title, view.place) ? " at " + view.place : "";
   const lines = [view.title + where + ", " + view.startsAt + "."];
   if (view.why) lines.push(view.why);
   const hero = heroLine(view.heroKey);
@@ -216,7 +217,7 @@ export const onReveal = internalMutation({
     const view = c.details.view;
     const drafts = await personal(ctx, [...goingIds], (user) => {
       const others = users.filter((u) => u._id !== user._id).map((u) => firstName(u.name));
-      const lines = ["It's on. You, " + joinNames(others) + ".", "Meet at " + (view.meetingPoint ?? view.title) + " at " + view.startsAt + ". Leave at " + view.leaveAt + "."];
+      const lines = [others.length > 0 ? "It's on. You, " + joinNames(others) + "." : "It's on.", "Meet at " + (view.meetingPoint ?? view.title) + " at " + view.startsAt + ". Leave at " + view.leaveAt + "."];
       const hero = heroLine(view.heroKey);
       if (hero) lines.push(hero);
       if (deposit) lines.push("Hold $" + (deposit.amountCents / 100).toFixed(deposit.amountCents % 100 ? 2 : 0) + " to lock it in. It comes back when you arrive. Want the link?");

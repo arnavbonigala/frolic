@@ -292,7 +292,7 @@ export const getReveal = internalQuery({
       ok: true,
       state: "on",
       going: names,
-      headline: "It's on. You, " + joinNames(names) + ".",
+      headline: names.length > 0 ? "It's on. You, " + joinNames(names) + "." : "It's on.",
       plan: details.view,
       deposit: deposit ? { amount: "$" + (deposit.amountCents / 100).toFixed(deposit.amountCents % 100 ? 2 : 0) } : null,
     };

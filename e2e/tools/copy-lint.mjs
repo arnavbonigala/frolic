@@ -54,6 +54,14 @@ const OLD_PHRASES = [
     re: /I'm down only if/i,
     why: "the sheet title is I'm down only with",
   },
+  {
+    re: /\.join\(" and "\)/,
+    why: "name lists go through listNames, so three or more names get their commas",
+  },
+  {
+    re: /view\.place !== view\.title/,
+    why: "the place is appended only through titleNamesPlace, so a title never says it twice",
+  },
 ];
 
 for (const file of files) {
@@ -65,6 +73,43 @@ for (const file of files) {
       }
     }
   });
+}
+
+const ONLY_IF_LINE = /I'm down if/;
+for (const file of files.filter((name) => name.endsWith(".swift"))) {
+  if (!file.includes("only-ignore")) {
+    read(file)
+      .split("\n")
+      .forEach((line, index) => {
+        if (!ONLY_IF_LINE.test(line)) return;
+        if (line.includes("ifIn(")) return;
+        errors.push(file + ":" + (index + 1) + ": the only with button reads through ifIn, so it says comes or come: " + JSON.stringify(line.trim().slice(0, 140)));
+      });
+  }
+}
+
+for (const file of files.filter((name) => name.endsWith(".swift"))) {
+  read(file)
+    .split("\n")
+    .forEach((line, index) => {
+      if (!line.includes('"you and " +')) return;
+      errors.push(file + ":" + (index + 1) + ": you joins the name list, so it reads you, Dev and Jordan: " + JSON.stringify(line.trim().slice(0, 140)));
+    });
+}
+
+const MEMORY_CALL = /(?:personal|group)\("[a-z_]+", "([^"\\]*)/g;
+for (const found of read("convex/memory/mapping.ts").matchAll(MEMORY_CALL)) {
+  const start = found[1].charAt(0);
+  if (start && start === start.toLowerCase() && start !== start.toUpperCase()) {
+    errors.push("convex/memory/mapping.ts: a memory line is a full sentence and starts with a capital: " + JSON.stringify(found[0].slice(0, 100)));
+  }
+}
+
+for (const found of read("convex/dailyPickBank.ts").matchAll(/o\("([^"]*)"/g)) {
+  const start = found[1].charAt(0);
+  if (start && start === start.toLowerCase() && start !== start.toUpperCase()) {
+    errors.push("convex/dailyPickBank.ts: a pick option is capitalized on the card: " + JSON.stringify(found[1]));
+  }
 }
 
 const ANCHORS = [FADED_TITLE, FADED_BODY, BAIL_BODY, ONLY_IF_BUTTON, ONLY_IF_TITLE].map((text) => text.toLowerCase());

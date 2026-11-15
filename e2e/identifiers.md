@@ -88,7 +88,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `today.down` | I'm down |
 | `today.onlyIf` | Only with… |
 | `today.hush` | Nobody sees you're down unless they are too |
-| `today.status.down` | You're down, optionally You're down, if Maya |
+| `today.status.down` | You're down, optionally You're down, if Maya comes |
 | `today.status.downBody` | If a friend says yes too, you'll both bloom at once. If not, it disappears at 4 and nobody ever knows. |
 | `today.takeBack` | Take it back |
 | `today.on.title` | It's on. |

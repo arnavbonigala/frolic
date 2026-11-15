@@ -64,7 +64,7 @@ describe("writeCopy", () => {
 
   test("asks for the garden caption shape", async () => {
     const { fetcher, bodies } = stub(envelope({ text: "three of us at the marina on Nov 18." }));
-    expect(await writeCopy(caption, fetcher)).toEqual({ kind: "gardenCaption", text: "three of us at the marina on Nov 18." });
+    expect(await writeCopy(caption, fetcher)).toEqual({ kind: "gardenCaption", text: "Three of us at the marina on Nov 18." });
     expect(bodies[0].text.format.name).toBe("frolic_gardenCaption");
   });
 
@@ -104,6 +104,11 @@ describe("writeCopy", () => {
   test("rejects contrastive copy", async () => {
     const { fetcher } = stub(envelope({ headline: "Sunset Crew", why: "it's not a hike, but it is close." }));
     expect(await writeCopy(taste, fetcher)).toBeNull();
+  });
+
+  test("a caption is a sentence with a capital even when the model forgets", async () => {
+    const { fetcher } = stub(envelope({ text: "three of us at the marina on Nov 18" }));
+    expect(await writeCopy(caption, fetcher)).toEqual({ kind: "gardenCaption", text: "Three of us at the marina on Nov 18." });
   });
 
   test("rejects a missing field", async () => {
@@ -177,8 +182,8 @@ describe("templateCopy", () => {
   });
 
   test("writes a garden caption with the place and the date", () => {
-    expect(templateCopy(caption)).toEqual({ kind: "gardenCaption", text: "three at Berkeley Marina on Nov 18." });
-    expect(templateCopy({ ...caption, people: 1 })).toEqual({ kind: "gardenCaption", text: "just me at Berkeley Marina on Nov 18." });
+    expect(templateCopy(caption)).toEqual({ kind: "gardenCaption", text: "Three at Berkeley Marina on Nov 18." });
+    expect(templateCopy({ ...caption, people: 1 })).toEqual({ kind: "gardenCaption", text: "Just me at Berkeley Marina on Nov 18." });
     expect(templateCopy({ ...caption, memory: "best night this month" })).toMatchObject({
       text: expect.stringContaining("best night this month"),
     });

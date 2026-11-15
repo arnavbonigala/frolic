@@ -264,7 +264,7 @@ export const seed = internalMutation({
         avatarUrl: `/p/avatar/${name.toLowerCase()}.jpg`,
       });
     }
-    const { groupId, inviteCode } = await createGroupFor(ctx, ids.Maya, "Sunset Crew", ZONE, args.run, true);
+    const { groupId, inviteCode } = await createGroupFor(ctx, ids.Maya, "Sunset Crew", ZONE, args.run);
     for (const name of ["Dev", "Jordan", "Priya"]) await addMember(ctx, groupId, ids[name], "invite");
 
     const rock = await upsertPlace(ctx, {

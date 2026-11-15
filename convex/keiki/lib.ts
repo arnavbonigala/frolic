@@ -1,5 +1,6 @@
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import { listNames } from "../lib/names";
 
 export const DEFAULT_WALK_MINUTES = 10;
 export const CHECKIN_RADIUS_METERS = 400;
@@ -79,8 +80,7 @@ export function parseSharedLocation(text: string): { lat: number; lng: number } 
 }
 
 export function joinNames(names: string[]): string {
-  if (names.length <= 1) return names.join("");
-  return names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+  return listNames(names);
 }
 
 export function firstName(name: string): string {
