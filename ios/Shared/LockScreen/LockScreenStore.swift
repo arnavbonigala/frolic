@@ -51,6 +51,11 @@ enum LockScreenStore {
         }
     }
 
+    static var e2eMeadowState: String? {
+        get { AppGroup.defaults.string(forKey: "lockscreen.e2eMeadow") }
+        set { AppGroup.defaults.set(newValue, forKey: "lockscreen.e2eMeadow") }
+    }
+
     static var e2eWidgetState: String? {
         get { AppGroup.defaults.string(forKey: e2eKey) }
         set { AppGroup.defaults.set(newValue, forKey: e2eKey) }

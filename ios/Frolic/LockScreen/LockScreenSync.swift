@@ -48,6 +48,10 @@ final class LockScreenSync {
             }
         }
         let snapshot = await LockScreenActions.refresh()
+        if let meadow = try? await MeadowSnapshot.fetch(), meadow.freeNow != MeadowSnapshot.cached?.freeNow || meadow.healthLine != MeadowSnapshot.cached?.healthLine {
+            MeadowSnapshot.cached = meadow
+            MeadowSnapshot.reload()
+        }
         guard let snapshot else { return }
         if let minutes = LiveActivityController.walkMinutes(to: snapshot) {
             SharedSession.walkMinutes = minutes

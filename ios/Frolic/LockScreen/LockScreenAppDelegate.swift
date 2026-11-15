@@ -6,6 +6,7 @@ import WidgetKit
 enum LockScreenInbox {
     enum Pending: String {
         case onlyIf
+        case imFree
     }
 
     private static let key = "lockscreen.pending"
@@ -37,6 +38,10 @@ final class LockScreenAppDelegate: NSObject, UIApplicationDelegate, UNUserNotifi
         guard url.scheme == "frolic" else { return }
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let query = Dictionary((components?.queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { _, last in last })
+        if url.host == "today", query["imfree"] == "1" {
+            LockScreenInbox.set(.imFree)
+            return
+        }
         if url.host == "signin" {
             SharedSession.userId = nil
             SharedSession.name = nil
@@ -100,6 +105,9 @@ enum LockScreenDemo {
                 frolicId: live?.frolicId,
                 after: Double(query["delay"] ?? "") ?? 4
             )
+        case "meadow":
+            LockScreenStore.e2eMeadowState = state == "live" ? nil : state
+            MeadowSnapshot.reload()
         case "widget":
             LockScreenStore.e2eWidgetState = state == "live" ? nil : state
             WidgetCenter.shared.reloadTimelines(ofKind: LockScreenStore.widgetKind)
