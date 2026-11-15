@@ -296,7 +296,7 @@ struct CrewHoldRow: View {
     var onChange: (Bool) -> Void
 
     var body: some View {
-        let line: String? = isOn ? "Back when you show up." : "Everyone puts it down, you get it back at the plan."
+        let line: String? = "Show up and it's released. Flake and it funds the next one."
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Hold \(amount)")
