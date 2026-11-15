@@ -268,8 +268,16 @@ describe("stats and context", () => {
   test("recentFrolics returns on and done frolics with their plan title", async () => {
     const { t, maya, groupId } = await seed();
     await t.run(async (ctx) => {
-      const place = await ctx.db.insert("places", { slug: "p", name: "Indian Rock", lat: 0, lng: 0, cost: 0, tags: ["sunset"], hours: [], indoor: false, sober: true });
-      const planId = await ctx.db.insert("plans", { groupId, day: "2026-11-14", kind: "daily", placeId: place, title: "Sunset at Indian Rock", line: "l", cost: 0, startsAt: 0, durationMinutes: 60, source: "scorer", generatedAt: 0 });
+      const place = await ctx.db.insert("places", {
+        slug: "p", name: "Indian Rock", lat: 0, lng: 0, cost: 0, tags: ["sunset"], hours: [], indoor: false, sober: true,
+        title: "Sunset at Indian Rock", address: "Indian Rock Path", costPerPersonCents: 0, costLabel: "Free", payUpFront: false,
+        priceVerified: true, energy: "chill", needsDaylight: true, durationMinutes: 60, meetSpot: "Indian Rock Path", source: "seed",
+      });
+      const planId = await ctx.db.insert("plans", {
+        groupId, day: "2026-11-14", kind: "daily", placeId: place, title: "Sunset at Indian Rock", line: "l", cost: 0, startsAt: 0,
+        durationMinutes: 60, source: "scorer", generatedAt: 0, costLabel: "Free", payUpFront: false, chips: [], whySource: "template",
+        whyInputs: { placeName: "Indian Rock", topTags: ["sunset"], rainSwap: false }, weatherSwap: false,
+      });
       await ctx.db.insert("frolics", { groupId, day: "2026-11-14", kind: "daily", planId, status: "done", window: { start: 0, end: 1 }, durationMinutes: 60, deadline: 0 });
       await ctx.db.insert("frolics", { groupId, day: "2026-11-15", kind: "daily", status: "open", window: { start: 0, end: 1 }, durationMinutes: 60, deadline: 0 });
     });
