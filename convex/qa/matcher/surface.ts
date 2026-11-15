@@ -15,12 +15,16 @@ const rawModules = (import.meta as unknown as {
 
 export const modules: Record<string, () => Promise<Record<string, unknown>>> = rawModules;
 
-const rawSources = (import.meta as unknown as {
-  glob: (
-    pattern: string,
-    options: { query: string; import: string },
-  ) => Record<string, () => Promise<string>>;
-}).glob("/convex/**/*.ts", { query: "?raw", import: "default" });
+function rawSourceMap(): Record<string, () => Promise<string>> {
+  return (
+    import.meta as unknown as {
+      glob: (
+        pattern: string,
+        options: { query: string; import: string },
+      ) => Record<string, () => Promise<string>>;
+    }
+  ).glob("/convex/**/*.ts", { query: "?raw", import: "default" });
+}
 
 export type Visibility = "public" | "internal";
 export type ExportKind =
@@ -37,9 +41,13 @@ export function describeExports(): Promise<Map<string, ExportKind>> {
   if (visibilityCache) return visibilityCache;
   visibilityCache = (async () => {
     const map = new Map<string, ExportKind>();
-    for (const path of Object.keys(rawSources)) {
+    const rawSources = rawSourceMap();
+    const paths = new Set([...Object.keys(rawSources), ...Object.keys(modules)]);
+    for (const path of paths) {
+      const read = rawSources[path];
       if (SKIP.some((s) => path.includes(s))) continue;
-      const source = await rawSources[path]();
+      if (!read) continue;
+      const source = await read();
       const module = toModuleName(path);
       const pattern =
         /export\s+const\s+([A-Za-z0-9_]+)\s*(?::[^=]+)?=\s*(internalQuery|query|internalMutation|mutation|internalAction|action)\s*\(/g;
@@ -50,6 +58,25 @@ export function describeExports(): Promise<Map<string, ExportKind>> {
     return map;
   })();
   return visibilityCache;
+}
+
+export async function classifyFunctions(
+  t: T,
+): Promise<{ queries: SurfaceEntry[]; others: SurfaceEntry[] }> {
+  const all = await discoverSurface();
+  const queries: SurfaceEntry[] = [];
+  const others: SurfaceEntry[] = [];
+  for (const entry of all) {
+    try {
+      await t.query(entry.ref, {});
+      queries.push(entry);
+    } catch (err) {
+      const message = String((err as Error)?.message ?? "");
+      if (/is not a query/.test(message)) others.push(entry);
+      else queries.push(entry);
+    }
+  }
+  return { queries, others };
 }
 
 export async function publicQueries(): Promise<SurfaceEntry[]> {

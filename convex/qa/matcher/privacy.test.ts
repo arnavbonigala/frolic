@@ -44,51 +44,66 @@ function scrub(value: unknown, f: Fixture): unknown {
   return walk(value);
 }
 
-function argShapes(f: Fixture, observer: string): Record<string, unknown>[] {
-  const token = f.tokens[observer];
-  return [
-    { deviceToken: token, groupId: f.groupId, day: "2026-11-15" },
-    { deviceToken: token, groupId: f.groupId, frolicId: f.frolicId },
-    { deviceToken: token, groupId: f.groupId },
-    { deviceToken: token, frolicId: f.frolicId },
-    { userId: f.users[observer], groupId: f.groupId, day: "2026-11-15" },
-    { userId: f.users[observer], frolicId: f.frolicId },
-    { userId: f.users[observer] },
-    { roomToken: "qa-room-token" },
-    { code: "QACODE01" },
-    { inviteCode: "QACODE01" },
-    { code: "QACODE01", deviceToken: token },
-    { deviceToken: token, groupId: f.groupId, day: "2026-11-15", frolicId: f.frolicId },
-    { deviceToken: token },
-    { userId: f.users[observer], groupId: f.groupId },
-    { userId: f.users[observer], day: "2026-11-15" },
-    { groupId: f.groupId, day: "2026-11-15" },
-    { frolicId: f.frolicId },
-    {},
-  ];
-}
+type ArgsFor = (f: Fixture, observer: string) => Record<string, unknown>;
+
+const QUERY_REGISTRY: Record<string, ArgsFor> = {
+  "frolics:today": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+    day: "2026-11-15",
+  }),
+  "crew:crew": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+    day: "2026-11-15",
+  }),
+  "crew:looking": () => ({ roomToken: "qa-room-token" }),
+  "etas:forFrolic": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    frolicId: f.frolicId,
+  }),
+  "limits:mine": (f, observer) => ({ deviceToken: f.tokens[observer] }),
+  "users:me": (f, observer) => ({ deviceToken: f.tokens[observer] }),
+  "users:invitePreview": () => ({ inviteCode: "QACODE01" }),
+  "web/share:watch": (f, observer) => ({
+    code: "QACODE01",
+    deviceToken: f.tokens[observer],
+  }),
+  "plans/queries:today": (f, observer) => ({
+    token: f.tokens[observer],
+    groupId: f.groupId,
+    day: "2026-11-15",
+  }),
+  "whop/pay:myPayment": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    frolicId: f.frolicId,
+  }),
+  "whop/pay:fund": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+  }),
+};
 
 type Callable = { entry: SurfaceEntry; args: Record<string, unknown> };
 
 async function auditSurface(t: any, f: Fixture, observer: string) {
   const entries = await publicQueries();
-  const shapes = argShapes(f, observer);
   const resolved: Callable[] = [];
   const unresolved: string[] = [];
   for (const entry of entries) {
-    let ok = false;
-    let notAQuery = false;
-    for (const args of shapes) {
-      try {
-        await t.query(entry.ref, args);
-        resolved.push({ entry, args });
-        ok = true;
-        break;
-      } catch {
-        continue;
-      }
+    const key = `${entry.module}:${entry.name}`;
+    const build = QUERY_REGISTRY[key];
+    if (!build) {
+      unresolved.push(`unregistered public query ${key}`);
+      continue;
     }
-    if (!ok && !notAQuery) unresolved.push(`${entry.module}:${entry.name}`);
+    const args = build(f, observer);
+    try {
+      await t.query(entry.ref, args);
+      resolved.push({ entry, args });
+    } catch (err) {
+      unresolved.push(`unregistered public query ${key}: ${(err as Error).message.slice(0, 120)}`);
+    }
   }
   return { resolved, unresolved };
 }
@@ -97,14 +112,15 @@ async function resolveQueries(t: any, f: Fixture, observer: string): Promise<Cal
   const { resolved, unresolved } = await auditSurface(t, f, observer);
   expect(
     unresolved,
-    "every public query matching the audit pattern must be callable, or this audit is blind to it",
+    "every public query must be registered here with its real arguments, or this audit is blind to it",
   ).toEqual([]);
   expect(resolved.length, "at least one public query must exist to audit").toBeGreaterThan(0);
-  const names = resolved.map((c) => c.entry.name);
-  for (const critical of ["today", "crew"]) {
+  const keys = resolved.map((c) => `${c.entry.module}:${c.entry.name}`);
+  expect(keys.length, "every public query in the build is called by this audit").toBeGreaterThan(0);
+  for (const registered of Object.keys(QUERY_REGISTRY)) {
     expect(
-      names.includes(critical),
-      `the ${critical} query must be part of this audit, not silently skipped`,
+      keys.includes(registered),
+      `the registry names ${registered}, so it must still be a public query this audit calls`,
     ).toBe(true);
   }
   return resolved;
