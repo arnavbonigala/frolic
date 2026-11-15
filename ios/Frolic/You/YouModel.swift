@@ -61,7 +61,7 @@ struct YouToday: Decodable {
     }
 }
 
-struct YouTotals: Equatable, Encodable {
+struct YouTotals: Equatable, Codable {
     var frolics: Int
     var crews: Int
     var varieties: [GardenVariety]
