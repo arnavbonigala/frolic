@@ -7,7 +7,11 @@ base = os.environ["FROLIC_E2E_URL"]
 run = os.environ.get("FROLIC_E2E_RUN", "default")
 expect = int(os.environ.get("FROLIC_E2E_EXPECT_REVEALS", "1"))
 
-with urllib.request.urlopen(base + "/e2e/reveals?run=" + run, timeout=60) as res:
+req = urllib.request.Request(
+    base + "/e2e/reveals?run=" + run,
+    headers={"x-e2e-secret": os.environ["FROLIC_E2E_SECRET"]},
+)
+with urllib.request.urlopen(req, timeout=60) as res:
     body = json.load(res)
 
 count = len(body["reveals"])
