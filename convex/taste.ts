@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { requireMember, userFromToken } from "./lib/identity";
 
 export const addMine = mutation({
@@ -22,5 +22,19 @@ export const addMine = mutation({
       await ctx.db.insert("tasteProfiles", { groupId, tags: merged, updatedAt: Date.now() });
     }
     return null;
+  },
+});
+
+export const crew = query({
+  args: { deviceToken: v.string(), groupId: v.id("groups") },
+  returns: v.array(v.string()),
+  handler: async (ctx, { deviceToken, groupId }) => {
+    const user = await userFromToken(ctx, deviceToken);
+    await requireMember(ctx, groupId, user._id);
+    const row = await ctx.db
+      .query("tasteProfiles")
+      .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
+      .unique();
+    return row?.tags ?? [];
   },
 });

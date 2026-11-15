@@ -84,6 +84,7 @@ import type * as plans_weather from "../plans/weather.js";
 import type * as reveal from "../reveal.js";
 import type * as snaps from "../snaps.js";
 import type * as taps from "../taps.js";
+import type * as taste from "../taste.js";
 import type * as users from "../users.js";
 import type * as web_devSeed from "../web/devSeed.js";
 import type * as web_hero from "../web/hero.js";
@@ -189,6 +190,7 @@ declare const fullApi: ApiFromModules<{
   reveal: typeof reveal;
   snaps: typeof snaps;
   taps: typeof taps;
+  taste: typeof taste;
   users: typeof users;
   "web/devSeed": typeof web_devSeed;
   "web/hero": typeof web_hero;

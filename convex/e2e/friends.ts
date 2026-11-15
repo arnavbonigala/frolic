@@ -63,7 +63,14 @@ export const seed = internalMutation({
       await ctx.db.patch(plan._id, { title: rename(plan.title), line: rename(plan.line), why: plan.why ? rename(plan.why) : plan.why });
     }
 
+    const tastes: Array<[Id<"groups">, string[]]> = [];
     const { groupId: peaceId } = await createGroupFor(ctx, base.users.maya.userId, "Peace", ZONE, run);
+    tastes.push([groupId, ["sunsets", "late_night_food", "games", "boba", "music"]], [peaceId, ["coffee", "books", "outdoors", "dessert"]]);
+    for (const [group, tags] of tastes) {
+      const row = await ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", group)).unique();
+      if (row) await ctx.db.patch(row._id, { tags, updatedAt: now });
+      else await ctx.db.insert("tasteProfiles", { groupId: group, tags, updatedAt: now });
+    }
     await addMember(ctx, peaceId, base.users.dev.userId, "invite");
     await addMember(ctx, peaceId, base.users.jordan.userId, "invite");
 

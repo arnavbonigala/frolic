@@ -198,6 +198,20 @@ final class YouModel {
             apply(cached)
             loadPhase = .ready
         }
+        if YouPreferences.tasteTags.isEmpty, let groupId = FrolicIdentity.shared.groupId {
+            Task { [weak self] in
+                guard let stream = try? client.subscribe(to: "taste:crew", with: ["deviceToken": token, "groupId": groupId], yielding: [String].self).values else { return }
+                do {
+                    for try await tags in stream {
+                        let labels = tags.map { raw -> String in
+                            let words = raw.replacingOccurrences(of: "_", with: " ")
+                            return words.prefix(1).uppercased() + words.dropFirst()
+                        }
+                        self?.tasteTags = labels
+                    }
+                } catch {}
+            }
+        }
         await withTaskGroup(of: Void.self) { group in
             group.addTask { await self.trackLimits(client: client, token: token) }
             group.addTask { await self.trackProfile(client: client, token: token) }
