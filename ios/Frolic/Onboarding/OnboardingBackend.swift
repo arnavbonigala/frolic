@@ -203,17 +203,6 @@ final class OnboardingBackend {
         }
     }
 
-    func storeTasteHeadline(groupId: String, headline: String, why: String) async throws {
-        guard let client else { throw OnboardingFailure.notConnected }
-        try await client.mutation("memory:setMine", with: [
-            "deviceToken": OnboardingIdentity.deviceToken,
-            "groupId": groupId,
-            "headline": headline,
-            "why": why,
-            "source": "device",
-        ])
-    }
-
     func setFreeToday(groupId: String, state: String, window: DateInterval?) async throws {
         guard let client else { throw OnboardingFailure.notConnected }
         var args: [String: ConvexEncodable?] = [

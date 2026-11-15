@@ -357,16 +357,6 @@ final class OnboardingModel {
         guard !isSubmitting else { return }
         isSubmitting = true
         failure = nil
-        if let groupId {
-            let budget = "any budget"
-            if let copy = await GeneratedCopy.shared.tasteHeadline(
-                topTags: tags.map(\.canonical),
-                budget: budget,
-                recentFrolics: recentFrolics
-            ) {
-                try? await backend.storeTasteHeadline(groupId: groupId, headline: copy.headline, why: copy.why)
-            }
-        }
         isSubmitting = false
         step = .calendar
         readCalendar()
