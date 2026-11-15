@@ -23,6 +23,7 @@ import type * as e2e_admin from "../e2e/admin.js";
 import type * as e2e_routes from "../e2e/routes.js";
 import type * as etas from "../etas.js";
 import type * as frolics from "../frolics.js";
+import type * as garden from "../garden.js";
 import type * as http from "../http.js";
 import type * as keiki_auth from "../keiki/auth.js";
 import type * as keiki_env from "../keiki/env.js";
@@ -104,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   "e2e/routes": typeof e2e_routes;
   etas: typeof etas;
   frolics: typeof frolics;
+  garden: typeof garden;
   http: typeof http;
   "keiki/auth": typeof keiki_auth;
   "keiki/env": typeof keiki_env;

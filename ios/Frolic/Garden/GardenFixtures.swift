@@ -30,7 +30,7 @@ enum GardenFixtures {
     static func overview(route: E2ERoute?) -> GardenOverview? {
         guard let route else { return nil }
         guard route.screen == "garden" || route.screen == "memory" else { return nil }
-        if route.query["live"] != nil { return nil }
+        if route.query["fixture"] == nil { return nil }
         let went = route.query["went"] != "0"
         let memories = went ? [today] + history : history
         return GardenOverview(
@@ -47,7 +47,7 @@ enum GardenFixtures {
 
     static func memory(row: GardenMemoryRow, route: E2ERoute?) -> GardenMemory? {
         guard route?.screen == "garden" || route?.screen == "memory" else { return nil }
-        guard route?.query["live"] == nil else { return nil }
+        guard route?.query["fixture"] != nil else { return nil }
         return GardenMemory(
             frolicId: row.frolicId,
             title: row.title,
