@@ -261,6 +261,35 @@ describe("crews:mine", () => {
   });
 });
 
+describe("crews:mine join times", () => {
+  test("dates each crew so a switcher picks the newest one instead of the first listed", async () => {
+    const t = makeT();
+    const first = await setupCrew(t, ["Maya", "Dev"]);
+    vi.setSystemTime(NOON + HOUR);
+    const second = await secondCrew(t, "Jordan", "Peace", ["Dev"]);
+
+    const crews = await t.query(api.crews.mine, { deviceToken: token("Dev") });
+
+    expect(crews.map((crew) => crew.groupId)).toEqual([first.groupId, second.groupId]);
+    expect(crews[0].joinedAt).toBeLessThan(crews[1].joinedAt);
+    expect(crews.reduce((best, crew) => (crew.joinedAt > best.joinedAt ? crew : best)).groupId).toBe(second.groupId);
+  });
+
+  test("the demo's two crews date apart, so the first listed is never the newest", async () => {
+    const t = makeT();
+    const sunset = await setupCrew(t, ["Maya", "Dev"]);
+    vi.setSystemTime(NOON + HOUR);
+    const peace = await secondCrew(t, "Maya", "Peace", ["Dev"]);
+
+    const mine = await t.query(api.crews.mine, { deviceToken: token("Dev") });
+    const me = await t.query(api.users.me, { deviceToken: token("Dev") });
+
+    const dated = new Map(mine.map((crew) => [crew.groupId, crew.joinedAt]));
+    expect(me!.groups.map((crew) => crew.joinedAt)).toEqual([dated.get(sunset.groupId), dated.get(peace.groupId)]);
+    expect(mine[0].joinedAt).toBeLessThan(mine[1].joinedAt);
+  });
+});
+
 describe("users:me join times", () => {
   test("dates each crew so a cold launch can pick the newest one instead of the first listed", async () => {
     const t = makeT();

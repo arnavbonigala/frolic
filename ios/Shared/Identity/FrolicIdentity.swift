@@ -6,6 +6,7 @@ struct FrolicCrew: Codable, Identifiable, Hashable {
     var id: String
     var name: String
     var color: String
+    var joinedAt: Double? = nil
 }
 
 @MainActor
@@ -39,7 +40,8 @@ final class FrolicIdentity {
         defaults.set(deviceToken, forKey: Self.tokenDefaultsKey)
         pinnedGroup = Self.nonEmpty(environment[Self.groupEnvironmentKey])
         crews = Self.storedCrews(AppGroup.defaults)
-        groupId = pinnedGroup ?? Self.storedGroup(defaults) ?? crews.first?.id
+        groupId = pinnedGroup ?? Self.storedGroup(defaults)
+            ?? CrewSelection.choose(pinned: nil, persisted: nil, memberships: Self.candidates(crews))
     }
 
     func refresh() {
@@ -62,20 +64,23 @@ final class FrolicIdentity {
             crews = list
             Self.storeCrews(list, AppGroup.defaults)
         }
-        if let pinnedGroup {
-            if groupId != pinnedGroup { groupId = pinnedGroup }
-            return
-        }
-        if let groupId, list.contains(where: { $0.id == groupId }) { return }
-        guard let next = list.first?.id else { return }
-        groupId = next
-        AppGroup.defaults.set(next, forKey: Self.groupDefaultsKey)
-        AppGroup.defaults.set(next, forKey: "session.groupId")
+        let chosen = CrewSelection.choose(pinned: pinnedGroup, persisted: groupId, memberships: Self.candidates(list))
+        guard let chosen, chosen != groupId else { return }
+        groupId = chosen
+        guard pinnedGroup == nil else { return }
+        AppGroup.defaults.set(chosen, forKey: Self.groupDefaultsKey)
+        AppGroup.defaults.set(chosen, forKey: "session.groupId")
     }
 
     func activate(_ id: String) {
         guard Self.nonEmpty(id) != nil, id != groupId else { return }
         setGroup(id)
+    }
+
+    private static func candidates(_ crews: [FrolicCrew]) -> [CrewSelection.Candidate] {
+        crews.enumerated().map { index, crew in
+            CrewSelection.Candidate(groupId: crew.id, joinedAt: crew.joinedAt ?? Double(index))
+        }
     }
 
     private static func storedCrews(_ defaults: UserDefaults) -> [FrolicCrew] {

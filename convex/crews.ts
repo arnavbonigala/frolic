@@ -31,6 +31,7 @@ export const mine = query({
     v.object({
       groupId: v.id("groups"),
       name: v.string(),
+      joinedAt: v.number(),
       memberCount: v.number(),
       members: v.array(face),
       planOpen: v.boolean(),
@@ -40,7 +41,7 @@ export const mine = query({
     const user = await userFromToken(ctx, deviceToken);
     const crews = await memberCrews(ctx, user._id);
     const out = [];
-    for (const { group } of crews) {
+    for (const { membership, group } of crews) {
       const memberships = await ctx.db
         .query("memberships")
         .withIndex("by_groupId", (q) => q.eq("groupId", group._id))
@@ -49,6 +50,7 @@ export const mine = query({
       out.push({
         groupId: group._id,
         name: group.name,
+        joinedAt: membership._creationTime,
         memberCount: members.length,
         members,
         planOpen: await unansweredToday(ctx, group, user._id),

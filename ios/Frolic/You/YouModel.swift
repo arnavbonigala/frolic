@@ -14,6 +14,7 @@ struct YouProfile: Codable, Equatable {
         var groupId: String
         var name: String
         var color: String
+        var joinedAt: Double?
     }
 
     var crewName: String? {
@@ -165,7 +166,13 @@ final class YouModel {
     }
 
     var groupId: String? {
-        profile?.groups.first?.groupId ?? FrolicIdentity.shared.groupId
+        CrewSelection.choose(
+            pinned: ProcessInfo.processInfo.environment[FrolicIdentity.groupEnvironmentKey],
+            persisted: FrolicIdentity.shared.groupId ?? FrolicIdentity.storedGroupChoice,
+            memberships: (profile?.groups ?? []).map { group in
+                CrewSelection.Candidate(groupId: group.groupId, joinedAt: group.joinedAt ?? 0)
+            }
+        ) ?? FrolicIdentity.shared.groupId
     }
 
     var crewName: String? {

@@ -11,6 +11,7 @@ struct WireMembership: Codable, Hashable {
     var groupId: String
     var name: String
     var color: String
+    var joinedAt: Double?
 }
 
 struct WireWindow: Codable, Hashable {

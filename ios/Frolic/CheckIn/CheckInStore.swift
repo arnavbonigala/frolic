@@ -155,7 +155,13 @@ final class CheckInStore {
             async let offset = measureOffset(client: client)
             let me = try await session.me(client: client, token: token)
             guard let me else { throw CheckInFailure.noIdentity }
-            guard let groupId = session.groupOverride ?? me.groups.first?.groupId else { throw CheckInFailure.noCrew }
+            guard let groupId = CrewSelection.choose(
+                pinned: ProcessInfo.processInfo.environment[FrolicIdentity.groupEnvironmentKey],
+                persisted: session.groupOverride ?? FrolicIdentity.storedGroupChoice,
+                memberships: me.groups.map { group in
+                    CrewSelection.Candidate(groupId: group.groupId, joinedAt: group.joinedAt ?? 0)
+                }
+            ) else { throw CheckInFailure.noCrew }
             myUserId = me.userId
             subscribeToday(client: client, token: token, groupId: groupId)
             clockOffset = await offset
