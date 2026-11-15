@@ -2,6 +2,7 @@ import ConvexMobile
 import Foundation
 import Observation
 import UIKit
+import UserNotifications
 
 enum TodayScene: Equatable {
     case none
@@ -99,7 +100,7 @@ final class TodayStore {
             userId: meMember?.userId ?? "me",
             name: "You",
             color: meMember?.color ?? "tomato",
-            photoUrl: meMember?.photoUrl,
+            photoUrl: meMember?.photoUrl ?? reveal?.going.first { $0.userId == meMember?.userId }?.photoUrl,
             role: nil
         )
     }
@@ -216,7 +217,12 @@ final class TodayStore {
     }
 
     func takePendingAction() {
-        guard TodayInbox.take() == TodayInbox.onlyIf else { return }
+        let lockScreen = LockScreenInbox.take()
+        if lockScreen == .imFree {
+            sheet = .imFree
+            return
+        }
+        guard lockScreen == .onlyIf || TodayInbox.take() == TodayInbox.onlyIf else { return }
         if scene == .open {
             picks = []
             sheet = .onlyIf
@@ -239,6 +245,7 @@ final class TodayStore {
         picks = []
         pending = .down(people)
         guard !isFixture else { return }
+        askForNotificationsOnce()
         var args: [String: ConvexEncodable?] = [
             "frolicId": frolicId,
             "kind": "down",
@@ -249,6 +256,15 @@ final class TodayStore {
             args["onlyIf"] = ids
         }
         send("taps:tap", args, expecting: .down(people))
+    }
+
+    private func askForNotificationsOnce() {
+        guard !AppGroup.defaults.bool(forKey: "today.notifications.asked") else { return }
+        AppGroup.defaults.set(true, forKey: "today.notifications.asked")
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        }
     }
 
     func takeBack() {

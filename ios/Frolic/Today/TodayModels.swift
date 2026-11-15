@@ -227,6 +227,14 @@ enum TodayCopy {
         return String(format: "$%.2f", dollars)
     }
 
+    static func dropCountdown(_ now: Date) -> String {
+        let drop = Calendar.current.date(bySettingHour: 15, minute: 0, second: 0, of: now) ?? now
+        let minutes = Int(drop.timeIntervalSince(now) / 60)
+        guard minutes > 0 else { return "Tomorrow's plan lands at 3." }
+        if minutes < 60 { return "Today's plan lands in \(minutes) min." }
+        return "Today's plan lands in \(minutes / 60)h \(minutes % 60)m."
+    }
+
     static func dayString(_ date: Date = Date()) -> String {
         dayFormatter.string(from: date)
     }

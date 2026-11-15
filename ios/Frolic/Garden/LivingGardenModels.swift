@@ -1,6 +1,6 @@
 import Foundation
 
-enum GardenHealthState: String, Decodable {
+enum GardenHealthState: String, Codable {
     case thriving, fine, thirsty, wilting
 
     var needsWater: Bool { self == .thirsty || self == .wilting }
@@ -32,7 +32,7 @@ enum GardenHealthState: String, Decodable {
     }
 }
 
-struct GardenHealth: Decodable, Hashable {
+struct GardenHealth: Codable, Hashable {
     let state: GardenHealthState
     let daysSince: Double?
     let line: String?
@@ -56,7 +56,7 @@ struct GardenHealth: Decodable, Hashable {
     }
 }
 
-struct GardenVariety: Decodable, Hashable, Identifiable {
+struct GardenVariety: Codable, Hashable, Identifiable {
     let key: String
     let name: String
     let count: Double?
@@ -97,7 +97,7 @@ struct GardenVariety: Decodable, Hashable, Identifiable {
     }
 }
 
-struct GardenCollection: Decodable, Hashable {
+struct GardenCollection: Codable, Hashable {
     let varieties: [GardenVariety]
 
     enum CodingKeys: String, CodingKey { case varieties }
@@ -119,7 +119,7 @@ struct AnyDecodable: Decodable {
     init(from decoder: Decoder) throws {}
 }
 
-struct GardenMilestone: Decodable, Hashable {
+struct GardenMilestone: Codable, Hashable {
     let reached: Double?
     let next: Double?
     let nextAt: Double?

@@ -135,7 +135,7 @@ final class CrewStore {
             self?.rebuild()
         }
 
-        subscribe("plans:today", args: ["token": token, "groupId": groupId, "day": CrewDay.tomorrow()]) { [weak self] (plan: CrewPlanViewWire?) in
+        subscribe("plans/queries:today", args: ["token": token, "groupId": groupId, "day": CrewDay.tomorrow()]) { [weak self] (plan: CrewPlanViewWire?) in
             self?.tomorrowPlan = plan
             self?.rebuild()
         }
@@ -193,7 +193,7 @@ final class CrewStore {
                                 "deviceToken": token,
                                 "groupId": groupId,
                                 "sessionId": Self.sessionId,
-                                "interval": 15000,
+                                "interval": 15000.0,
                             ]
                         )
                         if roomToken != beat.roomToken {
@@ -290,6 +290,11 @@ final class CrewStore {
             rebuild()
             actionError = Self.message(for: error)
         }
+    }
+
+    func inviteURL(code: String) -> String {
+        if let siteURL { return siteURL + "/p/" + code }
+        return "frolic://join/" + code
     }
 
     func inviteCode() async -> String? {
