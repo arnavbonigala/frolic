@@ -164,7 +164,6 @@ struct SectionHeader: View {
         }
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(FrolicColor.tertiaryText)
-        .padding(.horizontal, 4)
         .padding(.top, 26)
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity, alignment: .leading)

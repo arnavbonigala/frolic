@@ -218,7 +218,7 @@ struct TodayPacket<Content: View>: View {
                             .minimumScaleFactor(0.85)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 7)
-                            .glassEffect(.regular, in: .capsule)
+                            .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)), in: .capsule)
                             .padding(.horizontal, 20)
                             .accessibilityIdentifier("today.freeRow")
                     }

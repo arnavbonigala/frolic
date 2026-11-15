@@ -148,15 +148,6 @@ private struct YouContent: View {
             tasteSection
             SectionHeader(title: "Privacy")
             privacyGroup
-            #if DEBUG || E2E
-            Button(action: onGallery) {
-                Label("Component gallery", systemImage: "square.grid.2x2")
-            }
-            .buttonStyle(.frolicText)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 20)
-            .accessibilityIdentifier("you.gallery")
-            #endif
         }
     }
 
@@ -343,12 +334,12 @@ private struct YouContent: View {
                         FrolicChip(text: tag, size: .big)
                     }
                 }
-                .padding(.horizontal, 2)
             }
-            Button("Pick photos again", action: onTaste)
-                .buttonStyle(.frolicText)
-                .padding(.top, 6)
-                .accessibilityIdentifier("you.repick")
+            Button(action: onTaste) {
+                YouSetupRow(label: "Pick photos again", value: "", identifier: "you.repick")
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
     }
 
@@ -361,7 +352,6 @@ private struct YouContent: View {
                     identifier: "you.privacy"
                 )
                 .padding(.horizontal, 16)
-                .padding(.vertical, 4)
             }
             .buttonStyle(.plain)
         }
