@@ -1,0 +1,34 @@
+test:
+  metadata:
+    name: "frolic-hop-in-sunday"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "hop-in"
+      - "money"
+      - "feature-6"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "instructions"
+      step_description: "Tap the row starting \"Tomorrow:\""
+    - type: "validation"
+      step_description: "A plan card titled \"Kayaks at the Marina\" shows chips \"$8 each\", \"2 hours\" and \"Calm before noon\""
+    - type: "validation"
+      step_description: "The text \"Maya and Dev are already going. It's happening either way, so there's no risk in joining.\" and the button \"Hop in for $8\" are visible"
+    - type: "validation"
+      step_description: "The line \"Everyone pays their own share up front\" is visible"
+    - type: "instructions"
+      step_description: "Tap \"Hop in for $8\""
+    - type: "validation"
+      step_description: "A sheet titled \"Chip in for kayaks\" shows \"Your share\" $8.00, \"Already paid\" Maya, Dev and \"If it gets called off, you get it back automatically.\""
+    - type: "instructions"
+      step_description: "Complete payment through the Apple Pay sheet in the test environment"
+    - type: "validation"
+      step_description: "A card reads \"You're in. Paid $8.\" with \"Meet Maya and Dev at the boat ramp at 10:45.\""

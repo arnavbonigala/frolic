@@ -1,0 +1,31 @@
+test:
+  metadata:
+    name: "frolic-money-refund"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "money"
+      - "whop"
+      - "feature-money"
+    variables:
+      deposit_amount: "$5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/otw?deposit=held"
+    - type: "instructions"
+      step_description: "Tap \"I'm here\""
+    - type: "validation"
+      step_description: "The check-in screen is visible"
+    - type: "manual"
+      step_type: "wait"
+      step_description: "5"
+    - type: "validation"
+      step_description: "A refund confirmation appears for {{deposit_amount}} using the exact copy from the Frolic spec"
+    - type: "validation"
+      step_description: "The wallet or fund line shows the deposit as refunded and the balance returns to its pre-reveal value"

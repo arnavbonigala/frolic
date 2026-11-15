@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-no-leak-before-reveal"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "privacy"
+      - "network"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "instructions"
+      step_description: "Tap \"Only with…\", tap Dev, then tap \"I'm down if Dev\""
+    - type: "validation"
+      step_description: "The status card reads \"You're down, if Dev\""
+    - type: "manual"
+      step_type: "wait"
+      step_description: "20"
+    - type: "validation"
+      step_description: "No screen shows who is down, who picked whom or any count of friends who said yes"

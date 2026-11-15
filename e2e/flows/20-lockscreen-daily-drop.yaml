@@ -1,0 +1,40 @@
+test:
+  metadata:
+    name: "frolic-lockscreen-daily-drop"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "lock-screen"
+      - "feature-3"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "manual"
+      step_type: "go_home"
+      step_description: ""
+    - type: "code_execution"
+      script: "push-daily-drop"
+      timeout_seconds: 60
+    - type: "manual"
+      step_type: "wait"
+      step_description: "3"
+    - type: "instructions"
+      step_description: "Open the notification shade by swiping down from the top of the screen"
+    - type: "validation"
+      step_description: "A Frolic notification reads \"Maya, Dev and Jordan are free and the sun sets at 4:58. Just saying.\""
+    - type: "instructions"
+      step_description: "Long press the Frolic notification to reveal its actions"
+    - type: "validation"
+      step_description: "Three actions are visible: \"I'm down\", \"Only if\" and \"Not today\""
+    - type: "instructions"
+      step_description: "Tap \"I'm down\""
+    - type: "instructions"
+      step_description: "Open the Frolic app"
+    - type: "validation"
+      step_description: "The Today screen shows \"Your bud is planted. Waiting for a friend\""

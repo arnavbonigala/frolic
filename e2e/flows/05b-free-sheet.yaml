@@ -1,0 +1,29 @@
+test:
+  metadata:
+    name: "frolic-free-sheet"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-3"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "instructions"
+      step_description: "Tap the \"Free till 8\" pill"
+    - type: "validation"
+      step_description: "A sheet titled \"When are you free today?\" shows \"Your crew sees this. What you're doing stays private.\""
+    - type: "instructions"
+      step_description: "Select \"Free 5 PM to 8 PM\" and tap Done"
+    - type: "validation"
+      step_description: "The pill at the top right reads \"Free 5 to 8\""
+    - type: "instructions"
+      step_description: "Tap the \"Free 5 to 8\" pill, select \"Free now till 8 PM\" and tap Done"
+    - type: "validation"
+      step_description: "The pill reads \"Free till 8\""

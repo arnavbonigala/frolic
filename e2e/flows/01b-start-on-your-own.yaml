@@ -1,0 +1,25 @@
+test:
+  metadata:
+    name: "frolic-start-on-your-own"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "onboarding"
+      - "feature-1"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/join"
+    - type: "instructions"
+      step_description: "Tap \"No invite? Start on your own\""
+    - type: "validation"
+      step_description: "The screen asks \"What do your friends call you?\""
+    - type: "instructions"
+      step_description: "Type \"Ari\" in the first name field and tap Continue"
+    - type: "validation"
+      step_description: "The screen shows \"Pick a few nights you loved\""

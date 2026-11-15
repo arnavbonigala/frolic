@@ -1,0 +1,47 @@
+test:
+  metadata:
+    name: "frolic-tp-race-maya"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "three-phone"
+      - "race"
+      - "multi-device"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "{{maya_link}}"
+    - type: "manual"
+      step_type: "set_location"
+      step_description: "37.8719,-122.2585"
+    - type: "validation"
+      step_description: "The Today screen is visible with a plan card and the buttons \"I'm down\" and \"Only with…\""
+    - type: "validation"
+      step_description: "The line \"Maya, Dev, Jordan and Priya are free\" or the seeded free line is visible"
+    - type: "code_execution"
+      script: "barrier-t0"
+      timeout_seconds: 240
+    - type: "instructions"
+      step_description: "Tap \"Only with…\", tap Dev, then tap \"I'm down if Dev\""
+    - type: "while"
+      condition: "The headline \"It's on.\" is not visible"
+      body:
+        - type: "manual"
+          step_type: "wait"
+          step_description: "1"
+    - type: "extraction"
+      step_description: "Read the clock in the status bar"
+      variable_name: "maya_flip_clock"
+    - type: "manual"
+      step_type: "wait"
+      step_description: "20"
+    - type: "validation"
+      step_description: "\"It's on.\" is shown exactly once, with no second reveal, no duplicate celebration and no second notification"
+    - type: "code_execution"
+      script: "assert-single-reveal"
+      timeout_seconds: 60

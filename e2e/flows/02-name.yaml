@@ -1,0 +1,38 @@
+test:
+  metadata:
+    name: "frolic-name"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "onboarding"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/name"
+    - type: "validation"
+      step_description: "The heading \"What do your friends call you?\" is visible"
+    - type: "validation"
+      step_description: "The Continue button is disabled while the first name field is empty"
+    - type: "validation"
+      step_description: "The text \"This is your flower. Your crew sees your name and photo, and nothing else.\" is visible"
+    - type: "instructions"
+      step_description: "Type \"Ari\" in the field labelled \"First name\""
+    - type: "validation"
+      step_description: "The Continue button is enabled"
+    - type: "instructions"
+      step_description: "Tap \"Add a photo\""
+    - type: "validation"
+      step_description: "A sheet titled \"Add a photo\" shows four photo choices and the caption \"Recents from your photo library\""
+    - type: "instructions"
+      step_description: "Tap the first photo (Selfie)"
+    - type: "validation"
+      step_description: "The sheet closes and the avatar shows a photo and the label \"Change photo\""
+    - type: "instructions"
+      step_description: "Tap Continue"
+    - type: "validation"
+      step_description: "The screen shows \"Pick a few nights you loved\""

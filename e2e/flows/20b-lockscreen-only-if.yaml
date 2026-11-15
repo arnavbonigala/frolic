@@ -1,0 +1,36 @@
+test:
+  metadata:
+    name: "frolic-lockscreen-only-if"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "lock-screen"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "manual"
+      step_type: "go_home"
+      step_description: ""
+    - type: "code_execution"
+      script: "push-daily-drop"
+      timeout_seconds: 60
+    - type: "manual"
+      step_type: "wait"
+      step_description: "3"
+    - type: "instructions"
+      step_description: "Swipe down from the top, long press the Frolic notification and tap \"Only if\""
+    - type: "validation"
+      step_description: "A picker of friends appears"
+    - type: "instructions"
+      step_description: "Tap Maya and confirm"
+    - type: "instructions"
+      step_description: "Open the Frolic app"
+    - type: "validation"
+      step_description: "The status card reads \"You're down, if Maya\""

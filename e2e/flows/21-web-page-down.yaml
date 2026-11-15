@@ -1,0 +1,36 @@
+test:
+  metadata:
+    name: "frolic-web-page"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "web"
+      - "feature-1"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "https://frolic.app/p/indian-rock"
+    - type: "validation"
+      step_description: "A page with the Frolic mark shows \"Ari shared a plan with Roommates\""
+    - type: "validation"
+      step_description: "A plan card titled \"Sunset at Indian Rock\" is visible"
+    - type: "validation"
+      step_description: "A field labelled \"Your first name\" and a button \"I'm down\" are visible"
+    - type: "validation"
+      step_description: "The line \"Nobody sees you're down unless someone else is too. No app needed.\" is visible"
+    - type: "instructions"
+      step_description: "Type \"Maya\" in the first name field and tap \"I'm down\""
+    - type: "validation"
+      step_description: "A card reads \"You're down, Maya\" with \"Only you know. Keep this page open: it blooms the moment someone else says yes.\""
+    - type: "manual"
+      step_type: "wait"
+      step_description: "6"
+    - type: "validation"
+      step_description: "A card reads \"It's on.\" with \"You and Ari, Top of Indian Rock at 4:30.\""
+    - type: "validation"
+      step_description: "A button \"Get Frolic for the next one\" is visible"

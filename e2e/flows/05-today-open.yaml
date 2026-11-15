@@ -1,0 +1,34 @@
+test:
+  metadata:
+    name: "frolic-today-open"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "feature-4"
+      - "feature-5"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "validation"
+      step_description: "A pill at the top right reads \"Free till 8\""
+    - type: "validation"
+      step_description: "The line \"Maya, Dev, Jordan and Priya are free\" is visible under a row of four flowers"
+    - type: "validation"
+      step_description: "A plan card titled \"Sunset at Indian Rock\" shows chips \"Free\", \"12 min walk\" and \"Golden hour 4:28\""
+    - type: "validation"
+      step_description: "The card shows \"Why this:\" followed by \"you're into sunsets, it's free, and the sky's clear until dark.\""
+    - type: "validation"
+      step_description: "Two buttons are visible: \"I'm down\" and \"Only with…\""
+    - type: "validation"
+      step_description: "The line \"Nobody sees you're down unless they are too\" is visible"
+    - type: "validation"
+      step_description: "A row starting \"Tomorrow:\" reads \"Maya and Dev are kayaking. There's room for you.\""
+    - type: "validation"
+      step_description: "The bottom tab bar shows Today, Crew, Garden and You with Today selected"

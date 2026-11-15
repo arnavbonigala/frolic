@@ -1,0 +1,31 @@
+test:
+  metadata:
+    name: "frolic-taste-picker"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "onboarding"
+      - "feature-7"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/taste"
+    - type: "validation"
+      step_description: "The heading \"Pick a few nights you loved\" and the line \"Pick at least 3.\" are visible"
+    - type: "validation"
+      step_description: "The primary button reads \"Pick 3 more\" and is disabled, and the counter reads \"0 selected\""
+    - type: "instructions"
+      step_description: "Tap the photos labelled \"Sunset\", \"Pizza night\" and \"Bowling\""
+    - type: "validation"
+      step_description: "The counter reads \"3 selected\" and the primary button reads \"Continue\" and is enabled"
+    - type: "validation"
+      step_description: "The text \"Looked at on your phone. Photos are never uploaded.\" is visible"
+    - type: "instructions"
+      step_description: "Tap Continue"
+    - type: "validation"
+      step_description: "The heading \"You're into\" is visible"

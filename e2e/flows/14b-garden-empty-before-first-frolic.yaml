@@ -1,0 +1,21 @@
+test:
+  metadata:
+    name: "frolic-garden-before-first"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "garden"
+      - "feature-8"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/garden?went=0"
+    - type: "validation"
+      step_description: "The text \"Sunset Crew grew these before you joined.\" is visible"
+    - type: "validation"
+      step_description: "The counter caption reads \"all before you joined\""

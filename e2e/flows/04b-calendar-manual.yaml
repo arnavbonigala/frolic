@@ -1,0 +1,23 @@
+test:
+  metadata:
+    name: "frolic-calendar-manual"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "onboarding"
+      - "feature-3"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/calendar"
+    - type: "instructions"
+      step_description: "Tap \"I'll tell it each day\""
+    - type: "validation"
+      step_description: "A sheet titled \"When are you free today?\" opens over the Today screen"
+    - type: "validation"
+      step_description: "Options \"Free now till 8 PM\", \"Free 5 PM to 8 PM\" and \"Not today\" are visible"

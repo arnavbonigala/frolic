@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-calendar"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "onboarding"
+      - "feature-3"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/calendar"
+    - type: "validation"
+      step_description: "The heading \"Never type when you're free\" is visible"
+    - type: "validation"
+      step_description: "A list shows \"Today\" with \"Free now till 8 PM\", \"Sun\" with \"Free all day\", \"Mon\" with \"Free 4 to 9 PM\", \"Tue\" with \"Free 6 to 11 PM\" and \"Wed\" with \"Free 2 to 9 PM\""
+    - type: "validation"
+      step_description: "The text \"This is what your crew would see this week.\" is visible"
+    - type: "instructions"
+      step_description: "Tap \"Use my calendar\""
+    - type: "validation"
+      step_description: "The Today screen is visible with a pill reading \"Free till 8\" at the top right"
