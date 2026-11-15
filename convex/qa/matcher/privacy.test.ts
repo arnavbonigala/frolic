@@ -57,6 +57,7 @@ function argShapes(f: Fixture, observer: string): Record<string, unknown>[] {
     { roomToken: "qa-room-token" },
     { code: "QACODE01" },
     { inviteCode: "QACODE01" },
+    { code: "QACODE01", deviceToken: token },
     { deviceToken: token, groupId: f.groupId, day: "2026-11-15", frolicId: f.frolicId },
     { deviceToken: token },
     { userId: f.users[observer], groupId: f.groupId },

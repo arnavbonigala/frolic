@@ -315,6 +315,15 @@ export async function seed(t: T, options: SeedOptions = {}): Promise<Fixture> {
       deadline: now + (options.deadlineOffset ?? 2 * HOUR),
     });
 
+    await ctx.db.insert("invites", {
+      code: "QACODE01",
+      groupId,
+      createdBy: ids[0],
+      kind: "frolic",
+      frolicId,
+      revoked: false,
+    });
+
     return { groupId, frolicId, planId, placeId, users, ids, tokens };
   });
 }
