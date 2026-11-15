@@ -20,7 +20,7 @@ test:
       step_type: "set_location"
       step_description: "37.8735,-122.2730"
     - type: "validation"
-      step_description: "The Today screen is visible with a plan card and the buttons \"I'm down\" and \"Only if…\""
+      step_description: "The Today screen is visible with a plan card and the buttons \"I'm down\" and \"Only with…\""
     - type: "validation"
       step_description: "The line \"Maya, Dev, Jordan and Priya are free\" or the seeded free line is visible"
     - type: "code_execution"
