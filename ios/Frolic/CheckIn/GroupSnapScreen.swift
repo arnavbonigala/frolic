@@ -275,7 +275,7 @@ struct GroupSnapScreen: View {
     }
 
     private var countdownLayer: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             Text("\(model.numeral)")
                 .font(.system(size: 140, weight: .heavy, design: .rounded))
                 .monospacedDigit()
@@ -283,8 +283,8 @@ struct GroupSnapScreen: View {
                 .shadow(color: .black.opacity(0.4), radius: 15, y: 6)
                 .compositingGroup()
                 .id(model.numeral)
-                .transition(reduceMotion ? .opacity : .scale(scale: 1.4).combined(with: .opacity))
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: model.numeral)
+                .transition(reduceMotion ? .opacity : .scale(scale: 1.2).combined(with: .opacity))
+                .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.35, dampingFraction: 1), value: model.numeral)
                 .accessibilityIdentifier("checkin.count")
                 .accessibilityLabel("\(model.numeral)")
             Text(countdownNote)
@@ -292,7 +292,7 @@ struct GroupSnapScreen: View {
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .shadow(color: .black.opacity(0.6), radius: 4, y: 1)
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 32)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.25))

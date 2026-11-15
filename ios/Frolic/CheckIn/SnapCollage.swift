@@ -44,7 +44,7 @@ struct SnapCollage: View {
     var onAgain: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var motion = MotionTilt()
-    @State private var revealed = 1
+    @State private var revealed = 0
 
     private var people: [WirePerson] {
         ([store.myPerson].compactMap { $0 }) + store.others
@@ -64,13 +64,13 @@ struct SnapCollage: View {
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("checkin.title")
                 }
-                .padding(.top, 66)
-                .padding(.horizontal, 18)
+                .padding(.top, 64)
+                .padding(.horizontal, 16)
                 press
                 Text(caption)
                     .font(.system(.subheadline, design: .default, weight: .bold))
                     .foregroundStyle(FrolicColor.ink)
-                    .padding(.top, 6)
+                    .padding(.top, 8)
                     .accessibilityIdentifier("checkin.polaroid")
                 Text(shotCount > 1 ? "Taken at the same second on \(shotCount) phones." : "Theirs appear here as they add them.")
                     .frolicFont(.footnote)
@@ -81,32 +81,25 @@ struct SnapCollage: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Plant it in the garden", action: onPlant)
                     .buttonStyle(.frolicPrimary)
-                    .padding(.top, 16)
-                    .padding(.horizontal, 18)
+                    .padding(.top, 20)
+                    .padding(.horizontal, 16)
                     .accessibilityIdentifier("checkin.plant")
                 Button("Take it again together", action: onAgain)
                     .buttonStyle(.frolicSecondaryWide)
-                    .padding(.top, 10)
-                    .padding(.horizontal, 18)
+                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
                     .accessibilityIdentifier("checkin.again")
             }
-            .padding(.bottom, 30)
+            .padding(.bottom, 32)
         }
         .background(FrolicColor.cream)
         .accessibilityIdentifier("checkin.collage")
         .task {
             if !reduceMotion { motion.start() }
-            if reduceMotion {
-                revealed = people.count
-            } else {
-                for index in 1..<max(1, people.count) {
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
-                        revealed = index + 1
-                    }
-                }
-            }
+            await Task.yield()
+            revealed = people.count
         }
+        .sensoryFeedback(.success, trigger: revealed) { _, new in new == people.count }
         .onDisappear { motion.stop() }
     }
 
@@ -134,7 +127,8 @@ struct SnapCollage: View {
                         .rotationEffect(.degrees(rotation(index: index)), anchor: .center)
                         .zIndex(Double(3 - index))
                         .opacity(index < revealed ? 1 : 0)
-                        .offset(y: index < revealed ? 0 : 40)
+                        .offset(y: index < revealed ? 0 : 24)
+                        .animation(settle(index), value: revealed)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -150,6 +144,11 @@ struct SnapCollage: View {
         )
         .padding(.horizontal, 16)
         .padding(.top, 18)
+    }
+
+    private func settle(_ index: Int) -> Animation {
+        guard !reduceMotion else { return .easeOut(duration: 0.3) }
+        return .spring(response: 0.35, dampingFraction: 1).delay(Double(index) * 0.07)
     }
 
     private func cardWidth(_ width: CGFloat) -> CGFloat {

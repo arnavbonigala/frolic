@@ -31,6 +31,7 @@ struct CheckInFlowScreen: View {
     @Environment(AppRouter.self) private var router
     @Environment(ConnectivityMonitor.self) private var connectivity
     @Environment(FrolicBackend.self) private var backend
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var store: CheckInStore
     @State private var watcher = ArrivalWatcher()
     @State private var snapModel = GroupSnapModel()
@@ -73,7 +74,7 @@ struct CheckInFlowScreen: View {
                 })
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: store.step)
+        .animation(reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.35, dampingFraction: 1), value: store.step)
         .sheet(isPresented: $showsBail) {
             BailSheet(
                 onKeepGoing: { showsBail = false },
