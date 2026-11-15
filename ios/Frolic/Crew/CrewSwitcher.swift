@@ -34,7 +34,10 @@ final class CrewSwitcherModel {
             Task { [weak self] in
                 guard let stream = try? client.subscribe(to: "crews:mine", with: ["deviceToken": token], yielding: [CrewSummary].self).values else { return }
                 do {
-                    for try await crews in stream { self?.crews = crews }
+                    for try await crews in stream {
+                        self?.crews = crews
+                        FrolicIdentity.shared.adopt(crews: crews.map { FrolicCrew(id: $0.groupId, name: $0.name, color: "") })
+                    }
                 } catch {}
             },
             Task { [weak self] in

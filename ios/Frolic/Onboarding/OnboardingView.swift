@@ -31,6 +31,7 @@ struct OnboardingGate<Content: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: OnboardingModel?
     @State private var finished = OnboardingIdentity.isComplete
+    @State private var adding: InviteLink?
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -53,9 +54,16 @@ struct OnboardingGate<Content: View>: View {
         }
         .onOpenURL { url in
             guard url.scheme == "frolic", url.host == "join", let link = InviteLink(url: url) else { return }
+            if identity.groupId != nil, OnboardingIdentity.isComplete {
+                adding = link
+                return
+            }
             OnboardingIdentity.reset()
             finished = false
             model = makeModel(seed: nil, link: link)
+        }
+        .fullScreenCover(isPresented: Binding(get: { adding != nil }, set: { if !$0 { adding = nil } })) {
+            AddCrewFlow(link: adding, onClose: { adding = nil })
         }
         .task {
             if model == nil { rebuild() }

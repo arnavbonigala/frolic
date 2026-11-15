@@ -76,6 +76,26 @@ final class TodayStore {
     private var bloomedFrolic: String?
     private var routeKey: String?
     private var dropFrolic: String?
+    private var activeGroup: String?
+
+    private func clearCrewState() {
+        today = nil
+        crew = nil
+        tomorrow = nil
+        gardenHealth = nil
+        onThisDay = nil
+        etas = []
+        payment = nil
+        payPage = nil
+        drop = nil
+        dropFrolic = nil
+        pending = nil
+        pendingFree = nil
+        picks = []
+        offset = 0
+        bloomed = false
+        load = .loading
+    }
 
     func now() -> Double {
         Date().timeIntervalSince1970 * 1000 + offset
@@ -203,6 +223,10 @@ final class TodayStore {
         if let token = route?.query["token"] {
             identity.signIn(deviceToken: token, groupId: route?.query["group"])
         }
+        if let group = identity.groupId, let active = activeGroup, active != group {
+            clearCrewState()
+        }
+        if let group = identity.groupId { activeGroup = group }
         if today == nil { load = .loading }
         tasks.append(Task { [weak self] in await self?.measureOffset() })
         if let group = identity.groupId {
