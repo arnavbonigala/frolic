@@ -354,7 +354,6 @@ export const depositTarget = internalQuery({
       .query("whopPlans")
       .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
       .first();
-    if (!plan) return { ok: false as const, body: { ok: false, error: "no_deposit", say: "This plan has no deposit." } };
     const share = await ctx.db
       .query("shares")
       .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolic._id).eq("userId", me.user._id))
@@ -362,7 +361,7 @@ export const depositTarget = internalQuery({
     if (share && (share.status === "paid" || share.status === "refunded")) {
       return { ok: false as const, body: { ok: false, error: "already_paid", say: "Their deposit is already in." } };
     }
-    return { ok: true as const, userId: me.user._id, frolicId: frolic._id, amountCents: plan.amountCents };
+    return { ok: true as const, userId: me.user._id, frolicId: frolic._id, amountCents: plan?.amountCents ?? null };
   },
 });
 
@@ -406,7 +405,7 @@ async function upsertLink(ctx: MutationCtx, phone: string, userId: Id<"users">, 
 async function validInvite(ctx: QueryCtx, code: string, now: number) {
   const invite = await ctx.db
     .query("invites")
-    .withIndex("by_code", (q) => q.eq("code", code.trim()))
+    .withIndex("by_code", (q) => q.eq("code", code.trim().toUpperCase()))
     .unique();
   if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < now)) return null;
   return invite;

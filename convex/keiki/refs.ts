@@ -46,11 +46,19 @@ export const addSnapAs = makeFunctionReference<
   null
 >("snaps:addSnapAs");
 
-export const checkoutLinkFor = makeFunctionReference<
+type CheckoutLink = string | { url?: string; amountCents?: number } | null;
+
+export const checkoutLinkAction = makeFunctionReference<
   "action",
   { userId: Id<"users">; frolicId: Id<"frolics"> },
-  { url: string; amountCents: number } | null
->("whop/deposits:checkoutLinkFor");
+  CheckoutLink
+>("whop/links:checkoutLink");
+
+export const checkoutLinkMutation = makeFunctionReference<
+  "mutation",
+  { userId: Id<"users">; frolicId: Id<"frolics"> },
+  CheckoutLink
+>("whop/links:checkoutLink");
 
 export const recordMemoryEvent = makeFunctionReference<
   "mutation",

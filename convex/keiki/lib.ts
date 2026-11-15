@@ -120,7 +120,7 @@ export async function currentFrolic(ctx: QueryCtx, groupId: Id<"groups">) {
 
 export function isRevealed(frolic: Doc<"frolics">, now: number): boolean {
   return (
-    (frolic.status === "on" || frolic.status === "done" || frolic.status === "matched") &&
+    (frolic.status === "on" || frolic.status === "done") &&
     frolic.revealAt !== undefined &&
     now >= frolic.revealAt
   );

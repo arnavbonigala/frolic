@@ -5,7 +5,7 @@ import { internal } from "../_generated/api";
 import { authenticate, identify, sha256Hex } from "./auth";
 import type { Identity } from "./auth";
 import { parseSharedLocation } from "./lib";
-import { checkoutLinkFor } from "./refs";
+import { checkoutLinkAction, checkoutLinkMutation } from "./refs";
 import { keikiEnv } from "./env";
 
 export const TOOL_NAMES = [
@@ -170,11 +170,19 @@ async function run(ctx: ActionCtx, tool: ToolName, call: Call): Promise<unknown>
     case "pay_deposit": {
       const target = await ctx.runQuery(internal.keiki.tools.depositTarget, { phone: phoneOf(call), now });
       if (!target.ok) return target.body;
-      const amount = "$" + (target.amountCents / 100).toFixed(target.amountCents % 100 ? 2 : 0);
-      if (call.context.preflight === true) return { ok: true, amount, preflight: true };
-      const link = await ctx.runAction(checkoutLinkFor, { userId: target.userId, frolicId: target.frolicId });
-      if (!link) return { ok: false, error: "no_link", say: "The deposit link didn't go through. Offer to try again." };
-      return { ok: true, amount, url: link.url, approvedWithFaceId: !!call.context.approval, say: "Send the link once. It comes back when they arrive." };
+      if (call.context.preflight === true) return { ok: true, preflight: true };
+      const args = { userId: target.userId, frolicId: target.frolicId };
+      let link: string | { url?: string; amountCents?: number } | null;
+      try {
+        link = await ctx.runMutation(checkoutLinkMutation, args);
+      } catch {
+        link = await ctx.runAction(checkoutLinkAction, args);
+      }
+      const url = typeof link === "string" ? link : link?.url;
+      if (!url) return { ok: false, error: "no_deposit", say: "This plan has no deposit to pay." };
+      const cents = typeof link === "object" && link?.amountCents !== undefined ? link.amountCents : target.amountCents;
+      const amount = cents === null ? null : "$" + (cents / 100).toFixed(cents % 100 ? 2 : 0);
+      return { ok: true, amount, url, approvedWithFaceId: !!call.context.approval, say: "Send the link once. It comes back when they arrive." };
     }
     case "remember":
       return await ctx.runMutation(internal.keiki.tools.remember, { phone: phoneOf(call), text: str(input, "text", 500)!, now });

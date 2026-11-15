@@ -158,12 +158,10 @@ export const onReveal = internalMutation({
 export const onFaded = internalMutation({
   args: { frolicId: v.id("frolics") },
   handler: async (ctx, { frolicId }) => {
-    const taps = await ctx.db
-      .query("taps")
-      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
-      .take(64);
-    const down = taps.filter((t) => t.kind === "down").map((t) => t.userId);
-    const drafts = await personal(ctx, down, (user) => ({
+    const frolic = await ctx.db.get("frolics", frolicId);
+    if (!frolic) return null;
+    const members = await crewMembers(ctx, frolic.groupId);
+    const drafts = await personal(ctx, members.map((m) => m._id), (user) => ({
       key: "faded:" + frolicId + ":" + user._id,
       kind: "faded",
       text: "Today's plan faded. Tomorrow's drop is a fresh one.",
@@ -318,14 +316,4 @@ export const deliver = internalAction({
     await ctx.runMutation(internal.keiki.outbound.settle, { results, now: Date.now(), frolicId });
     return null;
   },
-});
-
-export const onFaded = internalMutation({
-  args: { frolicId: v.id("frolics") },
-  handler: async () => null,
-});
-
-export const onCollage = internalMutation({
-  args: { frolicId: v.id("frolics"), storageId: v.id("_storage") },
-  handler: async () => null,
 });
