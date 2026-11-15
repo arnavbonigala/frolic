@@ -44,7 +44,7 @@ enum GardenFixtures {
             memories: memories,
             health: health(route: route),
             collection: collection,
-            milestone: GardenMilestone(line: "Three more frolics until your tenth flower.")
+            milestone: GardenMilestone(reached: 7, next: 10, nextAt: nil, line: "3 more frolics to unlock the bench")
         )
     }
 

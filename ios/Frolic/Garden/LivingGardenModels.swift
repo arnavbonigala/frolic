@@ -135,10 +135,10 @@ struct GardenMilestone: Decodable, Hashable {
         line = try? container.decodeIfPresent(String.self, forKey: .line)
     }
 
-    init(line: String?) {
-        reached = nil
-        next = nil
-        nextAt = nil
+    init(reached: Double?, next: Double?, nextAt: Double?, line: String?) {
+        self.reached = reached
+        self.next = next
+        self.nextAt = nextAt
         self.line = line
     }
 }

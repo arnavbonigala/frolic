@@ -29,16 +29,23 @@ struct GardenMilestoneRow: View {
 
     var body: some View {
         if let line = milestone.line, !line.isEmpty {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(FrolicColor.pollenRing)
-                    .accessibilityHidden(true)
-                Text(line)
-                    .frolicFont(.subheadline)
-                    .foregroundStyle(FrolicColor.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(FrolicColor.pollenRing)
+                        .accessibilityHidden(true)
+                    Text(line)
+                        .frolicFont(.subheadline)
+                        .foregroundStyle(FrolicColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                if let reached = milestone.reached, let next = milestone.next, next > 0 {
+                    ProgressView(value: min(max(reached / next, 0), 1))
+                        .tint(FrolicColor.pollenRing)
+                        .accessibilityHidden(true)
+                }
             }
             .padding(14)
             .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
