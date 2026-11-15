@@ -388,5 +388,7 @@ The e2e demo seed sets those four portraits and flower colours, so the app, the 
 
 **`snaps.forFrolic({ deviceToken, frolicId })`** returns `[{ userId, url, takenAt, mine }]` for the caller's latest snap window, and `[]` until the caller has added their own snap. That empty array is the mock's rule: you see everyone's shot once you add yours. `url` is null for a doc whose file is gone. Errors: `UNKNOWN_DEVICE`, `NOT_FOUND`, `NOT_A_MEMBER`.
 =======
+**`users.deleteAccount({ deviceToken })`** deletes the signed-in person and everything they left behind: their memberships, taps, availability, limits, attendees, hop-ins, ETAs, check-ins, snaps (with the photo files), shares, reveal log rows and the user row. It schedules the Supermemory namespace deletion and returns null. Errors: `UNKNOWN_DEVICE`, so a second call on the same device is refused.
+
 **`crew.setHold({ deviceToken, groupId, enabled })`** turns the per-crew deposit on or off for everyone in the crew. It is off by default and any member can set it. Returns null. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`.
 >>>>>>> cbc2340 (Add a per-crew deposit toggle, off by default)
