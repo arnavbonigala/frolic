@@ -42,14 +42,18 @@ describe("question bank", () => {
       expect(new Set(q.options.map((o) => o.label)).size).toBe(q.options.length);
       expect(q.text).not.toMatch(/[—–!]/);
       expect(q.text.endsWith("?")).toBe(true);
+      for (const option of q.options) {
+        expect(option.label.charAt(0)).toBe(option.label.charAt(0).toUpperCase());
+        expect(option.label).not.toMatch(/[.。—–!]$/);
+      }
     }
   });
 
-  test("questions start with a capital and options stay lowercase and short", () => {
+  test("questions start with a capital and options are capitalized and short", () => {
     for (const question of QUESTION_BANK) {
       expect(question.text.charAt(0)).toBe(question.text.charAt(0).toUpperCase());
       for (const { label } of question.options) {
-        expect(label.charAt(0)).toBe(label.charAt(0).toLowerCase());
+        expect(label.charAt(0)).toBe(label.charAt(0).toUpperCase());
         expect(label).not.toMatch(/[.!?,;:]/);
         expect(label.split(/\s+/).length).toBeLessThanOrEqual(4);
         expect(label.trim()).toBe(label);
@@ -114,6 +118,14 @@ describe("question bank", () => {
     expect(smsLine("Sunset or stars?")).toBe("Quick one: sunset or stars?");
     const text = dropText({ title: "Sunset at the Rose Garden", place: null, startsAt: "6:10", why: null, heroKey: "x" }, false, "Quick one: sunset or stars?");
     expect(text.split("\n").at(-1)).toBe("Quick one: sunset or stars?");
+  });
+
+  test("a drop never says the place twice", () => {
+    const base = { startsAt: "4:30", why: null, heroKey: "x" };
+    const named = dropText({ ...base, title: "Sunset at Indian Rock", place: "Indian Rock Park" }, false, null);
+    expect(named.split("\n")[0]).toBe("Sunset at Indian Rock, 4:30.");
+    const elsewhere = dropText({ ...base, title: "Picnic on the grass", place: "Memorial Glade" }, false, null);
+    expect(elsewhere.split("\n")[0]).toBe("Picnic on the grass at Memorial Glade, 4:30.");
   });
 });
 
@@ -256,7 +268,7 @@ describe("dailyPick", () => {
     const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
     const pick = events.find((e) => e.kind === "daily_pick")!;
     expect(pick).toMatchObject({ groupId: crew.groupId, userId: crew.ids.Maya, source: "app" });
-    expect(pick.payload).toMatchObject({ day: "2026-11-15", option: "noodles", question: "Tonight: noodles or tacos?" });
+    expect(pick.payload).toMatchObject({ day: "2026-11-15", option: "Noodles", question: "Tonight: noodles or tacos?" });
     expect(pick.payload.tags).toContain("late_night_food");
     for (const day of ["2026-11-15", "2026-11-16"]) {
       expect(await t.query(internal.dailyPick.pickTags, { groupId: crew.groupId, day })).toContain("late_night_food");
@@ -295,7 +307,7 @@ describe("dailyPick", () => {
     const bad = await t.mutation(internal.keiki.tools.answerPick, { phone: "+15105550101", option: "moon" });
     expect(bad).toMatchObject({ ok: false, error: "bad_option" });
     const res = await t.mutation(internal.keiki.tools.answerPick, { phone: "+15105550101", option: "Sunset" });
-    expect(res).toMatchObject({ ok: true, yourPick: "sunset", crew: [{ option: "sunset", friends: [] }, { option: "stars", friends: ["Dev"] }] });
+    expect(res).toMatchObject({ ok: true, yourPick: "Sunset", crew: [{ option: "Sunset", friends: [] }, { option: "Stars", friends: ["Dev"] }] });
     const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
     expect(events.find((e) => e.userId === crew.ids.Maya && e.kind === "daily_pick")?.source).toBe("imessage");
   });

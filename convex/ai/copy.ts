@@ -38,7 +38,7 @@ const KIND_PROMPT: Record<CopyInput["kind"], string> = {
   ].join("\n"),
   gardenCaption: [
     "Write one line for the group's memory book about the night that just happened.",
-    "At most 80 characters, like: three of us at the marina on Nov 15, and the sky did the rest.",
+    "At most 80 characters, one full sentence that starts with a capital, like: Three of us at the marina on Nov 15, and the sky did the rest.",
     "Mention the place. If memory is set, fold in what someone said about it.",
   ].join("\n"),
 };
@@ -84,6 +84,13 @@ function listPhrase(items: string[]): string {
   if (items.length <= 1) return items[0] ?? "";
   if (items.length === 2) return items[0] + " and " + items[1];
   return items.slice(0, -1).join(", ") + ", and " + items[items.length - 1];
+}
+
+function sentence(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (!flat) return flat;
+  const capped = flat.charAt(0).toUpperCase() + flat.slice(1);
+  return /[.!?]$/.test(capped) ? capped : capped + ".";
 }
 
 function firstValid(candidates: string[], fallback: string): string {
@@ -226,10 +233,10 @@ export function templateCopy(input: CopyInput): CopyOutput {
   }
   const night = /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? dateLabel(input.date) : input.date;
   const memory = input.memory ? trimQuote(input.memory, 32) : "";
-  const base = peopleWord(input.people) + " at " + plainName(input.placeName) + " on " + night;
-  const line = trimTo(memory ? base + ". \u201c" + memory + ".\u201d" : base + ".", COPY_MAX.caption);
-  const plain = trimTo(base + ".", COPY_MAX.caption);
-  return { kind: "gardenCaption", text: firstValid([line, plain], "tonight was a good one.") };
+  const base = sentence(peopleWord(input.people) + " at " + plainName(input.placeName) + " on " + night);
+  const line = trimTo(memory ? base.slice(0, -1) + ". \u201c" + memory + ".\u201d" : base, COPY_MAX.caption);
+  const plain = trimTo(base, COPY_MAX.caption);
+  return { kind: "gardenCaption", text: firstValid([line, plain], "Tonight was a good one.") };
 }
 
 function readCopy(input: CopyInput, raw: { headline?: unknown; why?: unknown; text?: unknown }): CopyOutput | null {
@@ -248,7 +255,7 @@ function readCopy(input: CopyInput, raw: { headline?: unknown; why?: unknown; te
     return { kind: "why", text };
   }
   if (text.length > COPY_MAX.caption || !copyOk(text)) return null;
-  return { kind: "gardenCaption", text };
+  return { kind: "gardenCaption", text: sentence(text) };
 }
 
 export async function writeCopy(input: CopyInput, fetcher?: Fetcher): Promise<CopyOutput | null> {

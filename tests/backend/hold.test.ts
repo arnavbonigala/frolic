@@ -48,7 +48,7 @@ describe("crew hold", () => {
     ).rejects.toThrow(/not in this crew/);
   });
 
-  test("the demo and three-phone seeds create their crew with the hold on", async () => {
+  test("the demo and three-phone seeds create their crew with the hold off", async () => {
     const t = makeT();
     for (const scenario of ["three-phone", "demo"] as const) {
       const res = await t.fetch("/e2e/seed", {
@@ -63,7 +63,7 @@ describe("crew hold", () => {
         groupId: body.groupId as never,
         day: "2026-11-15",
       });
-      expect(crewView.holdEnabled).toBe(true);
+      expect(crewView.holdEnabled).toBeUndefined();
     }
   });
 });

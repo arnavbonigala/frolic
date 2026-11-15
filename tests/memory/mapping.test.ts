@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { planWrites, groupNamespace, personalNamespace, type EventInput } from "../../convex/memory/mapping";
+import { EVENT_KINDS, planWrites, groupNamespace, personalNamespace, type EventInput } from "../../convex/memory/mapping";
 
 const base = { groupId: "g1", userId: "u1", payload: { title: "Indian Rock", tags: ["sunset"], day: "2026-11-15", name: "Maya", memberIds: ["u1", "u2"], memberNames: ["Maya", "Dev"], caption: "golden" } };
 
@@ -39,6 +39,30 @@ describe("privacy separation", () => {
     const b = planWrites("tap:abc/1", { ...base, kind: "tap" } as EventInput).writes[0].id;
     expect(a).toBe(b);
     expect(a).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+
+  test("every memory line is a full sentence with a capital", () => {
+    for (const kind of EVENT_KINDS) {
+      const { writes } = planWrites("k", { ...base, kind, revealAt: 1, payload: { ...base.payload, count: 2, tag: "bowling", question: "Sunset or stars?", option: "Stars", text: "budget up to 20" } } as EventInput);
+      for (const write of writes) {
+        expect(write.content.charAt(0)).toMatch(/[A-Z0-9]/);
+        expect(write.content).toMatch(/[.!?]$/);
+      }
+    }
+  });
+
+  test("only if counts the people waiting, not a list joined by and", () => {
+    const one = planWrites("k", { ...base, kind: "only_if", payload: { title: "Boba", onlyIfNames: ["Jordan"] } }).writes[0].content;
+    const two = planWrites("k", { ...base, kind: "only_if", payload: { title: "Boba", onlyIfNames: ["Dev", "Jordan"] } }).writes[0].content;
+    const four = planWrites("k", { ...base, kind: "only_if", payload: { title: "Boba", onlyIfNames: ["Dev", "Jordan", "Priya", "Ari"] } }).writes[0].content;
+    expect(one).toBe("Said down for Boba only if Jordan comes.");
+    expect(two).toBe("Said down for Boba only if Dev and Jordan come.");
+    expect(four).toBe("Said down for Boba only if all 4 come.");
+  });
+
+  test("a picked option stays lowercase inside the sentence", () => {
+    const { writes } = planWrites("k", { ...base, kind: "daily_pick", payload: { question: "Sunset or stars?", option: "Sunset" } });
+    expect(writes[0].content).toBe('Picked sunset for "Sunset or stars?".');
   });
 
   test("personal event without a user is refused", () => {

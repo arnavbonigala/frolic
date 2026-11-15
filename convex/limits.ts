@@ -68,9 +68,9 @@ export const set = mutation({
     const limitsId = existing ? existing._id : await ctx.db.insert("limits", doc);
     if (existing) await ctx.db.replace("limits", existing._id, doc);
     const parts = [
-      doc.budgetCap !== undefined ? `budget up to ${doc.budgetCap}` : null,
-      doc.energy ? `energy: ${doc.energy}` : null,
-      doc.maxMinutes !== undefined ? `at most ${doc.maxMinutes} minutes away` : null,
+      doc.budgetCap !== undefined ? `up to $${Math.round(doc.budgetCap)} a person` : null,
+      doc.energy ? (doc.energy === "chill" ? "chill plans" : "down for anything") : null,
+      doc.maxMinutes !== undefined ? `stay within ${doc.maxMinutes} minutes of home` : null,
       doc.homeBy !== undefined ? `home by ${Math.floor(doc.homeBy / 60)}:${String(doc.homeBy % 60).padStart(2, "0")}` : null,
     ].filter((p): p is string => p !== null);
     const memberships = await ctx.db.query("memberships").withIndex("by_userId", (q) => q.eq("userId", user._id)).take(1);
@@ -80,7 +80,7 @@ export const set = mutation({
         kind: "limit",
         groupId: memberships[0].groupId,
         userId: user._id,
-        payload: { text: `Private limits: ${parts.join(", ")}` },
+        payload: { text: `Set private limits: ${parts.join(", ")}.` },
       });
     }
     return null;
