@@ -124,7 +124,7 @@ private struct TodayShareSheet: View {
                 TodaySheetTitle(text: "Send to the group chat", identifier: "share.sheet.title")
                 VStack(alignment: .trailing, spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        TodayHeroImage(asset: store.plan?.heroKey, remote: store.plan?.place?.photoUrl, description: nil)
+                        TodayHeroImage(asset: TodayCopy.heroAsset(store.plan), remote: store.plan?.place?.photoUrl, description: nil)
                             .frame(height: 110)
                             .frame(maxWidth: .infinity)
                             .clipped()

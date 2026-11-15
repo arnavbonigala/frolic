@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 enum TodayPhase: String, Codable, Hashable {
     case none
@@ -210,6 +211,20 @@ enum TodayCopy {
         calendar.timeZone = zone
         let start = calendar.startOfDay(for: Date())
         return start.addingTimeInterval(Double(hour) * 3600).timeIntervalSince1970 * 1000
+    }
+
+    static let heroKeywords: [(String, String)] = [
+        ("sunset", "plan-sunsets"), ("golden", "plan-sunsets"), ("marina", "plan-sunsets"), ("rock", "plan-sunsets"),
+        ("picnic", "plan-outdoors"), ("park", "plan-outdoors"), ("hike", "plan-outdoors"), ("kayak", "plan-outdoors"), ("garden", "plan-outdoors"),
+        ("pizza", "plan-late-night-food"), ("food", "plan-late-night-food"), ("noodle", "plan-late-night-food"), ("taco", "plan-late-night-food"), ("cheese", "plan-late-night-food"),
+        ("bowling", "plan-games"), ("game", "plan-games"), ("arcade", "plan-games"),
+    ]
+
+    static func heroAsset(_ plan: TodayPlan?) -> String {
+        if let key = plan?.heroKey, UIImage(named: key) != nil { return key }
+        let text = ((plan?.title ?? "") + " " + (plan?.place?.name ?? "")).lowercased()
+        if let match = heroKeywords.first(where: { text.contains($0.0) }), UIImage(named: match.1) != nil { return match.1 }
+        return "plan-free-stuff"
     }
 
     static func shortClock(_ milliseconds: Double) -> String {

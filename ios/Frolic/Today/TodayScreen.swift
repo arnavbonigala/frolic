@@ -203,7 +203,7 @@ private struct TodayPlanPacket: View {
         TodayPacket(
             label: label ?? "TODAY · " + TodayCopy.weekday(plan?.startsAt ?? store.now()),
             number: number ?? store.today?.frolicNumber.map { "Crew frolic No. \(Int($0))" } ?? store.today?.groupName,
-            hero: plan?.heroKey,
+            hero: TodayCopy.heroAsset(plan),
             heroURL: plan?.place?.photoUrl,
             heroDescription: title,
             showsWhy: showsWhy,
@@ -547,7 +547,7 @@ private struct TodayHopInView: View {
             .padding(.top, 14)
             if let plan {
                 TodayRowLink(
-                    thumb: plan.heroKey,
+                    thumb: TodayCopy.heroAsset(plan),
                     thumbRemote: plan.place?.photoUrl,
                     prefix: plan.title + ":",
                     text: TodayCopy.meetPlace(plan) + " at " + TodayCopy.clock(plan.startsAt) + (plan.payUpFront ? ", " + plan.costLabel : "") + ".",
