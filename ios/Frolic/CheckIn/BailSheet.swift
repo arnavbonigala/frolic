@@ -26,12 +26,10 @@ struct BailSheet: View {
                 .accessibilityIdentifier("bail.sheet.body")
             HStack(spacing: 10) {
                 Button("I'll still go", action: onKeepGoing)
-                    .buttonStyle(.frolicSecondary)
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.frolicSecondaryWide)
                     .accessibilityIdentifier("bail.sheet.yes")
                 Button("Sit this one out", action: onSitOut)
                     .buttonStyle(.frolicPrimary)
-                    .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("bail.sheet.no")
             }
             .padding(.top, 18)

@@ -164,7 +164,7 @@ final class CheckInStore {
             .sink(
                 receiveCompletion: { [weak self] completion in
                     MainActor.assumeIsolated {
-                        guard let self, case .failure(let error) = completion, self.today == nil else { return }
+                        guard let self, case .failure(let error) = completion else { return }
                         self.phase = .error(checkInMessage(error))
                     }
                 },

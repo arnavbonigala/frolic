@@ -67,6 +67,12 @@ final class SnapCamera: NSObject, AVCapturePhotoCaptureDelegate {
         settings.photoQualityPrioritization = .speed
         let id = settings.uniqueID
         output.capturePhoto(with: settings, delegate: self)
+        Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if let continuation = waiting.removeValue(forKey: id) {
+                continuation.resume(returning: nil)
+            }
+        }
         return Task {
             if let image = early.removeValue(forKey: id) { return image }
             return await withCheckedContinuation { continuation in

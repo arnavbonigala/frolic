@@ -164,12 +164,12 @@ struct OnTheWayScreen: View {
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(store.checkedIn ? "Here" : "\(store.myMinutes.map(String.init) ?? "–") min")
+                Text(store.checkedIn ? "Here" : store.myMinutes.map { "\($0) min" } ?? "Soon")
                     .font(.system(.title2, design: .rounded, weight: .heavy))
                     .monospacedDigit()
                     .foregroundStyle(FrolicColor.band)
                     .contentTransition(.numericText())
-                if !store.checkedIn {
+                if !store.checkedIn, store.myMinutes != nil {
                     Text("away")
                         .font(.system(.caption2, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.6))

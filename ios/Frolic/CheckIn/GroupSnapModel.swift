@@ -61,9 +61,20 @@ final class GroupSnapModel {
     }
 
     func arm(snapAt: Double, client: ConvexClient, token: String, frolicId: String, clockOffset: Double, onDone: @escaping (UIImage) -> Void) {
-        guard armedSnapAt != snapAt, stage != .done || snapAt > (armedSnapAt ?? 0) else { return }
-        let localFire = (snapAt - clockOffset) / 1000
-        guard localFire > Date().timeIntervalSince1970 - 0.9 else { return }
+        guard armedSnapAt != snapAt, stage != .done || snapAt > (armedSnapAt ?? 0) else {
+            if stage == .starting { stage = .counting }
+            return
+        }
+        let now = Date().timeIntervalSince1970
+        var localFire = (snapAt - clockOffset) / 1000
+        if localFire < now - 0.9 {
+            guard localFire > now - 110, stage == .starting else {
+                if stage == .starting { stage = .failed("The snap window closed. Start it again together.") }
+                return
+            }
+            localFire = now + 0.4
+        }
+        localFire = min(localFire, now + 6)
         armedSnapAt = snapAt
         task?.cancel()
         stage = .counting
@@ -79,23 +90,25 @@ final class GroupSnapModel {
                     haptic.impactOccurred(intensity: 0.5)
                     haptic.prepare()
                 }
-                let step = remaining > 0.3 ? min(remaining - 0.25, 0.05) : 0.002
+                let step = remaining > 0.3 ? min(remaining - 0.25, 0.05) : remaining - 0.004
                 try? await Task.sleep(nanoseconds: UInt64(max(step, 0.001) * 1_000_000_000))
             }
             guard !Task.isCancelled else { return }
-            while Date().timeIntervalSince1970 < localFire { }
             let fired = Date().timeIntervalSince1970
             let pending = camera.trigger()
             fireDeltaMs = (fired - localFire) * 1000
             haptic.impactOccurred(intensity: 1)
             flash = true
+            Task {
+                try? await Task.sleep(nanoseconds: 140_000_000)
+                flash = false
+            }
             let image: UIImage?
             if let pending {
                 image = await pending.value
             } else {
                 image = libraryShot ?? Self.stillFrame()
             }
-            flash = false
             guard let image else {
                 stage = .failed("The camera didn't catch it. Try again together.")
                 return

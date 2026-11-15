@@ -74,7 +74,7 @@ struct CheckInFlowScreen: View {
                     }
                 }
             )
-            .presentationDetents([.height(250), .medium])
+            .presentationDetents([.fraction(0.34), .large])
             .presentationCornerRadius(38)
             .presentationBackground(Color(hex: 0xFFFCF7, opacity: 0.96))
         }
@@ -146,10 +146,7 @@ struct CheckInFlowPresenter: ViewModifier {
 
     private func sync(_ route: E2ERoute?) {
         guard let route, route.screen == "otw" || route.screen == "checkin" else { return }
-        coordinator.isPresented = false
-        Task { @MainActor in
-            coordinator.open(frolicId: route.argument)
-        }
+        if !coordinator.isPresented { coordinator.open(frolicId: route.argument) }
     }
 }
 
