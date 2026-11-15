@@ -287,10 +287,12 @@ describe("share signals", () => {
     expect((await t.run(async (ctx) => await ctx.db.get("shares", released)))?.lastError).toBeUndefined();
   });
 
-  test("an unanswered hold is waived and its person comes out of the plan", async () => {
+  test("an unanswered hold is waived at the plan's leave time and its person comes out of the plan", async () => {
     const t = makeT();
     const state = await live(t);
     const shareId = await share(t, state, state.ids.Maya, { status: "due", updatedAt: NOON - 11 * MINUTE });
+    const frolic = await t.run(async (ctx) => await ctx.db.get("frolics", state.frolicId));
+    vi.setSystemTime(Math.max(NOON, (frolic?.startsAt ?? NOON) - 8 * MINUTE));
 
     await t.mutation(internal.whop.money.confirmExpired, { shareId });
     expect(await t.run(async (ctx) => await ctx.db.get("shares", shareId))).toMatchObject({ status: "waived" });
