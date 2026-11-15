@@ -29,11 +29,12 @@ const ONLY_IF_TITLE = constant("ONLY_IF_TITLE");
 
 const BINARY = /\.(png|jpe?g|gif|webp|avif|heic|ico|icns|ttf|otf|woff2?|mp4|mov|pdf|zip|gz|jar|mp3|wav)$/i;
 const SKIP = new Set(["package-lock.json", "e2e/tools/copy-lint.mjs"]);
+const SKIP_PREFIX = ["e2e/reports/"];
 
 const files = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
   .split("\n")
   .filter(Boolean)
-  .filter((file) => !BINARY.test(file) && !SKIP.has(file));
+  .filter((file) => !BINARY.test(file) && !SKIP.has(file) && !SKIP_PREFIX.some((prefix) => file.startsWith(prefix)));
 
 const OLD_PHRASES = [
   {
