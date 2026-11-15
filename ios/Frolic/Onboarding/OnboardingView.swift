@@ -64,7 +64,7 @@ struct OnboardingGate<Content: View>: View {
     private var forcesOnboarding: Bool {
         #if DEBUG || E2E
         guard let route = router.e2eRoute else { return false }
-        return ["join", "name", "taste", "reading", "calendar"].contains(route.screen)
+        return ["join", "name", "share", "taste", "reading", "calendar"].contains(route.screen)
         #else
         return false
         #endif
@@ -72,7 +72,7 @@ struct OnboardingGate<Content: View>: View {
 
     private func rebuild() {
         #if DEBUG || E2E
-        if let route = router.e2eRoute, ["join", "name", "taste", "reading", "calendar"].contains(route.screen) {
+        if let route = router.e2eRoute, ["join", "name", "share", "taste", "reading", "calendar"].contains(route.screen) {
             model = makeModel(seed: .init(screen: route.screen, state: route.state, query: route.query), link: nil)
             return
         }

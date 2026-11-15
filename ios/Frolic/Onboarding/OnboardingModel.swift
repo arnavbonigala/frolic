@@ -126,6 +126,9 @@ final class OnboardingModel {
             }
             firstName = seed.query["name"] ?? ""
             preview = Self.demoPreview
+        case .share:
+            createdInviteCode = seed.query["code"] ?? "DEMO2468"
+            preview = Self.demoPreview
         case .taste, .reading:
             preview = Self.demoPreview
             photos = TasteLibrary.demoPhotos
