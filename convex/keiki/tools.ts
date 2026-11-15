@@ -7,6 +7,7 @@ import {
   DEFAULT_WALK_MINUTES,
   crewMembers,
   crewOf,
+  crewsOf,
   currentFrolic,
   firstName,
   goingAttendees,
@@ -37,7 +38,7 @@ import {
 
 const SECRET_LINE = "Nobody sees you're down unless they are too. That goes for you as well.";
 
-type Who = { user: Doc<"users">; link: Doc<"keikiLinks">; group: Doc<"groups"> };
+type Who = { user: Doc<"users">; link: Doc<"keikiLinks">; group: Doc<"groups">; crews: Doc<"groups">[] };
 
 async function who(ctx: QueryCtx, phone: string): Promise<Who | null> {
   const link = await linkForPhone(ctx, phone);
@@ -46,7 +47,8 @@ async function who(ctx: QueryCtx, phone: string): Promise<Who | null> {
   if (!user) return null;
   const crew = await crewOf(ctx, user._id);
   if (!crew) return null;
-  return { user, link, group: crew.group };
+  const crews = await crewsOf(ctx, user._id);
+  return { user, link, group: crew.group, crews: crews.map((row) => row.group) };
 }
 
 const notMember = { ok: false, error: "not_in_a_crew", say: "Ask for their first name and the invite code from their first message, then call join_crew. If they have no code, say a friend in the crew sends the link, in one line." };
@@ -92,6 +94,7 @@ export const getMember = internalQuery({
       member: true,
       name: firstName(me.user.name),
       crew: me.group.name,
+      ...(me.crews.length > 1 ? { crews: me.crews.map((group) => group.name) } : {}),
       friends: uniqueFirstNames(members.filter((m) => m._id !== me.user._id)),
       paused: me.link.paused,
       groupId: me.group._id,
@@ -130,7 +133,17 @@ export const getToday = internalQuery({
     }
     const mine = await ownAnswer(ctx, frolic._id, me.user._id);
     const say = phase === "faded" ? FADED_SAY : phase === "done" ? DONE_SAY : undefined;
-    return { ok: true, plan: details.view, phase, yourAnswer: mine.answer, onlyWith: mine.onlyWith, ...(say ? { say } : {}) };
+    const crews = me.crews.map((row) => row.name);
+    return {
+      ok: true,
+      plan: details.view,
+      phase,
+      crew: group.name,
+      ...(crews.length > 1 ? { crews } : {}),
+      yourAnswer: mine.answer,
+      onlyWith: mine.onlyWith,
+      ...(say ? { say } : {}),
+    };
   },
 });
 

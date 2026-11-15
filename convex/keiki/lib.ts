@@ -94,15 +94,26 @@ export async function linkForPhone(ctx: QueryCtx, phone: string) {
     .unique();
 }
 
-export async function crewOf(ctx: QueryCtx, userId: Id<"users">) {
-  const membership = await ctx.db
+export async function crewsOf(ctx: QueryCtx, userId: Id<"users">) {
+  const memberships = await ctx.db
     .query("memberships")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .order("desc")
-    .first();
-  if (!membership) return null;
-  const group = await ctx.db.get("groups", membership.groupId);
-  return group ? { membership, group } : null;
+    .take(20);
+  const crews = [];
+  for (const membership of memberships) {
+    const group = await ctx.db.get("groups", membership.groupId);
+    if (group) crews.push({ membership, group });
+  }
+  return crews;
+}
+
+export async function crewOf(ctx: QueryCtx, userId: Id<"users">, groupId?: Id<"groups">) {
+  const crews = await crewsOf(ctx, userId);
+  if (groupId) {
+    const named = crews.find((crew) => crew.group._id === groupId);
+    if (named) return named;
+  }
+  return crews[crews.length - 1] ?? null;
 }
 
 export async function crewMembers(ctx: QueryCtx, groupId: Id<"groups">) {
