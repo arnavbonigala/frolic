@@ -38,7 +38,7 @@ struct FrolicLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 10) {
-                        GoingFaces(going: context.state.going, radius: 9)
+                        GoingFaces(going: context.state.going, radius: 11)
                         Spacer(minLength: 8)
                         ActivityAction(stage: context.state.stage)
                     }

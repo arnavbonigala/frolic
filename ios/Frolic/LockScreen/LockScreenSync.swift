@@ -56,6 +56,7 @@ final class LockScreenSync {
         if let minutes = LiveActivityController.walkMinutes(to: snapshot) {
             SharedSession.walkMinutes = minutes
         }
+        await LockScreenStore.cachePortraits(snapshot.revealGated(at: .now).going)
         await LiveActivityController.sync(with: snapshot, etas: await etas(for: snapshot))
         await DropNotifications.scheduleNext(snapshot: snapshot)
         if let delay = snapshot.revealAt.map({ $0.timeIntervalSinceNow }), delay > 0 {
