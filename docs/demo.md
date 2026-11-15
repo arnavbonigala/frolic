@@ -150,7 +150,7 @@ Status was re-read from the repository at 19:20 UTC on Nov 15 2026, against `mai
 - Scheduler and crons for the daily drop and the fade: `convex/crons.ts` calls `registerPlanCrons` in `convex/plans/crons.ts`.
 - File storage for the group snap, one `_storage` id per shot in `convex/schema.ts` and the collage row beside it.
 - HTTP actions for the web "I'm down" page, the Whop webhook and the Keiki routes: `convex/http.ts` registers `convex/web/routes.ts`, `convex/whop/routes.ts` and `convex/keiki/routes.ts`. The router is the schema lane's file; each lane fills its own. The web page is written (PR #5): one route serves the seed packet card, a first-name field and a secret yes, and the page flips live over its own subscription when the match lands.
-- Tests everywhere: vitest and convex-test, one suite per function. On `main` that is 128 tests in 10 files, one skipped because it is the live Supermemory proof. The two that matter on stage are the matcher's race cases, two taps in the same instant revealing exactly once, and the secrecy suite, which fails if any client query can read a tap.
+- Tests everywhere: vitest and convex-test, one suite per function. On `main` that is 168 tests in 13 files, one skipped because it is the live Supermemory proof. The two that matter on stage are the matcher's race cases, two taps in the same instant revealing exactly once, and the secrecy suite, which fails if any client query can read a tap.
 
 **Where it lives.** `convex/schema.ts` (33 tables), `convex/convex.config.ts`, `convex/http.ts`, `convex/crons.ts`, `convex/lib/matcher.ts`, `convex/taps.ts`, `convex/reveal.ts`, `convex/frolics.ts`, `convex/crew.ts`, `convex/daily.ts`, `convex/clock.ts`, `convex/checkins.ts`, `convex/etas.ts`, `convex/snaps.ts`, `convex/limits.ts`, `convex/users.ts`, `convex/e2e/routes.ts` and `convex/e2e/admin.ts` (the seed, reset and reveal log the Revyl flows call, refused unless `E2E_SECRET` is set), `convex/memory/`, `convex/whop/`, `convex/keiki/`, `convex/web/`. Plan generation lands at `convex/plans/engine.ts`, `time.ts`, `travel.ts`, `weather.ts` and `memoryContext.ts` on branch `plans-drop`.
 
@@ -253,7 +253,7 @@ What is still missing for beat 13 is the join. Plan generation is not written ye
 
 **Where it lives.** There is no Capy code in this repository, by design. The trail is the artifact: the pull requests, their replays, and `reports/` in the Captain Drive.
 
-**The moment.** At t70 the pull requests on screen, twelve of them in one afternoon, with the day's reports behind them and the Revyl flows in the repo. The claim is that every screen arrived as a reviewed change with its proof attached, and that the flows which record each one on a real iPhone are written and waiting on the first build.
+**The moment.** At t70 the pull requests on screen, eighteen of them in one afternoon, with the day's reports behind them and the Revyl flows in the repo. The claim is that every screen arrived as a reviewed change with its proof attached, and that the flows which record each one on a real iPhone are written and waiting on the first build.
 
 **Status.** Every row above is a live pull request today. The trail is public and it is the only sponsor claim in this script that needs no rehearsal.
 
