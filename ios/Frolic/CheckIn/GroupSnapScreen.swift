@@ -28,7 +28,7 @@ struct GroupSnapScreen: View {
 
     var body: some View {
         ZStack {
-            viewfinder
+            Color.clear
             switch shown {
             case .ready:
                 content
@@ -40,8 +40,10 @@ struct GroupSnapScreen: View {
                 .animation(.easeOut(duration: 0.35), value: model.flash)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
+                .ignoresSafeArea()
         }
-        .ignoresSafeArea()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(viewfinder)
         .accessibilityIdentifier("checkin.screen")
         .sensoryFeedback(.success, trigger: model.stage == .done)
         .task {
@@ -63,18 +65,25 @@ struct GroupSnapScreen: View {
         }
     }
 
-    @ViewBuilder
     private var viewfinder: some View {
+        Color.black
+            .overlay { viewfinderImage }
+            .clipped()
+            .ignoresSafeArea()
+    }
+
+    @ViewBuilder
+    private var viewfinderImage: some View {
         if let photo = model.photo, model.stage == .uploading || model.stage == .done {
-            Image(uiImage: photo).resizable().scaledToFill().ignoresSafeArea().accessibilityHidden(true)
+            Image(uiImage: photo).resizable().scaledToFill().accessibilityHidden(true)
         } else if let shot = model.libraryShot {
-            Image(uiImage: shot).resizable().scaledToFill().ignoresSafeArea().accessibilityHidden(true)
+            Image(uiImage: shot).resizable().scaledToFill().accessibilityHidden(true)
         } else if model.camera.mode == .ready {
-            CameraPreview(session: model.camera.session).ignoresSafeArea().accessibilityLabel("Camera view")
+            CameraPreview(session: model.camera.session).accessibilityLabel("Camera view")
         } else if usesStill, let still = UIImage(named: "plan-sunsets") ?? UIImage(named: "hills_sunset") {
-            Image(uiImage: still).resizable().scaledToFill().ignoresSafeArea().accessibilityLabel("Camera view")
+            Image(uiImage: still).resizable().scaledToFill().accessibilityLabel("Camera view")
         } else {
-            Color(hex: 0x1C1310).ignoresSafeArea()
+            Color(hex: 0x1C1310)
         }
     }
 
@@ -110,14 +119,14 @@ struct GroupSnapScreen: View {
     private var topBar: some View {
         HStack {
             Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(FrolicColor.ink)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(.white.opacity(0.8)))
+                Text("Back")
+                    .frolicFont(.pill)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                    .background(Capsule().fill(Color(hex: 0x140E0A, opacity: 0.6)))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Back")
             .accessibilityIdentifier("checkin.back")
             Spacer()
             Button(action: onSkip) {
@@ -132,7 +141,7 @@ struct GroupSnapScreen: View {
             .accessibilityIdentifier("checkin.skip")
         }
         .padding(.horizontal, 18)
-        .padding(.top, 60)
+        .padding(.top, 8)
     }
 
     private var snapCard: some View {
@@ -147,7 +156,7 @@ struct GroupSnapScreen: View {
                 Text("You're all here")
                     .font(.system(.body, design: .rounded, weight: .bold))
                     .foregroundStyle(.white)
-                Text("Group snap fires every phone at the same second. You'll see their shots once you add yours.")
+                Text("You'll see theirs once you add yours.")
                     .font(.footnote)
                     .foregroundStyle(.white.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
@@ -178,9 +187,9 @@ struct GroupSnapScreen: View {
         .accessibilityIdentifier("checkin.snap")
         .padding(.horizontal, 18)
         .padding(.top, 24)
-        .padding(.bottom, 40)
+        .padding(.bottom, 12)
         .frame(maxWidth: .infinity)
-        .background(Color.black.opacity(0.55))
+        .background(Color.black.opacity(0.55).ignoresSafeArea(edges: .bottom))
     }
 
     private var uploadingCard: some View {
@@ -202,7 +211,7 @@ struct GroupSnapScreen: View {
     private var cameraOffCard: some View {
         darkCard(
             title: "The camera is off",
-            message: "",
+            message: "Turn it on in Settings.",
             identifier: "checkin.cameraOff"
         ) {
             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -354,7 +363,7 @@ struct OnDarkPhase: View {
         }
         .padding(.horizontal, 30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(hex: 0x1C1310))
+        .background(Color(hex: 0x1C1310).ignoresSafeArea())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("state.\(phase.name.lowercased())")
     }

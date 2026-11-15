@@ -67,19 +67,12 @@ struct SnapCollage: View {
                 .padding(.top, 66)
                 .padding(.horizontal, 18)
                 press
-                if !reduceMotion {
-                    Text("Tilt your phone to look around")
-                        .font(.system(.caption, weight: .semibold))
-                        .foregroundStyle(FrolicColor.secondaryText)
-                        .padding(.top, 6)
-                        .accessibilityIdentifier("checkin.tiltHint")
-                }
                 Text(caption)
                     .font(.system(.subheadline, design: .default, weight: .bold))
                     .foregroundStyle(FrolicColor.ink)
                     .padding(.top, 6)
                     .accessibilityIdentifier("checkin.polaroid")
-                Text("Taken at the same second on \(people.count) phones. Nobody saw the others until they added theirs.")
+                Text(shotCount > 1 ? "Taken at the same second on \(shotCount) phones." : "Theirs appear here as they add them.")
                     .frolicFont(.footnote)
                     .foregroundStyle(FrolicColor.secondaryText)
                     .multilineTextAlignment(.center)
@@ -117,6 +110,10 @@ struct SnapCollage: View {
         .onDisappear { motion.stop() }
     }
 
+    private var shotCount: Int {
+        max(1, store.snaps.count)
+    }
+
     private var caption: String {
         let place = store.placeName
         let day = CheckInClock.day(store.reveal?.startsAt ?? Date().timeIntervalSince1970 * 1000)
@@ -130,7 +127,7 @@ struct SnapCollage: View {
             ZStack(alignment: .topLeading) {
                 ForEach(Array(people.prefix(3).enumerated()), id: \.element.id) { index, person in
                     polaroid(person: person, index: index)
-                        .frame(width: width * 0.62)
+                        .frame(width: width * 0.56)
                         .offset(x: offsetX(index: index, width: width), y: offsetY(index: index))
                         .offset(x: motion.roll * depth(index), y: -motion.pitch * depth(index))
                         .rotationEffect(.degrees(rotation(index: index)), anchor: .center)
@@ -144,7 +141,7 @@ struct SnapCollage: View {
             .rotation3DEffect(.degrees(motion.roll), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
         }
         .frame(height: 372)
-        .padding(.horizontal, 30)
+        .padding(.horizontal, 26)
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 30, style: .continuous)
@@ -158,8 +155,8 @@ struct SnapCollage: View {
     private func offsetX(index: Int, width: CGFloat) -> CGFloat {
         switch index {
         case 0: 0
-        case 1: width - width * 0.62
-        default: width * 0.18
+        case 1: width - width * 0.56
+        default: width * 0.2
         }
     }
 
@@ -167,12 +164,12 @@ struct SnapCollage: View {
         switch index {
         case 0: 0
         case 1: 24
-        default: 132
+        default: 112
         }
     }
 
     private func depth(_ index: Int) -> Double {
-        [1.1, 0.35, -0.45][min(index, 2)]
+        [0.5, 0.2, -0.25][min(index, 2)]
     }
 
     private func rotation(index: Int) -> Double {

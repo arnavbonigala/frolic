@@ -103,7 +103,7 @@ final class CheckInStore {
             if checkedIn { return "Here" }
             return myMinutes.map { $0 <= 0 ? "Here" : "\($0) min away" } ?? "On the way"
         }
-        guard let row = eta(for: person) else { return "On the way" }
+        guard let row = eta(for: person) else { return "Going" }
         return isHere(row) ? "Here" : "\(Int(row.minutes)) min away"
     }
 

@@ -32,7 +32,7 @@ struct OnTheWayScreen: View {
                             copy: PlaceholderCopy(
                                 loading: "Finding everyone",
                                 emptyTitle: "Nothing to walk to",
-                                emptyMessage: "No plan is on right now.",
+                                emptyMessage: "Everyone's walk shows up here.",
                                 emptyAction: "Back to today",
                                 errorTitle: "Couldn't follow today's frolic"
                             ),
@@ -98,13 +98,22 @@ struct OnTheWayScreen: View {
                     .padding(.horizontal, 4)
                     .accessibilityIdentifier("otw.error")
             }
-            Button("I'm here") {
-                store.checkIn(method: watcher.arrived ? "geofence" : "manual")
-            }
-            .buttonStyle(.frolicPrimary)
+            if watcher.permission != .granted {
+                Button("I'm here") {
+                    store.checkIn(method: "manual")
+                }
+                .buttonStyle(.frolicPrimary)
             .sensoryFeedback(.success, trigger: store.checkedIn)
             .padding(.top, 20)
             .accessibilityIdentifier("otw.here")
+            } else {
+                Text("You'll be checked in when you arrive.")
+                    .frolicFont(.footnote)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 20)
+                    .accessibilityIdentifier("otw.autoCheckIn")
+            }
             Button("I can't make it", action: onBail)
                 .buttonStyle(.frolicText)
                 .frame(maxWidth: .infinity)
@@ -129,6 +138,7 @@ struct OnTheWayScreen: View {
                 }
                 .buttonStyle(.plain)
                 .frame(minHeight: 44)
+                .contentShape(Rectangle())
                 .accessibilityIdentifier("otw.directions")
             }
         }
