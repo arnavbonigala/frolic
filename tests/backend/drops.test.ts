@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { api, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import { DROP_BOOST, generatePlan, rankCandidates, validatePlan, type Attendee, type DropInput, type DropOffer } from "./plans/engine";
-import { EMPTY_MEMORY } from "./plans/memoryContext";
-import { localTimeToMs } from "./plans/time";
-import { HOUR, NOON, flipDue, makeT, setupCrew, tap, token, type Crew, type T } from "./tests/setup.helpers";
+import { api, internal } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { DROP_BOOST, generatePlan, rankCandidates, validatePlan, type Attendee, type DropInput, type DropOffer } from "../../convex/plans/engine";
+import { EMPTY_MEMORY } from "../../convex/plans/memoryContext";
+import { localTimeToMs } from "../../convex/plans/time";
+import { HOUR, NOON, flipDue, makeT, setupCrew, tap, token, type Crew, type T } from "./setup.helpers";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -384,5 +384,39 @@ describe("the drop step reads live offers", () => {
     expect(plan?.dropId).toBe(kayakId);
     expect(plan?.cost).toBe(8);
     expect(plan?.why).toBe("Cal Kayak Club has 12 seats at golden hour.");
+  });
+});
+
+describe("drop internals", () => {
+  test("upsert keeps one row per key and byKey reads its Whop ids", async () => {
+    const t = makeT();
+    const spec = {
+      key: "k",
+      sellerName: "Cal Kayak Club",
+      title: "Sunset kayaks",
+      priceCents: 800,
+      capacity: 12,
+      placeSlug: "berkeley-marina",
+      tags: ["water"],
+      imageKey: "plan-sunsets",
+      validDays: [6],
+      startMinute: 900,
+      endMinute: 1140,
+      durationMinutes: 90,
+    };
+    expect(await t.query(internal.drops.byKey, { key: "k" })).toBeNull();
+    const a = await t.mutation(internal.drops.upsert, { ...spec, whopProductId: "prod_a", whopPlanId: "plan_a" });
+    const b = await t.mutation(internal.drops.upsert, { ...spec, priceCents: 900, whopProductId: "prod_a", whopPlanId: "plan_b", purchaseUrl: "https://sandbox.whop.com/checkout/plan_b" });
+    expect(b).toBe(a);
+    expect(await t.query(internal.drops.byKey, { key: "k" })).toEqual({ whopProductId: "prod_a", whopPlanId: "plan_b", purchaseUrl: "https://sandbox.whop.com/checkout/plan_b" });
+    expect((await t.run(async (ctx) => await ctx.db.get("drops", a)))?.priceCents).toBe(900);
+  });
+
+  test("chargeTarget names the seller's product only for a drop plan", async () => {
+    const t = makeT();
+    const { crew, dropId } = await dropCrew(t, 0);
+    expect(await t.query(internal.drops.chargeTarget, { frolicId: crew.frolicId })).toEqual({ productId: "prod_kayaks", planId: "plan_kayaks", priceCents: 800, dropId });
+    const plain = await setupCrew(t, ["Priya", "Sam"]);
+    expect(await t.query(internal.drops.chargeTarget, { frolicId: plain.frolicId })).toBeNull();
   });
 });
