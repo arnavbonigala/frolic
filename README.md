@@ -7,18 +7,17 @@
 <p align="center"><b>Frolic plans hangouts for your friend group, so nobody has to ask, nobody has to decide, and nobody flakes.</b></p>
 
 <p align="center">
-  <img src="docs/screens/welcome.png" width="180" alt="Welcome screen">
-  <img src="docs/screens/today.png" width="180" alt="Today: one plan for the crew">
-  <img src="docs/screens/on.png" width="180" alt="It's on: the reveal">
-  <img src="docs/screens/crew.png" width="180" alt="Crew: who is free today">
-  <img src="docs/screens/garden.png" width="180" alt="Garden: every hangout you went to">
+  <img src="docs/screens/today.png" width="190" alt="Today: one plan for the crew">
+  <img src="docs/screens/on.png" width="190" alt="It's on: the reveal">
+  <img src="docs/screens/crew.png" width="190" alt="Crew: who is free today">
+  <img src="docs/screens/garden.png" width="190" alt="Garden: every hangout you went to">
 </p>
 
 ## The problem
 
 Your group chat says "we should hang out" every week, and you never do. Nobody wants to be the one who asks. Nobody can pick what to do. When a plan does happen, someone drops out an hour before.
 
-We interviewed 100 people about making plans with friends, and read 1,446 TikTok comments on the same topic. Those three pains came up again and again.
+In the week before the hackathon, we interviewed 100 people about making plans with friends, and read 1,446 TikTok comments on the same topic. Those three pains came up again and again.
 
 ## How it works
 
