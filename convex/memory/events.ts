@@ -15,6 +15,7 @@ export const eventKind = v.union(
   v.literal("checkin"),
   v.literal("snap"),
   v.literal("group_skip"),
+  v.literal("daily_pick"),
 );
 
 export const eventSource = v.union(v.literal("app"), v.literal("web"), v.literal("notification"), v.literal("imessage"));

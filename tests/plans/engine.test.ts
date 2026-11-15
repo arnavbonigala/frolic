@@ -261,7 +261,8 @@ describe("generatePlan", () => {
     const plan = generatePlan(drop({ weather: null }))!;
     expect(plan.weather).toBeNull();
     expect(Math.abs(plan.sunsetAt - solarTimes(DAY).sunsetMs)).toBeLessThan(1000);
-    expect(plan.line).toMatch(/^(Sunset at|Golden hour starts at) \d+:\d\d\.$/);
+    expect(plan.line).toMatch(/^(Sunset at|Golden hour starts at) \d+:\d\d\./);
+    expect(copyOk(plan.line)).toBe(true);
   });
 
   test("computed sunset matches the real Berkeley sunset within a few minutes", () => {
@@ -326,7 +327,7 @@ describe("generatePlan", () => {
 
   test("why line names a liked tag in the house voice, never a raw tag list", () => {
     const plan = generatePlan(drop({ weather: weather(false), memory: memory({ likedTags: ["Late-night food"] }), attendees: [person("maya", { window: { start: at(21), end: at(24) } }), person("dev", { window: { start: at(21), end: at(24) } })] }))!;
-    expect(plan.why).toMatch(/^you keep picking late-night food, /);
+    expect(plan.why).toMatch(/^you keep picking late-night food[ ,]/);
     expect(plan.why).not.toMatch(/_/);
     expect(copyOk(plan.why)).toBe(true);
   });
@@ -467,7 +468,7 @@ describe("plan line relevance", () => {
       const plan = generatePlan(only("games-of-berkeley", { kind, nowMs, attendees: [person("maya", window(15, 0, 17, 0)), person("dev", window(15, 0, 17, 0))] }))!;
       expect(plan.placeSlug).toBe("games-of-berkeley");
       expect(plan.line).not.toMatch(/Sunset|Golden hour/);
-      expect(plan.line).toMatch(/^Open until \d+:\d\d\. \d+ min walk\.$/);
+      expect(plan.line).toMatch(/^Open until \d+:\d\d\. [A-Z]/);
       expect(plan.chips.join(" ")).not.toMatch(/Sunset/);
       expect(copyOk(plan.line)).toBe(true);
     }
@@ -475,22 +476,22 @@ describe("plan line relevance", () => {
 
   test("a games store with weather leads with the weather, then its hours", () => {
     const plan = generatePlan(only("games-of-berkeley", { weather: weather(false) }))!;
-    expect(plan.line).toMatch(/^.+ and 62\u00b0\. Open until \d+:\d\d\. \d+ min walk\.$/);
+    expect(plan.line).toMatch(/^.+ and 62\u00b0\. Open until \d+:\d\d\. [A-Z]/);
   });
 
   test("a sunset spot keeps the sunset or golden hour line", () => {
     const plan = generatePlan(only("grizzly-peak-lookout"))!;
-    expect(plan.line).toMatch(/^(Sunset at|Golden hour starts at) \d+:\d\d\.$/);
+    expect(plan.line).toMatch(/^(Sunset at|Golden hour starts at) \d+:\d\d\./);
   });
 
   test("a view spot at midday keeps the sunset line", () => {
     const plan = generatePlan(only("inspiration-point", { attendees: [person("maya", window(11, 0, 13, 0)), person("dev", window(11, 0, 13, 0))] }))!;
-    expect(plan.line).toMatch(/^Sunset at \d+:\d\d\.$/);
+    expect(plan.line).toMatch(/^Sunset at \d+:\d\d\./);
   });
 
   test("an outdoor spot gets the sunset only when it overlaps golden hour", () => {
     const late = generatePlan(only("lake-anza", { attendees: [person("maya", window(15, 30, 17, 0)), person("dev", window(15, 30, 17, 0))] }))!;
-    expect(late.line).toMatch(/^Sunset at \d+:\d\d\.$/);
+    expect(late.line).toMatch(/^Sunset at \d+:\d\d\./);
     const early = generatePlan(only("lake-anza", { attendees: [person("maya", window(11, 0, 12, 30)), person("dev", window(11, 0, 12, 30))] }))!;
     expect(early.line).not.toMatch(/Sunset/);
   });

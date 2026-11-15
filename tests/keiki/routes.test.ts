@@ -1010,7 +1010,8 @@ describe("im_free", () => {
     testEnv().KEIKI_IM_FREE = "1";
     vi.setSystemTime(new Date(nowFor()));
     const t = makeT();
-    await seedCrew(t);
+    const seed = await seedCrew(t);
+    await t.run((ctx) => ctx.db.patch(seed.frolicId, { window: { start: seed.now + 5 * 3_600_000, end: seed.now + 8 * 3_600_000 } }));
     const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
     expect(result.body).toMatchObject({ ok: true, started: true });
     expect(JSON.stringify(result.body)).not.toContain("Sam");
