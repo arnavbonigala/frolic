@@ -31,7 +31,7 @@ final class GardenStore {
             phase = .error(BackendError.notConfigured.localizedDescription)
             return
         }
-        guard let identity = GardenIdentity.resolve(route: route) else {
+        guard let identity = GardenIdentity.resolve() else {
             phase = .empty
             return
         }
@@ -81,7 +81,7 @@ final class GardenStore {
             memoryPhase = .error(BackendError.notConfigured.localizedDescription)
             return
         }
-        guard let identity = GardenIdentity.resolve(route: route) else {
+        guard let identity = GardenIdentity.resolve() else {
             memoryPhase = .error("Check your connection and try again.")
             return
         }
