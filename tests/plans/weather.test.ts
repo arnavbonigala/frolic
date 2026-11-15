@@ -68,3 +68,78 @@ describe("open meteo", () => {
     expect(day.hourly).toHaveLength(4);
   });
 });
+
+describe("the group's own day", () => {
+  test("asks open meteo for the local day so the evening is covered", () => {
+    const url = openMeteoUrl(DAY);
+    expect(url).toContain("timezone=America%2FLos_Angeles");
+    expect(url).toContain("start_date=" + DAY);
+    expect(url).toContain("end_date=" + DAY);
+    const localDay = (day: string) =>
+      Array.from({ length: 24 }, (_, hour) => localTimeToMs(day, hour * 60) / 1000);
+    const hours = localDay(DAY);
+    const parsed = parseOpenMeteo({
+      hourly: {
+        time: hours,
+        temperature_2m: hours.map(() => 57),
+        precipitation_probability: hours.map(() => 0),
+        weather_code: hours.map(() => 0),
+        cloud_cover: hours.map(() => 20),
+      },
+      daily: { sunrise: [localTimeToMs(DAY, 6 * 60 + 49) / 1000], sunset: [localTimeToMs(DAY, 16 * 60 + 58) / 1000] },
+    });
+    for (const minute of [4 * 60, 9 * 60, 16 * 60 + 58, 18 * 60, 20 * 60, 23 * 60]) {
+      expect(hourAt(parsed, localTimeToMs(DAY, minute))).not.toBeNull();
+    }
+    expect(hourAt(parsed, parsed.sunsetMs)?.tempF).toBe(57);
+  });
+
+  test("the sunset hour carries the rain a plan needs to see", () => {
+    const body = {
+      hourly: {
+        time: [localTimeToMs(DAY, 12 * 60) / 1000, localTimeToMs(DAY, 17 * 60) / 1000],
+        temperature_2m: [55, 53],
+        precipitation_probability: [10, 90],
+        weather_code: [1, 63],
+        cloud_cover: [20, 95],
+      },
+      daily: { sunrise: [localTimeToMs(DAY, 6 * 60 + 49) / 1000], sunset: [localTimeToMs(DAY, 16 * 60 + 58) / 1000] },
+    };
+    const parsed = parseOpenMeteo(body);
+    expect(isRainy(hourAt(parsed, parsed.sunsetMs))).toBe(true);
+  });
+});
+
+describe("a forecast with holes", () => {
+  test("an hour the feed leaves blank is missing, not sixty degrees", () => {
+    const holed = body();
+    holed.hourly.temperature_2m[1] = null as unknown as number;
+    const parsed = parseOpenMeteo(holed);
+    expect(parsed.hourly.map((h) => h.tempF)).toEqual([58, 62, 61]);
+    expect(parsed.hourly.some((h) => h.timeMs === localTimeToMs(DAY, 16 * 60))).toBe(false);
+  });
+
+  test("an hour with no cloud cover is missing", () => {
+    const holed = body();
+    holed.hourly.cloud_cover[3] = null as unknown as number;
+    expect(parseOpenMeteo(holed).hourly).toHaveLength(3);
+  });
+
+  test("a body with no usable hour throws rather than inventing weather", () => {
+    expect(() =>
+      parseOpenMeteo({
+        hourly: { time: [localTimeToMs(DAY, 15 * 60) / 1000], temperature_2m: [null], weather_code: [0], cloud_cover: [10], precipitation_probability: [0] },
+        daily: { sunrise: [1], sunset: [2] },
+      }),
+    ).toThrow(/no usable hours/);
+  });
+
+  test("a null body throws", async () => {
+    const empty = vi.fn(async () => new Response("null", { status: 200 }));
+    await expect(fetchWeather(DAY, empty as unknown as typeof fetch)).rejects.toThrow(/no hourly data/);
+  });
+
+  test("a failed read leaves no weather at all", () => {
+    expect(hourAt(null, localTimeToMs(DAY, 18 * 60))).toBeNull();
+  });
+});
