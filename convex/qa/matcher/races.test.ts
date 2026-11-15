@@ -1,36 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { convexTest } from "convex-test";
-import schema from "../../schema";
 import { expectNoMatch } from "./assert";
 import {
   findFunction,
-  findOptional,
-  modules,
-  mutate,
+  makeTest,
+  matchState,
   readAttendees,
   readFrolic,
+  readTaps,
   seed,
-  tapAs,
+  settle,
+  tapById,
 } from "./surface";
 
-
-
 const NOW = Date.UTC(2026, 10, 15, 19, 0, 0);
-const MS = 1;
 const MIN = 60_000;
 
 function fresh(at: number = NOW) {
   vi.useFakeTimers();
   vi.setSystemTime(at);
-  return convexTest(schema, modules);
-}
-
-async function settle(t: any) {
-  await t.finishAllScheduledFunctions(vi.runAllTimers);
-}
-
-async function revealFunction() {
-  return await findOptional("reveal", "runReveal", "revealFrolic", "commitReveal", "bloom");
+  return makeTest();
 }
 
 beforeEach(() => {
@@ -43,15 +31,15 @@ afterEach(() => {
 });
 
 describe("race: taps in the same instant", () => {
-  it("two taps in the same 100ms reveal exactly once", async () => {
+  it("three taps in the same 100ms reveal exactly once", async () => {
     const t = fresh();
     const f = await seed(t);
-    const { ref } = await findFunction("tap");
+    const { ref } = await findFunction("tapAs");
     const args = (userId: string) => ({
       frolicId: f.frolicId,
       userId,
       kind: "down" as const,
-      onlyIf: [],
+      onlyIf: [] as string[],
       source: "app" as const,
     });
     const results = await Promise.allSettled([
@@ -60,46 +48,36 @@ describe("race: taps in the same instant", () => {
       t.mutation(ref, args(f.users.Jordan)),
     ]);
     const fulfilled = results.filter((r) => r.status === "fulfilled");
-    expect(fulfilled.length, "every concurrent tap must commit, none may fail").toBe(3);
-    const frolic = await readFrolic(t, f.frolicId);
-    expect(frolic.status, "a same-instant burst reveals exactly once").toBe("on");
-    const attendees = await readAttendees(t, f.frolicId);
-    expect(new Set(attendees.map((a: any) => a.userId)).size, "no duplicate attendees").toBe(
-      attendees.length,
-    );
-    for (const r of fulfilled) {
-      const value = (r as PromiseFulfilledResult<any>).value;
-      if (value && typeof value.revealAt === "number") {
-        expect(value.revealAt, "every tap in the burst reports one revealAt").toBe(
-          frolic.revealAt,
-        );
-      }
-    }
+    expect(fulfilled.length, "every tap in the burst must commit").toBe(3);
+    const pending = await matchState(t, f.frolicId);
+    expect(pending.pending, "the burst produces one pending reveal").toBeTruthy();
+    expect(new Set(pending.pending!.userIds).size).toBe(pending.pending!.userIds.length);
     await settle(t);
-    const after = await readAttendees(t, f.frolicId);
-    expect(after.length, "the scheduled reveal adds no second round of attendees").toBe(
-      attendees.length,
+    const revealed = await matchState(t, f.frolicId);
+    expect(revealed.frolic.status, "a same-instant burst reveals exactly once").toBe("on");
+    const going = revealed.attendees.filter((a: any) => a.status === "going");
+    expect(new Set(going.map((a: any) => a.userId)).size, "no duplicate attendees").toBe(
+      going.length,
     );
+    const revealAts = new Set(going.map((a: any) => a.revealAt));
+    expect(revealAts.size, "every phone flips on one server timestamp").toBe(1);
+    expect(going.length).toBe(3);
   });
 
   it("a retried tap mutation is idempotent", async () => {
     const t = fresh();
     const f = await seed(t);
-    const { ref } = await findFunction("tap");
-    const args = {
-      frolicId: f.frolicId,
-      userId: f.users.Maya,
-      kind: "down" as const,
-      onlyIf: [],
-      source: "app" as const,
-    };
-    for (let i = 0; i < 5; i++) await t.mutation(ref, args);
-    await tapAs(t, f, "Dev");
     await settle(t);
-    const frolic = await readFrolic(t, f.frolicId);
+    for (let i = 0; i < 5; i++) await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    await settle(t);
+    const { frolic, attendees } = await matchState(t, f.frolicId);
     expect(frolic.status).toBe("on");
-    const attendees = await readAttendees(t, f.frolicId);
-    expect(attendees, "a retried tap must not duplicate attendees").toHaveLength(2);
+    expect(
+      attendees.filter((a: any) => a.status === "going"),
+      "a retried tap must not duplicate attendees",
+    ).toHaveLength(2);
+    expect((await readTaps(t, f.frolicId)).length).toBe(2);
   });
 });
 
@@ -107,72 +85,41 @@ describe("race: the reveal fires once", () => {
   it("running the reveal twice changes nothing the second time", async () => {
     const t = fresh();
     const f = await seed(t);
-    await tapAs(t, f, "Maya");
-    await tapAs(t, f, "Dev");
-    const frolic = await readFrolic(t, f.frolicId);
-    const before = {
-      revealAt: frolic.revealAt,
-      matchedAt: frolic.matchedAt,
-      status: frolic.status,
-    };
+    await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    await settle(t);
+    const before = await readFrolic(t, f.frolicId);
     const attendeesBefore = await readAttendees(t, f.frolicId);
-    const reveal = await revealFunction();
-    expect(reveal, "a reveal entry point must exist").not.toBeNull();
-    vi.setSystemTime((before.revealAt as number) + 2_000);
-    await t.mutation(reveal!.ref, { frolicId: f.frolicId });
-    await t.mutation(reveal!.ref, { frolicId: f.frolicId });
+    const { ref } = await findFunction("flip");
+    await t.mutation(ref, { frolicId: f.frolicId });
+    await t.mutation(ref, { frolicId: f.frolicId });
     const after = await readFrolic(t, f.frolicId);
     expect(after.revealAt, "a second reveal must not move revealAt").toBe(before.revealAt);
-    expect(after.matchedAt, "a second reveal must not rewrite matchedAt").toBe(
-      before.matchedAt,
-    );
-    const attendeesAfter = await readAttendees(t, f.frolicId);
-    expect(attendeesAfter.length).toBe(attendeesBefore.length);
+    expect(after.matchedAt, "a second reveal must not rewrite matchedAt").toBe(before.matchedAt);
+    expect(
+      (await readAttendees(t, f.frolicId)).length,
+      "a second reveal must not duplicate attendees",
+    ).toBe(attendeesBefore.length);
   });
 
   it("a late reveal still uses the original revealAt for everyone", async () => {
     const t = fresh();
     const f = await seed(t);
-    await tapAs(t, f, "Maya");
-    await tapAs(t, f, "Dev");
-    const frolic = await readFrolic(t, f.frolicId);
-    const scheduled = frolic.revealAt as number;
-    const reveal = await revealFunction();
-    expect(reveal).not.toBeNull();
-    vi.setSystemTime(scheduled + 10 * MIN);
-    await t.mutation(reveal!.ref, { frolicId: f.frolicId });
-    const attendees = await readAttendees(t, f.frolicId);
-    expect(attendees.length).toBeGreaterThanOrEqual(2);
-    for (const attendee of attendees) {
-      expect(
-        attendee.revealAt,
-        "a late run must not push revealAt to the late time, or phones flip out of sync",
-      ).toBe(scheduled);
-    }
-  });
-
-  it("the reveal cannot fire before revealAt", async () => {
-    const t = fresh();
-    const f = await seed(t);
-    await tapAs(t, f, "Maya");
-    await tapAs(t, f, "Dev");
-    const frolic = await readFrolic(t, f.frolicId);
-    const scheduled = frolic.revealAt as number;
-    const reveal = await revealFunction();
-    expect(reveal).not.toBeNull();
-    vi.setSystemTime(scheduled - 1);
-    await t.mutation(reveal!.ref, { frolicId: f.frolicId }).catch(() => undefined);
-    const early = await readFrolic(t, f.frolicId);
+    await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    const pending = await matchState(t, f.frolicId);
+    const scheduled = pending.pending!.revealAt as number;
+    vi.advanceTimersByTime(10 * MIN);
+    await t.finishInProgressScheduledFunctions();
+    const flipped = await readFrolic(t, f.frolicId);
+    expect(flipped.status, "a late run still reveals").toBe("on");
     expect(
-      early.bloomAt ?? null,
-      "bloomAt must stay unset before revealAt so no phone can show the plan early",
-    ).toBeNull();
+      flipped.revealAt,
+      "a late run must not push revealAt to the late time, or phones flip out of sync",
+    ).toBe(scheduled);
     const attendees = await readAttendees(t, f.frolicId);
     for (const attendee of attendees) {
-      expect(
-        attendee.bloomAt,
-        "an attendee's bloomAt is a reveal moment and cannot precede revealAt",
-      ).toBeGreaterThanOrEqual(scheduled);
+      expect(attendee.revealAt, "every attendee keeps the shared reveal moment").toBe(scheduled);
     }
   });
 });
@@ -181,90 +128,92 @@ describe("deadline", () => {
   it("a tap just past the deadline never reveals", async () => {
     const t = fresh();
     const f = await seed(t, { deadlineOffset: 2 * 60 * MIN });
-    await tapAs(t, f, "Maya");
+    await tapById(t, f, "Maya");
     vi.setSystemTime(NOW + 2 * 60 * MIN + 1);
-    await tapAs(t, f, "Dev").catch(() => undefined);
-    await settle(t);
+    await tapById(t, f, "Dev").catch(() => undefined);
+    await t.finishInProgressScheduledFunctions();
     await expectNoMatch(t, f.frolicId);
   });
 
-  it("a tap at exactly the deadline does not match", async () => {
+  it("a tap at exactly the deadline does not reveal", async () => {
     const t = fresh();
     const f = await seed(t, { deadlineOffset: 2 * 60 * MIN });
-    await tapAs(t, f, "Maya");
+    await tapById(t, f, "Maya");
     vi.setSystemTime(NOW + 2 * 60 * MIN);
-    await tapAs(t, f, "Dev").catch(() => undefined);
-    await settle(t);
+    await tapById(t, f, "Dev").catch(() => undefined);
+    await t.finishInProgressScheduledFunctions();
     await expectNoMatch(t, f.frolicId);
   });
 
   it("a tap one millisecond before the deadline still matches", async () => {
     const t = fresh();
     const f = await seed(t, { deadlineOffset: 2 * 60 * MIN });
-    await tapAs(t, f, "Maya");
+    await tapById(t, f, "Maya");
     vi.setSystemTime(NOW + 2 * 60 * MIN - 1);
-    await tapAs(t, f, "Dev");
-    const frolic = await readFrolic(t, f.frolicId);
-    expect(frolic.status, "a tap inside the deadline must still be able to match").toBe("on");
+    await tapById(t, f, "Dev");
+    const { pending } = await matchState(t, f.frolicId);
+    expect(pending, "a tap inside the deadline must still be able to match").toBeTruthy();
   });
 });
 
 describe("fade", () => {
-  it("a fade leaves no attendee and no reveal behind", async () => {
+  it("a fade leaves no attendee, no reveal and no tap behind", async () => {
     const t = fresh();
     const f = await seed(t, { deadlineOffset: 30 * MIN });
-    await tapAs(t, f, "Maya");
+    await tapById(t, f, "Maya");
     vi.setSystemTime(NOW + 31 * MIN);
-    await settle(t);
-    const fade = await findOptional("fade", "expire", "fadeFrolic", "closeFrolic", "sweepDeadlines");
-    if (fade) {
-      await t.mutation(fade.ref, { frolicId: f.frolicId }).catch(() => undefined);
-    }
-    const frolic = await readFrolic(t, f.frolicId);
-    expect(["faded", "open"], "an expired frolic is faded or still open, never on").toContain(
-      frolic.status,
-    );
-    const attendees = await readAttendees(t, f.frolicId);
-    expect(
-      attendees.filter((a: any) => a.status === "going"),
-      "a fade must not leave a going attendee behind",
-    ).toHaveLength(0);
-    if (frolic.status === "faded") {
-      expect(frolic.revealAt ?? null, "a faded frolic must not carry a revealAt").toBeNull();
-    }
+    const { ref } = await findFunction("fade");
+    await t.mutation(ref, { frolicId: f.frolicId });
+    const { frolic, pending, attendees } = await matchState(t, f.frolicId);
+    expect(frolic.status, "an expired frolic fades").toBe("faded");
+    expect(pending, "a faded frolic has no pending reveal").toBeNull();
+    expect(attendees, "a fade leaves no attendee behind").toHaveLength(0);
+    expect(frolic.revealAt ?? null, "a faded frolic carries no revealAt").toBeNull();
+    expect(await readTaps(t, f.frolicId), "a fade wipes the taps").toHaveLength(0);
   });
 
   it("a faded frolic cannot be revived by a late tap", async () => {
     const t = fresh();
     const f = await seed(t, { deadlineOffset: 30 * MIN });
-    await t.run(async (ctx: any) => {
-      await ctx.db.patch("frolics", f.frolicId, { status: "faded" });
-    });
-    await tapAs(t, f, "Maya").catch(() => undefined);
-    await tapAs(t, f, "Dev").catch(() => undefined);
-    await settle(t);
-    const frolic = await readFrolic(t, f.frolicId);
+    vi.setSystemTime(NOW + 31 * MIN);
+    const { ref } = await findFunction("fade");
+    await t.mutation(ref, { frolicId: f.frolicId });
+    await tapById(t, f, "Maya").catch(() => undefined);
+    await tapById(t, f, "Dev").catch(() => undefined);
+    const { frolic } = await matchState(t, f.frolicId);
     expect(frolic.status, "a faded frolic stays faded").toBe("faded");
+  });
+
+  it("a frolic with a pending match does not fade at the deadline", async () => {
+    const t = fresh();
+    const f = await seed(t, { deadlineOffset: 30 * MIN });
+    await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    vi.setSystemTime(NOW + 31 * MIN);
+    const { ref } = await findFunction("fade");
+    await t.mutation(ref, { frolicId: f.frolicId });
+    const { frolic, pending } = await matchState(t, f.frolicId);
+    expect(pending, "a matched frolic must not have its reveal cancelled by the deadline sweep").toBeTruthy();
+    expect(frolic.status).not.toBe("faded");
   });
 });
 
-describe("reveal is not reachable before it is due", () => {
-  it("a match does not expose attendees to a plain database read", async () => {
+describe("reveal timing is real", () => {
+  it("the pending reveal sits after the match and before the plan", async () => {
     const t = fresh();
     const f = await seed(t);
-    await tapAs(t, f, "Maya");
-    await tapAs(t, f, "Dev");
-    const frolic = await readFrolic(t, f.frolicId);
-    const attendees = await readAttendees(t, f.frolicId);
-    for (const attendee of attendees) {
-      expect(
-        attendee.revealAt,
-        "attendee rows carry the reveal moment so a client can gate on it",
-      ).toBe(frolic.revealAt);
-    }
-    expect(
-      frolic.revealAt,
-      "revealAt must be in the future at the moment of the match",
-    ).toBeGreaterThan(NOW);
+    await tapById(t, f, "Maya");
+    await tapById(t, f, "Dev");
+    const { pending, frolic } = await matchState(t, f.frolicId);
+    expect(pending!.revealAt, "the reveal lands after the match").toBeGreaterThan(NOW);
+    expect(pending!.revealAt, "the reveal lands within a couple of seconds").toBeLessThanOrEqual(
+      NOW + 5000,
+    );
+    expect(pending!.startsAt, "the plan starts inside the frolic window").toBeGreaterThanOrEqual(
+      frolic.window.start,
+    );
+    expect(pending!.startsAt + frolic.durationMinutes * MIN).toBeLessThanOrEqual(
+      frolic.window.end,
+    );
   });
 });

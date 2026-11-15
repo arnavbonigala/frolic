@@ -1,4 +1,9 @@
 import { makeFunctionReference } from "convex/server";
+import { convexTest } from "convex-test";
+import presence from "@convex-dev/presence/test";
+import rateLimiter from "@convex-dev/rate-limiter/test";
+import workflow from "@convex-dev/workflow/test";
+import schema from "../../schema";
 import type { FunctionReference } from "convex/server";
 import type { Id } from "../../_generated/dataModel";
 
@@ -9,8 +14,6 @@ const rawModules = (import.meta as unknown as {
 }).glob("/convex/**/*.ts");
 
 export const modules: Record<string, () => Promise<Record<string, unknown>>> = rawModules;
-
-const moduleMap = modules;
 
 const SKIP = ["_generated", "/qa/", "node_modules", "convex.config", "schema.ts", "http.ts", "crons.ts"];
 
@@ -30,11 +33,11 @@ export function discoverSurface(): Promise<SurfaceEntry[]> {
   if (cache) return cache;
   cache = (async () => {
     const entries: SurfaceEntry[] = [];
-    for (const path of Object.keys(moduleMap)) {
+    for (const path of Object.keys(rawModules)) {
       if (SKIP.some((s) => path.includes(s))) continue;
       let mod: Record<string, unknown>;
       try {
-        mod = (await moduleMap[path]()) as Record<string, unknown>;
+        mod = (await rawModules[path]()) as Record<string, unknown>;
       } catch {
         continue;
       }
@@ -54,18 +57,16 @@ export function discoverSurface(): Promise<SurfaceEntry[]> {
 }
 
 const PREFERRED_MODULE: Record<string, string[]> = {
-  tap: ["taps", "matcher/taps", "matcher/tap", "matcher", "matcher/index"],
-  untap: ["taps", "matcher/taps", "matcher/untap", "matcher", "matcher/index"],
-  hopIn: ["matcher/hopIn", "matcher/hopin", "hopIn", "frolics", "matcher"],
-  bail: ["matcher/bail", "matcher/hopIn", "bail", "frolics", "matcher"],
-  reveal: ["matcher/reveal", "reveal", "matcher/lifecycle", "matcher"],
-  runReveal: ["matcher/reveal", "reveal", "matcher/lifecycle", "matcher"],
-  match: ["matcher/match", "matcher/engine", "matcher"],
-  selectSet: ["matcher/match", "matcher/engine", "matcher"],
-  today: ["matcher/queries", "frolics", "today", "matcher"],
-  frolic: ["matcher/queries", "frolics", "today", "matcher"],
-  myTap: ["matcher/queries", "taps", "matcher"],
-  crew: ["crew", "matcher/queries", "groups"],
+  tapAs: ["taps"],
+  tap: ["taps"],
+  hopIn: ["frolics"],
+  sitOut: ["frolics"],
+  flip: ["reveal"],
+  fade: ["reveal"],
+  complete: ["reveal"],
+  today: ["frolics"],
+  crew: ["crew"],
+  open: ["frolics"],
 };
 
 export async function findFunction(name: string): Promise<SurfaceEntry> {
@@ -78,8 +79,7 @@ export async function findFunction(name: string): Promise<SurfaceEntry> {
         .join(", ")}`,
     );
   }
-  const preferred = PREFERRED_MODULE[name] ?? [];
-  for (const mod of preferred) {
+  for (const mod of PREFERRED_MODULE[name] ?? []) {
     const hit = matches.find((e) => e.module === mod);
     if (hit) return hit;
   }
@@ -97,6 +97,36 @@ export async function findOptional(...names: string[]): Promise<SurfaceEntry | n
   return null;
 }
 
+export async function mutate(t: T, names: string[], args: Record<string, unknown>): Promise<unknown> {
+  const found = await findOptional(...names);
+  if (!found) {
+    throw new Error(`MISSING FUNCTION: none of ${names.join(", ")} is exported under convex/`);
+  }
+  return await t.mutation(found.ref, args);
+}
+
+export async function query(t: T, names: string[], args: Record<string, unknown>): Promise<unknown> {
+  const found = await findOptional(...names);
+  if (!found) {
+    throw new Error(`MISSING FUNCTION: none of ${names.join(", ")} is exported under convex/`);
+  }
+  return await t.query(found.ref, args);
+}
+
+export function makeTest() {
+  const t = convexTest(schema, modules);
+  presence.register(t);
+  rateLimiter.register(t);
+  workflow.register(t);
+  return t;
+}
+
+export async function settle(t: T, ms = 2500): Promise<void> {
+  const { vi } = await import("vitest");
+  vi.advanceTimersByTime(ms);
+  await t.finishInProgressScheduledFunctions();
+}
+
 export type Fixture = {
   groupId: Id<"groups">;
   frolicId: Id<"frolics">;
@@ -104,6 +134,7 @@ export type Fixture = {
   placeId: Id<"places">;
   users: Record<string, Id<"users">>;
   ids: Id<"users">[];
+  tokens: Record<string, string>;
 };
 
 export type SeedOptions = {
@@ -119,6 +150,10 @@ export type SeedOptions = {
 
 const HOUR = 60 * 60 * 1000;
 
+export function tokenFor(name: string): string {
+  return `qa-device-token-${name.toLowerCase()}-0123456789abcdef`;
+}
+
 export async function seed(t: T, options: SeedOptions = {}): Promise<Fixture> {
   const names = options.names ?? ["Maya", "Dev", "Jordan", "Priya", "Sam"];
   const now = options.now ?? Date.UTC(2026, 10, 15, 19, 0, 0);
@@ -126,12 +161,26 @@ export async function seed(t: T, options: SeedOptions = {}): Promise<Fixture> {
   const windowEnd = now + (options.windowEndOffset ?? 5 * HOUR);
 
   return await t.run(async (ctx: any) => {
+    const tokenHash = async (token: string) => {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+      return Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    };
+
     const users: Record<string, Id<"users">> = {};
     const ids: Id<"users">[] = [];
+    const tokens: Record<string, string> = {};
     for (const name of names) {
-      const userId = await ctx.db.insert("users", { name, source: "app" });
+      const token = tokenFor(name);
+      const userId = await ctx.db.insert("users", {
+        name,
+        source: "app",
+        tokenHash: await tokenHash(token),
+      });
       users[name] = userId;
       ids.push(userId);
+      tokens[name] = token;
     }
 
     const groupId = await ctx.db.insert("groups", {
@@ -164,13 +213,24 @@ export async function seed(t: T, options: SeedOptions = {}): Promise<Fixture> {
     const placeId = await ctx.db.insert("places", {
       slug: "indian-rock",
       name: "Indian Rock",
+      title: "Sunset at Indian Rock",
+      address: "Indian Rock Path, Berkeley",
       lat: 37.8936,
       lng: -122.2764,
       cost: 0,
+      costPerPersonCents: 0,
+      costLabel: "Free",
+      payUpFront: false,
+      priceVerified: true,
       tags: ["sunset", "free"],
       hours: [{ day: 6, open: 0, close: 24 }],
       indoor: false,
       sober: true,
+      energy: "chill",
+      needsDaylight: true,
+      durationMinutes: options.durationMinutes ?? 120,
+      meetSpot: "Top of the rock",
+      source: "qa",
     });
 
     const planId = await ctx.db.insert("plans", {
@@ -181,9 +241,15 @@ export async function seed(t: T, options: SeedOptions = {}): Promise<Fixture> {
       title: "Sunset at Indian Rock",
       line: "Clear and 64",
       cost: 0,
+      costLabel: "Free",
+      payUpFront: false,
+      chips: ["sunset"],
       startsAt: windowStart,
       durationMinutes: options.durationMinutes ?? 120,
       source: "scorer",
+      whySource: "template",
+      whyInputs: { placeName: "Indian Rock", topTags: ["sunset"], rainSwap: false },
+      weatherSwap: false,
       generatedAt: now,
     });
 
@@ -198,53 +264,75 @@ export async function seed(t: T, options: SeedOptions = {}): Promise<Fixture> {
       deadline: now + (options.deadlineOffset ?? 2 * HOUR),
     });
 
-    return { groupId, frolicId, planId, placeId, users, ids };
+    return { groupId, frolicId, planId, placeId, users, ids, tokens };
   });
 }
 
-export async function tapAs(
-  t: T,
-  fixture: Fixture,
-  who: string,
-  args: {
-    kind?: "down" | "notToday";
-    onlyIf?: string[];
-    window?: { start: number; end: number };
-    source?: "app" | "web" | "notification" | "imessage";
-  } = {},
-): Promise<unknown> {
-  const { ref } = await findFunction("tap");
-  return await t.mutation(ref, {
-    frolicId: fixture.frolicId,
-    userId: fixture.users[who],
+export type TapArgs = {
+  kind?: "down" | "notToday";
+  onlyIf?: string[];
+  window?: { start: number; end: number };
+  source?: "app" | "web" | "notification" | "imessage";
+};
+
+export async function tapById(t: T, f: Fixture, who: string, args: TapArgs = {}): Promise<unknown> {
+  const found = await findOptional("tapAs");
+  if (!found) {
+    throw new Error("MISSING FUNCTION: taps.tapAs, the internal tap that takes a userId");
+  }
+  return await t.mutation(found.ref, {
+    frolicId: f.frolicId,
+    userId: f.users[who],
     kind: args.kind ?? "down",
-    onlyIf: (args.onlyIf ?? []).map((n) => fixture.users[n]),
+    onlyIf: (args.onlyIf ?? []).map((n) => f.users[n]),
     window: args.window,
     source: args.source ?? "app",
   });
 }
 
-export async function mutate(t: T, names: string[], args: Record<string, unknown>): Promise<unknown> {
-  const found = await findOptional(...names);
-  if (!found) {
-    throw new Error(`MISSING FUNCTION: none of ${names.join(", ")} is exported under convex/`);
-  }
-  return await t.mutation(found.ref, args);
-}
-
-export async function query(t: T, names: string[], args: Record<string, unknown>): Promise<unknown> {
-  const found = await findOptional(...names);
-  if (!found) {
-    throw new Error(`MISSING FUNCTION: none of ${names.join(", ")} is exported under convex/`);
-  }
-  return await t.query(found.ref, args);
-}
-
-export async function readFrolic(
+export async function tapByToken(
   t: T,
-  frolicId: Id<"frolics">,
-) {
+  f: Fixture,
+  who: string,
+  args: TapArgs = {},
+  token?: string,
+): Promise<unknown> {
+  const { ref } = await findFunction("tap");
+  return await t.mutation(ref, {
+    deviceToken: token ?? f.tokens[who],
+    frolicId: f.frolicId,
+    kind: args.kind ?? "down",
+    onlyIf: (args.onlyIf ?? []).map((n) => f.users[n]),
+    window: args.window,
+    source: args.source,
+  });
+}
+
+export async function hopInAs(t: T, f: Fixture, who: string): Promise<unknown> {
+  return await mutate(t, ["hopIn"], {
+    deviceToken: f.tokens[who],
+    frolicId: f.frolicId,
+  });
+}
+
+export async function sitOutAs(t: T, f: Fixture, who: string): Promise<unknown> {
+  return await mutate(t, ["sitOut", "bail", "cantMakeIt"], {
+    deviceToken: f.tokens[who],
+    frolicId: f.frolicId,
+  });
+}
+
+export async function readFrolic(t: T, frolicId: Id<"frolics">) {
   return await t.run(async (ctx: any) => await ctx.db.get("frolics", frolicId));
+}
+
+export async function readPending(t: T, frolicId: Id<"frolics">) {
+  return await t.run(async (ctx: any) =>
+    await ctx.db
+      .query("reveals")
+      .withIndex("by_frolicId", (q: any) => q.eq("frolicId", frolicId))
+      .unique(),
+  );
 }
 
 export async function readTaps(t: T, frolicId: Id<"frolics">) {
@@ -265,7 +353,9 @@ export async function readAttendees(t: T, frolicId: Id<"frolics">) {
   );
 }
 
-export async function publicQueryNames(): Promise<SurfaceEntry[]> {
-  const all = await discoverSurface();
-  return all.filter((e) => /^(today|frolic|frolics|crew|group|groups|myTap|tap|attendees|whoIsFree|free|presence|activity)$/i.test(e.name));
+export async function matchState(t: T, frolicId: Id<"frolics">) {
+  const frolic = await readFrolic(t, frolicId);
+  const pending = await readPending(t, frolicId);
+  const attendees = await readAttendees(t, frolicId);
+  return { frolic, pending, attendees };
 }

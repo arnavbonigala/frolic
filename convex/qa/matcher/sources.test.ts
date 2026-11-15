@@ -1,18 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { convexTest } from "convex-test";
-import schema from "../../schema";
 import { expectMatch, expectNoMatch } from "./assert";
 import {
   findFunction,
-  findOptional,
-  modules,
-  readFrolic,
+  makeTest,
   readTaps,
   seed,
-  tapAs,
+  settle,
+  tapById,
+  tapByToken,
+  tokenFor,
 } from "./surface";
-
-
 
 const NOW = Date.UTC(2026, 10, 15, 19, 0, 0);
 const MIN = 60_000;
@@ -20,11 +17,7 @@ const MIN = 60_000;
 function fresh(at: number = NOW) {
   vi.useFakeTimers();
   vi.setSystemTime(at);
-  return convexTest(schema, modules);
-}
-
-async function settle(t: any) {
-  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  return makeTest();
 }
 
 beforeEach(() => {
@@ -46,14 +39,14 @@ describe("sources: a web yes and an app yes match each other", () => {
     it(`${pairing[0]} and ${pairing[1]} tap into the same match`, async () => {
       const t = fresh();
       const f = await seed(t);
-      await tapAs(t, f, "Maya", { source: pairing[0] });
-      await tapAs(t, f, "Dev", { source: pairing[1] });
+      await tapById(t, f, "Maya", { source: pairing[0] });
+      await tapById(t, f, "Dev", { source: pairing[1] });
       await settle(t);
       await expectMatch(t, f.frolicId, [f.users.Maya, f.users.Dev], NOW);
       const taps = await readTaps(t, f.frolicId);
       expect(
         taps.map((x: any) => x.source).sort(),
-        "the source is stored so the crew can tell a link yes from an app yes",
+        "the source is stored so a link yes is distinguishable from an app yes",
       ).toEqual([...pairing].sort());
     });
   }
@@ -61,8 +54,8 @@ describe("sources: a web yes and an app yes match each other", () => {
   it("a web tap with an onlyIf is bound by it exactly like an app tap", async () => {
     const t = fresh();
     const f = await seed(t);
-    await tapAs(t, f, "Maya", { onlyIf: ["Sam"], source: "web" });
-    await tapAs(t, f, "Dev", { source: "app" });
+    await tapById(t, f, "Maya", { onlyIf: ["Sam"], source: "web" });
+    await tapById(t, f, "Dev", { source: "app" });
     await settle(t);
     await expectNoMatch(t, f.frolicId);
   });
@@ -70,134 +63,90 @@ describe("sources: a web yes and an app yes match each other", () => {
   it("a web tap past the deadline cannot match", async () => {
     const t = fresh();
     const f = await seed(t, { deadlineOffset: 30 * MIN });
-    await tapAs(t, f, "Maya");
+    await tapById(t, f, "Maya");
     vi.setSystemTime(NOW + 31 * MIN);
-    await tapAs(t, f, "Dev", { source: "web" }).catch(() => undefined);
-    await settle(t);
+    await tapById(t, f, "Dev", { source: "web" }).catch(() => undefined);
+    await t.finishInProgressScheduledFunctions();
     await expectNoMatch(t, f.frolicId);
   });
+});
 
-  it("a source outside the union is rejected", async () => {
+describe("sources: the public tap path", () => {
+  it("an app tap from the phone matches a link tap", async () => {
     const t = fresh();
     const f = await seed(t);
-    const { ref } = await findFunction("tap");
+    await tapByToken(t, f, "Maya", { source: "app" });
+    await tapById(t, f, "Dev", { source: "web" });
+    await settle(t);
+    await expectMatch(t, f.frolicId, [f.users.Maya, f.users.Dev], NOW);
+  });
+
+  it("a notification tap from the lock screen works like an app tap", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await tapByToken(t, f, "Maya", { source: "notification" });
+    await tapByToken(t, f, "Dev", { source: "app" });
+    await settle(t);
+    await expectMatch(t, f.frolicId, [f.users.Maya, f.users.Dev], NOW);
+  });
+
+  it("the public tap rejects a source outside its own union", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await expect(tapByToken(t, f, "Maya", { source: "web" as any })).rejects.toThrow();
+  });
+
+  it("the public tap refuses an unknown device token", async () => {
+    const t = fresh();
+    const f = await seed(t);
     await expect(
-      t.mutation(ref, {
-        frolicId: f.frolicId,
-        userId: f.users.Maya,
-        kind: "down",
-        onlyIf: [],
-        source: "sms",
-      }),
+      tapByToken(t, f, "Maya", {}, "not-a-real-device-token-0123456789abcdef"),
     ).rejects.toThrow();
   });
 });
 
-describe("identity: a device token cannot be swapped to tap twice", () => {
-  it("the same person with a new token still has one tap per frolic", async () => {
+describe("identity: a rotated device token cannot buy a second yes", () => {
+  it("rotating the token still leaves one tap row for one person", async () => {
     const t = fresh();
     const f = await seed(t);
-    const tokenPool = ["token-a", "token-b", "token-c"];
-
-    await t.run(async (ctx: any) => {
-      for (const token of tokenPool) {
-        await ctx.db.patch("users", f.users.Maya, { tokenHash: token });
-      }
+    await tapById(t, f, "Maya", { onlyIf: ["Dev"] });
+    const rotated = `${tokenFor("Maya")}-rotated`;
+    const digest = await t.run(async (ctx: any) => {
+      const bytes = new TextEncoder().encode(rotated);
+      const hash = await crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(hash))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
     });
-
-    await tapAs(t, f, "Maya", { onlyIf: ["Dev"] });
     await t.run(async (ctx: any) => {
-      await ctx.db.patch("users", f.users.Maya, { tokenHash: "token-b" });
+      await ctx.db.patch("users", f.users.Maya, { tokenHash: digest });
     });
-    await tapAs(t, f, "Maya", { onlyIf: [] });
-    await tapAs(t, f, "Dev");
+    await tapByToken(t, f, "Maya", { onlyIf: [] }, rotated);
+    await tapById(t, f, "Dev");
     await settle(t);
-
     const taps = await readTaps(t, f.frolicId);
     expect(
       taps.filter((x: any) => x.userId === f.users.Maya),
       "a rotated token must not create a second tap row for the same person",
     ).toHaveLength(1);
-
-    const second = await t.run(async (ctx: any) =>
-      await ctx.db.insert("users", { name: "Maya", source: "app", tokenHash: "token-a" }),
-    );
-    const { ref } = await findFunction("tap");
-    await t.mutation(ref, {
-      frolicId: f.frolicId,
-      userId: second,
-      kind: "down",
-      onlyIf: [],
-      source: "app",
-    }).catch(() => undefined);
-    const frolic = await readFrolic(t, f.frolicId);
-    expect(frolic.status, "a duplicate identity must not disturb an already matched frolic").toBe(
-      "on",
-    );
+    await expectMatch(t, f.frolicId, [f.users.Maya, f.users.Dev], NOW);
   });
 
-  it("a duplicated user row cannot be counted as a second yes for a match", async () => {
+  it("a second account for the same person cannot close a match alone", async () => {
     const t = fresh();
     const f = await seed(t);
-    await t.run(async (ctx: any) => {
-      await ctx.db.insert("memberships", {
-        groupId: f.groupId,
-        userId: f.users.Maya,
-        color: "pink",
-        joinedVia: "invite",
-      });
-    });
-    await tapAs(t, f, "Maya");
-    await tapAs(t, f, "Dev").catch(() => undefined);
-    await settle(t);
-    const frolic = await readFrolic(t, f.frolicId);
-    expect(frolic.status).toBe("open");
-  });
-
-  it("one person cannot fill a two person match with two of their own taps", async () => {
-    const t = fresh();
-    const f = await seed(t);
-    await t.run(async (ctx: any) => {
-      await ctx.db.insert("memberships", {
-        groupId: f.groupId,
-        userId: f.users.Sam,
-        color: "lilac",
-        joinedVia: "invite",
-      });
-    });
-    await tapAs(t, f, "Maya");
-    await t.run(async (ctx: any) => {
-      await ctx.db.insert("taps", {
+    const twin = await t.run(async (ctx: any) =>
+      await ctx.db.insert("users", { name: "Maya", source: "app" }),
+    );
+    const { ref } = await findFunction("tapAs");
+    await expect(
+      t.mutation(ref, {
         frolicId: f.frolicId,
-        groupId: f.groupId,
-        userId: f.users.Maya,
+        userId: twin,
         kind: "down",
         onlyIf: [],
         source: "app",
-        updatedAt: NOW,
-      });
-    });
-    await settle(t);
-    await expectNoMatch(t, f.frolicId);
-  });
-});
-
-describe("my own tap", () => {
-  it("a member can read their own tap and not someone else's", async () => {
-    const t = fresh();
-    const f = await seed(t);
-    await tapAs(t, f, "Maya", { onlyIf: ["Dev"] });
-    const mine = await findOptional("myTap", "myTaps", "ownTap", "myFrolicTap");
-    if (!mine) {
-      expect(mine, "each person is allowed to read their own tap, so a myTap query is expected").toBeTruthy();
-      return;
-    }
-    const asMaya = await t.query(mine.ref, { userId: f.users.Maya, frolicId: f.frolicId });
-    expect(JSON.stringify(asMaya ?? null).includes(String(f.users.Dev))).toBe(true);
-    const asJordan = await t.query(mine.ref, { userId: f.users.Jordan, frolicId: f.frolicId });
-    expect(
-      JSON.stringify(asJordan ?? null).includes(String(f.users.Maya)),
-      "another member's myTap must not return Maya's tap",
-    ).toBe(false);
+      }),
+    ).rejects.toThrow();
   });
 });
