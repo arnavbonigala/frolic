@@ -3,6 +3,7 @@ import UIKit
 
 struct HeroBand: View {
     var imageName: String?
+    var label: String = ""
     var fallback: FlowerColor
 
     var body: some View {
@@ -14,7 +15,8 @@ struct HeroBand: View {
                     .frame(height: 200)
                     .frame(maxWidth: .infinity)
                     .clipped()
-                    .accessibilityHidden(true)
+                    .accessibilityLabel(label)
+                    .accessibilityHidden(label.isEmpty)
             } else {
                 LinearGradient(
                     colors: [fallback.petal.opacity(0.85), FrolicColor.cream],

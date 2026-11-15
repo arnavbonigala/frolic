@@ -22,7 +22,7 @@ struct OnTheWayScreen: View {
     private var scroll: some View {
         ScrollView {
             VStack(spacing: 0) {
-                HeroBand(imageName: shown == .ready ? store.heroKey : nil, fallback: .marigold)
+                HeroBand(imageName: shown == .ready ? store.heroKey : nil, label: store.placeName.isEmpty ? "" : "Photo of \(store.placeName)", fallback: .marigold)
                 Group {
                     if shown == .ready {
                         ready
