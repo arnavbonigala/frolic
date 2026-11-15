@@ -38,6 +38,10 @@ struct CrewFreeSheet: View {
     var onPick: (CrewFreeOption) -> Void
     var onDone: () -> Void
 
+    private func isChosen(_ option: CrewFreeOption) -> Bool {
+        option.kind == .busy ? isBusy : current == option.title
+    }
+
     var body: some View {
         CrewSheetShell(title: "When are you free today?", identifier: "free.sheet.title") {
             VStack(spacing: 0) {
@@ -50,7 +54,7 @@ struct CrewFreeSheet: View {
                                 .frolicFont(.bodyEmphasis)
                                 .foregroundStyle(FrolicColor.ink)
                             Spacer(minLength: 0)
-                            if option.kind == .busy ? isBusy : current == option.title {
+                            if isChosen(option) {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(FrolicColor.free)
@@ -68,6 +72,7 @@ struct CrewFreeSheet: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(isChosen(option) ? .isSelected : AccessibilityTraits())
                     .accessibilityIdentifier(option.identifier)
                 }
             }
