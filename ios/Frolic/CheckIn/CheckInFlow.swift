@@ -10,8 +10,17 @@ final class CheckInFlowCoordinator {
     var isPresented = false
     var plantedFrolicId: String?
 
+    var opensOnSnap = false
+
     func open(frolicId: String? = nil) {
         self.frolicId = frolicId
+        opensOnSnap = false
+        isPresented = true
+    }
+
+    func openSnap(frolicId: String? = nil) {
+        self.frolicId = frolicId
+        opensOnSnap = true
         isPresented = true
     }
 }
@@ -119,6 +128,7 @@ struct CheckInFlowScreen: View {
         guard !prepared else { return }
         prepared = true
         store.attach(watcher: watcher)
+        if CheckInFlowCoordinator.shared.opensOnSnap { store.step = .snap }
         if let route = router.e2eRoute {
             seed(route)
         }
