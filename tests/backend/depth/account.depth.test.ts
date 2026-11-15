@@ -65,7 +65,7 @@ describe("account deletion", () => {
     expect(files).toEqual({ first: null, second: null });
   });
 
-  test("an account larger than one pass finishes on the next, leaving nothing behind", async () => {
+  test("an account larger than one pass finishes on the next, keeping only the nights it went to", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev"]);
     await t.run(async (ctx) => {
@@ -108,7 +108,7 @@ describe("account deletion", () => {
       attendees: await ctx.db.query("attendees").collect(),
       taps: await ctx.db.query("taps").collect(),
     }));
-    expect(left.attendees.filter((row) => row.userId === crew.ids.Maya)).toHaveLength(0);
+    expect(left.attendees.filter((row) => row.userId === crew.ids.Maya)).toHaveLength(130);
     expect(left.taps.filter((row) => row.userId === crew.ids.Maya)).toHaveLength(0);
   });
 

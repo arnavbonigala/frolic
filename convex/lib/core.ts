@@ -10,6 +10,7 @@ import { recordTap } from "./hooks";
 export const REVEAL_DELAY_MS = 1500;
 export const BLOOM_LEAD_MS = 800;
 export const LEAVE_NUDGE_MS = 8 * 60 * 1000;
+export const FLOWER_COLORS = ["pink", "cobalt", "moss", "marigold", "tomato", "lilac"] as const;
 const MAX_TAPS = 200;
 
 export type TapInput = {
