@@ -217,7 +217,7 @@ enum TodayCopy {
     }
 
     static func ifIn(_ list: [String]) -> String {
-        list.count > 2 ? "all \(list.count)" : names(list)
+        list.count > 2 ? "all \(list.count) come" : names(list) + (list.count == 1 ? " comes" : " come")
     }
 
     static func clock(_ milliseconds: Double) -> String {

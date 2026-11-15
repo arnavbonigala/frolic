@@ -57,6 +57,7 @@ final class TodayStore {
     private(set) var startError: String?
     private(set) var drop: TodayDrop?
     private(set) var etas: [TodayEta] = []
+    private(set) var notifyAsk = false
     private var etaFrolic: String?
     private(set) var tomorrow: TodayView?
     private(set) var gardenHealth: TodayGardenHealth?
@@ -278,11 +279,32 @@ final class TodayStore {
 
     private func askForNotificationsOnce() {
         guard !AppGroup.defaults.bool(forKey: "today.notifications.asked") else { return }
-        AppGroup.defaults.set(true, forKey: "today.notifications.asked")
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            guard settings.authorizationStatus == .notDetermined else { return }
+            notifyAsk = true
+        }
+    }
+
+    func allowNotifications() {
+        notifyAsk = false
+        AppGroup.defaults.set(true, forKey: "today.notifications.asked")
+        guard !isFixture else { return }
+        Task {
             _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
+    }
+
+    func skipNotifications() {
+        notifyAsk = false
+        AppGroup.defaults.set(true, forKey: "today.notifications.asked")
+    }
+
+    var outsideFreeNote: String? {
+        guard let plan, let free = myFree, free.state == "now" || free.state == "window", let window = free.window else { return nil }
+        if plan.startsAt >= window.end { return "Starts after your free time ends at \(TodayCopy.shortClock(window.end))." }
+        if free.state == "window", plan.startsAt < window.start { return "Starts before you're free at \(TodayCopy.shortClock(window.start))." }
+        return nil
     }
 
     func takeBack() {
@@ -705,6 +727,7 @@ final class TodayStore {
         gardenHealth = route.query["garden"] != nil ? TodayGardenHealth(state: "thirsty", line: "Your garden's getting thirsty", cta: "I'm free") : nil
         onThisDay = route.query["garden"] != nil ? TodayOnThisDay(frolicId: "fixture-past", label: "1 week ago today", title: "Cheese Board pizza", heroKey: "plan-late-night-food", photoUrl: nil) : nil
         if route.query["hint"] != nil { hintSeen = false }
+        notifyAsk = route.query["notify"] != nil
         etas = route.query["arrived"] != nil ? [TodayFixture.you, TodayFixture.maya].map { TodayEta(userId: $0.userId, minutes: 0, onTheWay: false, updatedAt: 0) } : []
         if fixture.sheet == .onlyIf {
             picks = Set(route.query["picks"].map { $0.split(separator: ",").map(String.init) } ?? [])
