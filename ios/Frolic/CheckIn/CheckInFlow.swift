@@ -142,6 +142,10 @@ struct CheckInFlowPresenter: ViewModifier {
             }
             .onAppear { sync(router.e2eRoute) }
             .onChange(of: router.e2eRoute) { _, route in sync(route) }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("frolic.today.onMyWay"))) { note in
+                guard !coordinator.isPresented else { return }
+                coordinator.open(frolicId: note.userInfo?["frolicId"] as? String)
+            }
     }
 
     private func sync(_ route: E2ERoute?) {
