@@ -275,7 +275,7 @@ final class CheckInStore {
                 )
                 let _: String? = try? await client.mutation(
                     "etas:setMine",
-                    with: ["deviceToken": token, "frolicId": frolicId, "minutes": 0, "onTheWay": false]
+                    with: ["deviceToken": token, "frolicId": frolicId, "minutes": 0.0, "onTheWay": false]
                 )
             } catch {
                 checkedIn = false
