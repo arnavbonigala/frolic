@@ -22,7 +22,7 @@ Screen roots: `today.screen`, `crew.screen`, `garden.screen`, `memory.screen`, `
 
 Sign-in deep link: `frolic://e2e/signin?token=<deviceToken>&group=<groupId>`. The older `frolic://signin?deviceToken=..&groupId=..` still resolves, and the seed's `users.<who>.link` comes back in that older shape, so a run rewrites it to the new one or leaves it, either works.
 
-Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`, `name`, `taste`, `reading`, `calendar`, `today:open|waiting|on|faded|done|solo|hopin|full|off|planning|none`, `crew`, `garden`, `memory/<n>`, `you`, `otw`, `checkin`, `sunday`, `hopin`). The solo state is `frolic://e2e/today?solo=1`, not a `solo` screen. Fixture screens need `?fixture=1`; Garden needs it too. Invite links arrive as `frolic://join/<code>` or `https://frolic.app/j/<code>`.
+Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`, `name`, `share`, `taste`, `reading`, `calendar`, `today:open|waiting|on|faded|done|solo|hopin|full|off|planning|none`, `crew`, `garden`, `memory/<n>`, `you`, `otw`, `checkin`, `sunday`, `hopin`). The solo state is `frolic://e2e/today?solo=1`, not a `solo` screen. Fixture screens need `?fixture=1`; Garden needs it too. Invite links arrive as `frolic://join/<code>` or `https://frolic.app/j/<code>`.
 
 ## Join (`#join`)
 
@@ -48,6 +48,8 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `photo.sheet.title` | Add a photo |
 | `photo.sheet.caption` | Recents from your photo library |
 | `photo.sheet.item.1` … `.4` | Selfie, Photo 1, Photo 2, Photo 3 |
+
+The step after the name is `#share`: `share.title` reads "Your crew is ready", `share.link` shows the crew code, `share.send` is "Share invite link" and `share.done` is "Go to Today". Taste and reading come after a crew has been started from a link.
 
 ## Taste (`#taste`, `#reading`)
 

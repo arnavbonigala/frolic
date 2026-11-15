@@ -121,8 +121,10 @@ for (const file of swiftFiles) {
   const tabSwitch = source.match(/var tab: AppTab\? \{[\s\S]*?\n    \}/);
   if (tabSwitch) for (const found of tabSwitch[0].matchAll(/"([a-z]+)"/g)) routes.add(found[1]);
   for (const found of source.matchAll(/route\.screen == "([a-z]+)"/g)) routes.add(found[1]);
-  const onboarding = source.match(/\["join", "name", "taste", "reading", "calendar"\]/);
-  if (onboarding) for (const name of ['join', 'name', 'taste', 'reading', 'calendar']) routes.add(name);
+  for (const array of source.matchAll(/\[[^\]]*\]/g)) {
+    const names = [...array[0].matchAll(/"([a-z]+)"/g)].map((hit) => hit[1]);
+    if (names.includes('join') && names.includes('calendar')) for (const name of names) routes.add(name);
+  }
   if (/url\.host == "signin"/.test(source)) routes.add('signin');
   if (/url\.host == "gallery"/.test(source)) routes.add('gallery');
 }
