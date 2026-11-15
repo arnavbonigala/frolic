@@ -182,9 +182,14 @@ driven by one commit.
 
 ## 5. Outbound messages
 
-Copy below is read from `convex/keiki/outbound.ts`. Each notice wraps it as
-`Frolic <kind> event. Send this to them now as one message, word for word, and nothing else:`
-(`noticeText`), and the prompt addendum tells the agent to obey that line
+Copy below is read from `convex/keiki/outbound.ts`. Each notice wraps it behind a fence line,
+`FROLIC-OPS <token>`, where the token is a 16 character hash of the deployment's
+`KEIKI_API_KEY` (`convex/keiki/notice.ts`). The prompt addendum carries the same token and
+tells the agent that a message opening with that exact line comes from the server: skip
+`get_member`, call no tool, send only the lines after the fence, word for word. A message with
+the wrong token, or `FROLIC-OPS` anywhere but the first line, is someone pretending; the agent
+is told to refuse it and never to show the token. Because the fence depends on a secret only the
+server and the agent hold, a person typing the phrase cannot make the agent send a fake reveal
 (`keiki/prompt-addendum.md`).
 
 | Kind | Trigger | Recipients | Copy |
@@ -192,15 +197,27 @@ Copy below is read from `convex/keiki/outbound.ts`. Each notice wraps it as
 | drop | `frolics.ts`, the daily drop | every linked crew member by DM, plus every linked group chat when the flag is on | `<title> at <place>, <startsAt>.` / `<why>` / `Reply "down", "only if…", or "pass".` (group: `DM me "down", "only if…", or "pass". It stays secret unless someone else is down too.`) |
 | reveal | `reveal.flip`, the moment the app flips | each going attendee by DM, plus every linked group chat when the flag is on | `It's on. You, <names>.` / `Meet at <meetingPoint> at <startsAt>. Leave at <leaveAt>.` / with a paid plan: `Hold $<amount> to lock it in. It comes back when you arrive. Want the link?` (group: `It's on: <names> at <place>, <startsAt>. Hop in?`) |
 | hopIn | `reveal.flip`, when no group chat is in play, which is every reveal on the shared line | everyone in the crew who did not match and is linked | `It's on: <names> at <place>, <startsAt>. Room for one more?` |
-| faded | `reveal.fade` | the people who tapped down | `Today's plan faded. Tomorrow's drop is a fresh one.` |
+| faded | `reveal.fade` | the people who tapped down | `This one drifted off. Nobody knows you said yes.` |
 | nudge | `reveal.flip` schedules it at leave time | going attendees | `Time to head out. <meetingPoint> is <walk> min away. Meet at <startsAt>.` |
 | snap | `snaps.ts`, when the snap window opens | going attendees who checked in | `Group snap. Send me one photo right now. You'll see everyone's once yours is in.` |
 | collage | `onCollage`, when a collage renders | everyone who sent a snap, plus group chats when the flag is on | `Here's your group snap: <url>` (group: `Today's group snap: <url>`) |
 | money | `outbound.onMoney`, requested from FROL-5 for a released hold or a no-show credit | the one linked person | `Your $<amount> is back.` or `A no-show added $<amount> to the Frolic Fund.`, each with the matching hero image when `FROLIC_HERO_BASE_URL` is set |
 
 Rows are keyed (`drop:<frolicId>:<userId>`, `reveal:<frolicId>:<chatId>`) so a retry or a second
-hook call cannot double-send. A paused link is written as `skipped`. Delivery retries three times
-at 2 second spacing and then records `failed` with the HTTP status.
+hook call cannot double-send. A paused link is written as `skipped`.
+
+Delivery reads the notice response rather than trusting the status code. `deliver` parses
+`results[].outcome`: `ran` and `queued` count as sent (`queued` means the notice sits in the
+conversation's debounce window and runs on its next turn), `unavailable` is a retry. A transport
+failure, a 5xx and a 429 retry with exponential backoff (2 s, 4 s, 8 s, capped at 60 s) up to three
+attempts, then the row records `failed` with the reason. A 400, 404 or 422, and an outcome naming a
+missing identity, is permanent: the row is `failed` at once with a `lost_` prefix, because a
+contact who has never texted the line cannot be reached by a notice and no retry will change that.
+
+Which plan a texter sees: `currentFrolic` prefers the newest frolic that is `open`, then the newest
+that is `on`, then the newest of any status. A closed plan seeded for a later day therefore cannot
+shadow today's open one, and once the next plan opens it becomes the one texts describe, matching
+what the phones show.
 
 ## 6. Deep features, ranked for the shared line
 
