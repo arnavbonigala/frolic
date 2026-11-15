@@ -169,7 +169,7 @@ final class TodayStore {
         case .none:
             return myFree?.state == "busy" ? .off : .none
         case .solo, .open, .waiting:
-            if today.frolic != nil && today.frolic?.plan == nil { return .none }
+            if today.frolic?.plan == nil { return .none }
             if today.myTap?.kind == "notToday" || (myFree?.state == "busy" && !isDown) { return .off }
             if solo { return .solo(waiting: isDown) }
             return isDown ? .waiting(onlyIf: tapOnlyIf.map(\.name)) : .open
