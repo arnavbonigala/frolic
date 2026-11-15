@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import process from 'node:process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -87,10 +87,18 @@ const fresh = body.users.filter((user) => user.link);
 const dir = process.env.FROLIC_REHEARSE_DIR || join(homedir(), '.capy', 'work', 'rehearse');
 await mkdir(dir, { recursive: true });
 const path = join(dir, 'rehearse-' + body.run + '.json');
+let earlier = null;
+try {
+  earlier = JSON.parse(await readFile(path, 'utf8'));
+} catch {
+  earlier = null;
+}
+const carried = (name) => earlier?.users?.find((user) => user.name === name)?.link ?? null;
+body.users = body.users.map((user) => ({ ...user, link: user.link ?? carried(user.name) }));
 await writeFile(path, JSON.stringify(body, null, 2) + '\n', 'utf8');
 lines.push(
   fresh.length === 0
-    ? 'every phone keeps the sign-in it already had, so no new links'
+    ? 'no new sign-ins, the links already at ' + path + ' still work'
     : fresh.length === body.users.length
       ? 'sign-in links written to ' + path
       : 'new sign-in links for ' + fresh.map((user) => user.name).join(', ') + ' written to ' + path,
