@@ -20,7 +20,7 @@ test:
     - type: "validation"
       step_description: "The headline \"Taking the day off\" is visible"
     - type: "validation"
-      step_description: "The text \"No plan for you today, and nobody gets told. If your crew's plan happens, you can still hop in.\" is visible"
+      step_description: "The text \"Nobody gets told.\" is visible under the headline"
     - type: "instructions"
       step_description: "Tap \"I'm free after all\""
     - type: "validation"

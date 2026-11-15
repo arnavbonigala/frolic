@@ -16,7 +16,7 @@ test:
       step_type: "navigate"
       step_description: "frolic://e2e/join"
     - type: "instructions"
-      step_description: "Tap \"No invite? Start on your own\""
+      step_description: "Tap \"Start a crew\""
     - type: "validation"
       step_description: "The screen asks \"What do your friends call you?\""
     - type: "instructions"

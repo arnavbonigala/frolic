@@ -16,7 +16,7 @@ test:
       step_type: "navigate"
       step_description: "frolic://e2e/today:done?fixture=1"
     - type: "validation"
-      step_description: "The headline \"You went.\" is visible with \"Your first flower is in the garden, and the crew saw it bloom.\""
+      step_description: "The headline \"You went.\" is visible with \"Your first flower is in the garden.\""
     - type: "validation"
       step_description: "A \"See the garden\" button is visible"
     - type: "instructions"

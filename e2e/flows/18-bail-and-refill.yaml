@@ -26,4 +26,4 @@ test:
     - type: "instructions"
       step_description: "Tap \"I can't make it\", then tap \"Sit this one out\""
     - type: "validation"
-      step_description: "The Today screen is visible with a toast reading \"All good. Next time.\""
+      step_description: "The Today screen shows \"Ari, it's happening\" with a \"Hop in\" button"

@@ -33,7 +33,7 @@ test:
     - type: "instructions"
       step_description: "Tap \"I'm down\""
     - type: "validation"
-      step_description: "The line \"Your bud is planted. Waiting for a friend\" is visible"
+      step_description: "The line \"Waiting for a friend\" is visible"
     - type: "validation"
       step_description: "Nothing on screen shows that Maya is down, and no \"It's on.\" is visible yet"
     - type: "while"

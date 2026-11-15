@@ -19,7 +19,7 @@ test:
     - type: "validation"
       step_description: "The Continue button is disabled while the first name field is empty"
     - type: "validation"
-      step_description: "The text \"This is your flower. Your crew sees your name and photo, and nothing else.\" is visible"
+      step_description: "The text \"Your crew sees your name and photo.\" is visible under the field"
     - type: "instructions"
       step_description: "Type \"Ari\" in the field labelled \"First name\""
     - type: "validation"

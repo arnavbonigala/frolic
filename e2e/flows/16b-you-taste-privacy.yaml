@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-you-taste-privacy"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "you"
+      - "feature-2"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro Max"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/you"
+    - type: "validation"
+      step_description: "A section \"What you're into\" shows taste chips above a \"Pick photos again\" button"
+    - type: "instructions"
+      step_description: "Scroll to \"Privacy\" and tap \"What friends can see\""
+    - type: "validation"
+      step_description: "A \"Privacy\" screen shows \"Nobody sees you're down unless they are too.\" with a \"Delete my account\" row"
+    - type: "instructions"
+      step_description: "Tap \"Done\""
+    - type: "validation"
+      step_description: "The line \"Plans quietly fit everyone's limits. Nobody has to say \"I can't afford that.\"\" is visible again"
