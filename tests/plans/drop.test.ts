@@ -6,8 +6,8 @@ import { groupNamespace } from "../../convex/memory/mapping";
 import { PLACE_BY_SLUG } from "../../convex/places/data";
 import { makeT } from "../backend/setup.helpers";
 import { pickCacheKey } from "../../convex/ai/cache";
-import { modelPick } from "../../convex/plans/drop";
-import { rankCandidates, type DropInput } from "../../convex/plans/engine";
+import { modelPick, modelShortlist } from "../../convex/plans/drop";
+import { generatePlan, rankCandidates, type DropInput } from "../../convex/plans/engine";
 import { EMPTY_MEMORY, type MemoryContext } from "../../convex/plans/memoryContext";
 import { addDays, localTimeToMs, solarTimes } from "../../convex/plans/time";
 
@@ -355,9 +355,9 @@ describe("modelPick", () => {
   test("takes a candidate the model chose", async () => {
     const { t, groupId } = await crew();
     const input = await dropInput(t, groupId);
-    const candidates = rankCandidates(input).slice(0, 8);
+    const candidates = modelShortlist(input);
     expect(candidates.length).toBeGreaterThanOrEqual(2);
-    const chosen = candidates[2].place.slug;
+    const chosen = candidates[1].place.slug;
     process.env.OPENAI_API_KEY = "test-key";
     const fetcher = answer(chosen);
     const pick = await modelPick(input, { cached: null, fetcher: fetcher });
@@ -378,6 +378,49 @@ describe("modelPick", () => {
         fetcher: answer(rankCandidates(input)[0].place.slug, "the best night of the week!"),
       }),
     ).toBeNull();
+  });
+
+  test("the model never sees a place where fewer people can come", async () => {
+    const at = (hh: number, mm = 0) => localTimeToMs(DAY, hh * 60 + mm);
+    const base = PLACE_BY_SLUG.get("pegasus-books")!;
+    const everyoneGames = { ...base, slug: "everyone-games", name: "everyone-games", tags: ["games" as const], durationMin: 30 };
+    const everyoneCampus = { ...base, slug: "everyone-campus", name: "everyone-campus", tags: ["campus" as const], durationMin: 30 };
+    const tightGames = { ...base, slug: "tight-games", name: "tight-games", tags: ["games" as const], durationMin: 45 };
+    const attendee = (userId: string, start: number, end: number) => ({
+      userId,
+      limits: { budgetCents: null, energy: "anything" as const, maxMinutes: null, homeBy: null },
+      origin: null,
+      window: { start, end },
+      taste: [],
+    });
+    const input: DropInput = {
+      day: DAY,
+      kind: "daily",
+      seed: "three:" + DAY,
+      nowMs: NOON,
+      attendees: [attendee("maya", at(17), at(21)), attendee("dev", at(17), at(18)), attendee("jordan", at(17, 30), at(18))],
+      weather: null,
+      memory: EMPTY_MEMORY,
+      history: [],
+      lastFrolicDay: null,
+      places: [everyoneGames, everyoneCampus, tightGames],
+    };
+    const ranked = rankCandidates(input);
+    const freeOf = (slug: string) => ranked.find((c) => c.place.slug === slug)!.freeCount;
+    expect(freeOf("everyone-games")).toBe(3);
+    expect(freeOf("everyone-campus")).toBe(3);
+    expect(freeOf("tight-games")).toBe(2);
+    expect(modelShortlist(input).map((c) => c.place.slug)).toEqual(["everyone-games", "everyone-campus"]);
+    process.env.OPENAI_API_KEY = "test-key";
+    const fetcher = answer("tight-games");
+    expect(await modelPick(input, { cached: null, fetcher })).toBeNull();
+    expect(fetcher).toHaveBeenCalled();
+    const body = String(fetcher.mock.calls[0][1]?.body);
+    expect(body).toContain("everyone-games");
+    expect(body).not.toContain("tight-games");
+    const plan = generatePlan(input)!;
+    expect(plan.placeSlug).toBe("everyone-games");
+    expect(ranked.find((c) => c.place.slug === plan.placeSlug && c.startMs === plan.startsAt)!.freeCount).toBe(3);
   });
 
   test("returns null when the call fails", async () => {

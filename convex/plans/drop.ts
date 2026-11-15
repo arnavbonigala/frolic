@@ -16,6 +16,7 @@ import {
   copyOk,
   rankCandidates,
   validatePlan,
+  type Candidate,
   type DropInput,
   type DropKind,
   type DropOffer,
@@ -212,16 +213,22 @@ export const rememberPick = internalMutation({
   },
 });
 
+export function modelShortlist(input: DropInput, size = 8): Candidate[] {
+  const ranked = rankCandidates(input);
+  if (ranked.length < 2) return [];
+  return ranked.filter((c) => c.freeCount === ranked[0].freeCount).slice(0, size);
+}
+
 export async function modelPick(
   input: DropInput,
   options: { cached: { slug: string; why: string } | null; fetcher?: typeof fetch },
 ): Promise<GenerateOptions | null> {
   if (options.cached) return { preferredSlug: options.cached.slug, preferredWhy: options.cached.why };
-  const ranked = rankCandidates(input).slice(0, 8);
-  if (ranked.length < 2) return null;
+  const shortlist = modelShortlist(input);
+  if (shortlist.length < 2) return null;
   const top = generatePlan(input);
   const result = await pickPlace({
-    candidates: ranked.map((c) => ({ slug: c.place.slug, name: c.place.name, tags: c.place.tags, costLabel: c.place.costLabel, indoor: c.place.indoor, why: c.place.fallbackWhy })),
+    candidates: shortlist.map((c) => ({ slug: c.place.slug, name: c.place.name, tags: c.place.tags, costLabel: c.place.costLabel, indoor: c.place.indoor, why: c.place.fallbackWhy })),
     context: { topTags: top?.whyInputs.topTags ?? [], memory: input.memory.pastNights[0]?.text ?? null, weather: top?.weather ?? null },
     fetcher: options.fetcher,
   });
