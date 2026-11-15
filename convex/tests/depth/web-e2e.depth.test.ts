@@ -451,6 +451,24 @@ describe("joining a frolic from the page", () => {
 });
 
 describe("the dev scene seed", () => {
+  test("setAvatar hangs a portrait on every person with that name", async () => {
+    const t = makeT();
+    const seeded = await t.mutation(internal.web.devSeed.seed, {});
+    expect(await t.mutation(internal.web.devSeed.setAvatar, { name: "Ari", key: "ari-01" })).toBe("ok");
+    expect(await t.mutation(internal.web.devSeed.setAvatar, { name: "Nobody", key: "ghost" })).toBe("ok");
+
+    const avatars = await t.run(async (ctx) => {
+      const users = await ctx.db.query("users").collect();
+      return users.filter((u) => u.avatarUrl !== undefined).map((u) => [u.name, u.avatarUrl]);
+    });
+    expect(avatars).toContainEqual(["Ari", "/p/avatar/ari-01.jpg"]);
+    expect(avatars.every(([, url]) => url !== "/p/avatar/ghost.jpg")).toBe(true);
+    const aris = await t.run(async (ctx) => (await ctx.db.query("users").collect()).filter((u) => u.name === "Ari"));
+    expect(aris.length).toBeGreaterThan(0);
+    expect(aris.every((u) => u.avatarUrl === "/p/avatar/ari-01.jpg")).toBe(true);
+    expect(seeded.frolicId).toBeDefined();
+  });
+
   test("seed builds a crew and a frolic the share page renders", async () => {
     const t = makeT();
     const seeded = await t.mutation(internal.web.devSeed.seed, {});
