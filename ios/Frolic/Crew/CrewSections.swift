@@ -292,13 +292,14 @@ struct CrewFundSection: View {
 struct CrewHoldRow: View {
     var groupName: String
     var isOn: Bool
+    var amount: String
     var onChange: (Bool) -> Void
 
     var body: some View {
-        let line = isOn ? "\(groupName) plays for $3. Show up, it's released." : "Nobody puts money down for a plan."
+        let line = isOn ? "\(groupName) plays for \(amount). Show up, it's released." : "Nobody puts money down for a plan."
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Play for $3")
+                Text("Play for \(amount)")
                     .frolicFont(.bodyEmphasis)
                     .foregroundStyle(FrolicColor.ink)
                 Text(line)
@@ -307,11 +308,11 @@ struct CrewHoldRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
-            Toggle("Play for $3", isOn: Binding(get: { isOn }, set: onChange))
+            Toggle("Play for \(amount)", isOn: Binding(get: { isOn }, set: onChange))
                 .labelsHidden()
                 .tint(FrolicColor.free)
                 .frame(minWidth: 51, minHeight: 44)
-                .accessibilityLabel("Play for $3")
+                .accessibilityLabel("Play for \(amount)")
                 .accessibilityValue(isOn ? "On" : "Off")
                 .accessibilityIdentifier("crew.hold.toggle")
         }

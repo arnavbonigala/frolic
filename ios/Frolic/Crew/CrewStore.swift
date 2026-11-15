@@ -256,7 +256,8 @@ final class CrewStore {
                 members: crew.members.map { $0.isMe ? $0.with(free: optimistic) : $0 },
                 memberCount: crew.memberCount,
                 createdAt: crew.createdAt,
-                holdEnabled: crew.holdEnabled
+                holdEnabled: crew.holdEnabled,
+                holdCents: crew.holdCents
             )
             rebuild()
         }
@@ -280,7 +281,7 @@ final class CrewStore {
         guard let client, let groupId, let token = identity.deviceToken, let crew = crewWire else { return }
         actionError = nil
         let previous = crew
-        crewWire = CrewWire(groupName: crew.groupName, members: crew.members, memberCount: crew.memberCount, createdAt: crew.createdAt, holdEnabled: enabled)
+        crewWire = CrewWire(groupName: crew.groupName, members: crew.members, memberCount: crew.memberCount, createdAt: crew.createdAt, holdEnabled: enabled, holdCents: crew.holdCents)
         rebuild()
         do {
             try await client.mutation("crew:setHold", with: ["deviceToken": token, "groupId": groupId, "enabled": enabled])
@@ -472,7 +473,8 @@ final class CrewStore {
             fund: fund,
             wentToday: iWent && todayDone,
             todayTitle: todayTitle,
-            holdEnabled: crew.holdEnabled ?? false
+            holdEnabled: crew.holdEnabled ?? false,
+            holdCents: Int(crew.holdCents ?? 300)
         )
         phase = rows.count <= 1 ? .empty : .ready
     }

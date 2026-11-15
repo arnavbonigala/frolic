@@ -121,6 +121,7 @@ struct CrewView: Equatable {
     var wentToday: Bool
     var todayTitle: String?
     var holdEnabled: Bool = false
+    var holdCents: Int = 300
 
     var showsFund: Bool { holdEnabled || !fund.isEmpty }
 

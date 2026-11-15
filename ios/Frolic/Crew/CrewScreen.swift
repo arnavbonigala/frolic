@@ -164,7 +164,7 @@ private struct CrewContent: View {
         .accessibilityIdentifier("crew.invite")
 
         SectionHeader(title: "Your crew's stakes")
-        CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled) { enabled in
+        CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled, amount: CrewCopy.money(view.holdCents)) { enabled in
             Task { await store.setHold(enabled) }
         }
         if view.showsFund {
