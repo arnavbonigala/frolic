@@ -111,9 +111,9 @@ struct DailyPickCard: View {
 
     private func optionButtons(_ options: [String]) -> some View {
         ForEach(options, id: \.self) { option in
-            Button(option) { store.pick(option) }
+            Button(DailyPickCopy.display(option)) { store.pick(option) }
                 .buttonStyle(.frolicSecondaryWide)
-                .accessibilityHint("Picks \(option) and shows what your crew said")
+                .accessibilityHint("Shows what your crew said")
                 .accessibilityIdentifier("dailyPick.option.\(option)")
         }
     }
@@ -184,7 +184,7 @@ private struct DailyPickResultsView: View {
                         .foregroundStyle(FrolicColor.sun)
                         .accessibilityHidden(true)
                 }
-                Text(option)
+                Text(DailyPickCopy.display(option))
                     .todayFont(17, mine ? .bold : .semibold, relativeTo: .body)
                     .foregroundStyle(FrolicColor.ink)
                     .multilineTextAlignment(.leading)
@@ -216,8 +216,8 @@ private struct DailyPickResultsView: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label(option: option, mine: mine, people: people))
-        .accessibilityHint(mine ? "" : "Changes your pick to \(option)")
-        .accessibilityAddTraits(mine ? .isSelected : [])
+        .accessibilityHint(mine ? "" : "Changes your pick to \(DailyPickCopy.display(option))")
+        .accessibilityAddTraits(mine ? [.isButton, .isSelected] : .isButton)
         .accessibilityIdentifier("dailyPick.result.\(option)")
     }
 
@@ -246,7 +246,7 @@ private struct DailyPickResultsView: View {
     }
 
     private func label(option: String, mine: Bool, people: [TodayPerson]?) -> String {
-        var parts = [option]
+        var parts = [DailyPickCopy.display(option)]
         if mine { parts.append("your pick") }
         if let people {
             parts.append(DailyPickCopy.people(people.count))
