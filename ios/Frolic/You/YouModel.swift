@@ -76,13 +76,7 @@ struct YouOverview: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         memories = (try? container.decodeIfPresent([Memory].self, forKey: .memories)) ?? []
         yourCount = try? container.decodeIfPresent(Int.self, forKey: .yourCount)
-        collection = (try? container.decodeIfPresent(GardenCollection.self, forKey: .collection)) ?? nil
-    }
-
-    init(memories: [Memory], yourCount: Int?, collection: GardenCollection?) {
-        self.memories = memories
-        self.yourCount = yourCount
-        self.collection = collection
+        collection = try? container.decodeIfPresent(GardenCollection.self, forKey: .collection)
     }
 }
 
