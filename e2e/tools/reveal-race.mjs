@@ -8,6 +8,8 @@ const CONVEX_URL = must('SHARED_CONVEX_URL').replace(/\/+$/, '');
 const RACES = Number(process.env.REVEAL_RACES || 10);
 const RUN_PREFIX = process.env.REVEAL_RUN || 'p1reveal';
 const REVEAL_DELAY_MS = 1500;
+const BLOOM_LEAD_MS = 800;
+const SCHEDULER_BUDGET_MS = 250;
 const BARRIER_LIMIT_MS = 100;
 const REVEAL_WAIT_MS = 8000;
 const ZONE = 'America/Los_Angeles';
@@ -264,6 +266,7 @@ async function oneRace(index) {
   const bloomAts = [...new Set(rows.map((row) => row.bloom_at))];
   check(scope, 'attendee rows share one revealAt', revealAts.length === 1, revealAts.join(','));
   check(scope, 'attendee rows share one bloomAt', bloomAts.length === 1, bloomAts.join(','));
+  check(scope, 'the stored bloomAt leads revealAt by the documented bloom lead', bloomAts[0] - revealAts[0] === BLOOM_LEAD_MS, bloomAts[0] - revealAts[0] + 'ms');
   const logUserIds = rows.map((row) => row.userId).sort();
   check(scope, 'attendee rows are the two committed phones', logUserIds.join(',') === [members.maya.userId, members.dev.userId].sort().join(','), logUserIds.join(','));
 
@@ -294,6 +297,9 @@ async function oneRace(index) {
   check(scope, 'advance is idempotent', restoreAt.frolicId === secondAt.frolicId, restoreAt.frolicId + ' vs ' + secondAt.frolicId);
 
   const deliverLag = rows[0].delivered_at - revealAts[0];
+  const tapToRecord = REVEAL_DELAY_MS + deliverLag;
+  check(scope, 'the scheduler fires within ' + SCHEDULER_BUDGET_MS + 'ms of revealAt', deliverLag <= SCHEDULER_BUDGET_MS, deliverLag + 'ms');
+  check(scope, 'the record lands one settle delay after the tap', tapToRecord >= REVEAL_DELAY_MS, tapToRecord + 'ms');
   return {
     run,
     failed: false,
@@ -303,6 +309,8 @@ async function oneRace(index) {
     bloomAt: bloomAts[0],
     deliveredAt: rows[0].delivered_at,
     deliverLag,
+    tapToRecord,
+    bloomClock: tapToRecord + BLOOM_LEAD_MS,
     revealFromBarrier: revealAts[0] - (barrierAt + REVEAL_DELAY_MS),
     barrierAt: Math.round(barrierAt + Math.max(0, lastIssue - performance.now())),
     polls: polls.length,
@@ -418,11 +426,13 @@ const lag = stats(ok.map((r) => r.deliverLag));
 const issue = stats(ok.map((r) => r.issueSpread));
 const response = stats(ok.map((r) => r.responseSpread));
 const fromBarrier = stats(ok.map((r) => r.revealFromBarrier));
+const toRecord = stats(ok.map((r) => r.tapToRecord));
+const bloomClock = stats(ok.map((r) => r.bloomClock));
 const distinctAts = [...new Set(ok.map((r) => r.revealAt))];
 
 const width = 8;
 console.log('');
-console.log('race  issue_ms  resp_ms  revealAt             deliver_lag_ms');
+console.log('race  issue_ms  resp_ms  revealAt             deliver_lag_ms  tap_to_record_ms');
 for (const row of results) {
   if (row.failed) {
     console.log(pad(row.run, 6) + '  failed');
@@ -434,7 +444,8 @@ for (const row of results) {
       pad(row.responseSpread.toFixed(2), 9) +
       '  ' +
       pad(row.revealAt, 20) +
-      pad(row.deliverLag, 16),
+      pad(row.deliverLag, 16) +
+      pad(row.tapToRecord, 19),
   );
 }
 console.log('');
@@ -445,6 +456,8 @@ const summary = {
   barrier_spread_ms: issue,
   response_spread_ms: response,
   scheduler_fire_lag_ms: lag,
+  tap_to_reveal_record_ms: toRecord,
+  phone_bloom_clock_ms: bloomClock,
   reveal_at_minus_barrier_ms: fromBarrier,
   distinct_reveal_at_values: distinctAts.length,
   failures: failures.length,
@@ -459,6 +472,8 @@ check('summary', 'no reveal fires before revealAt', lag.min >= 0, String(lag.min
 console.log('barrier spread      ' + issue.min.toFixed(2) + ' / ' + issue.p50.toFixed(2) + ' / ' + issue.max.toFixed(2) + ' ms (min/p50/max)');
 console.log('response spread     ' + response.min.toFixed(2) + ' / ' + response.p50.toFixed(2) + ' / ' + response.max.toFixed(2) + ' ms');
 console.log('scheduler fire lag  ' + lag.min + ' / ' + lag.p50 + ' / ' + lag.max + ' ms after revealAt, mean ' + lag.mean.toFixed(1));
+console.log('second tap to record ' + toRecord.min + ' / ' + toRecord.p50 + ' / ' + toRecord.max + ' ms = the ' + REVEAL_DELAY_MS + 'ms settle delay plus the scheduler lag');
+console.log('phone bloom clock   ' + bloomClock.min + ' / ' + bloomClock.p50 + ' / ' + bloomClock.max + ' ms = the record plus the ' + BLOOM_LEAD_MS + 'ms bloom lead, before any push latency this harness cannot see');
 console.log('revealAt - barrier  ' + fromBarrier.min.toFixed(1) + ' / ' + fromBarrier.p50.toFixed(1) + ' / ' + fromBarrier.max.toFixed(1) + ' ms around the 1500ms reveal delay');
 if (straggler) {
   console.log('straggler           one reveal of ' + straggler.rows + ' phones at ' + straggler.revealAt + ', ' + straggler.shifted + 'ms past the barrier plus delay, third tap at +' + straggler.jordanDelay + 'ms');
