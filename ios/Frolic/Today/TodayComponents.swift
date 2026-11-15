@@ -43,6 +43,7 @@ struct TodayPacket<Content: View>: View {
                     .frame(height: heroHeight + 600)
             }
             ticket
+                .padding(.top, flickable ? 18 : 6)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.plan.card")
