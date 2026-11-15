@@ -19,6 +19,7 @@ import type * as clock from "../clock.js";
 import type * as crew from "../crew.js";
 import type * as crons from "../crons.js";
 import type * as daily from "../daily.js";
+import type * as drops from "../drops.js";
 import type * as e2e_admin from "../e2e/admin.js";
 import type * as e2e_routes from "../e2e/routes.js";
 import type * as etas from "../etas.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   crew: typeof crew;
   crons: typeof crons;
   daily: typeof daily;
+  drops: typeof drops;
   "e2e/admin": typeof e2e_admin;
   "e2e/routes": typeof e2e_routes;
   etas: typeof etas;

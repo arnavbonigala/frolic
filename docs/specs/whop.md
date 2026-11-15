@@ -181,6 +181,19 @@ The one moment: **Dev walks into the geofence. His phone says "You made it. Your
 
 Script beat for the 90 seconds: reveal, then "Hold $3 to lock it in" on the card form, then arrival releases it, then the no-show feeds the fund, then tomorrow's kayaks show "Frolic Fund covered $3, your share $7".
 
+## 4.1 Frolic Drops: Whop sellers on Frolic
+
+Frolic is a demand channel for real Whop sellers. A local spot or a student club sells a Frolic experience as a **visible** Whop product in the sandbox company, and the daily plan engine can pick it like a place. Three ship for the demo, created by `npx convex run drops:seed`: "Sunset kayaks" from Cal Kayak Club at $8 a person, "Late-night ramen flight" from Ippudo Berkeley at $12, and "Board game night" from The Game Table at $5.
+
+| Need | Whop primitive |
+| - | - |
+| The seller's listing | `POST /products` with `visibility: "visible"`, a `route`, and `metadata.frolic_drop` |
+| The seat | `POST /variants` (the current name for plans, ids `plan_`) with `one_time`, `initial_price` in dollars, `visibility: "visible"`, and `sku: "frolic-drop-<key>"`, which makes it findable again |
+| A link outside the app | the variant's own `purchase_url`, with `POST /checkout_configurations` (`variant_id`) as the fallback when Whop returns none |
+| Charging a friend | `POST /payments` with `variant_id` of the seller's variant when the share equals the price, else an inline `variant` under the seller's `product_id` once the Frolic Fund has taken some off |
+
+On stage, the seller's product in the Whop sandbox dashboard shows each friend's payment the moment it lands. The share, webhook, refund and fund logic is exactly section 3.6.
+
 ## 5. Beyond the baseline, ranked
 
 | # | Idea | Demo value | Build | Risk | Call |

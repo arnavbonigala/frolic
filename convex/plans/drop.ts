@@ -17,6 +17,7 @@ import {
   validatePlan,
   type DropInput,
   type DropKind,
+  type DropOffer,
   type GenerateOptions,
   type Plan,
 } from "./engine";
@@ -97,6 +98,7 @@ const vStoredPlan = v.object({
   weatherSwap: v.boolean(),
   favoredUserId: v.union(v.string(), v.null()),
   source: v.union(v.literal("model"), v.literal("scorer"), v.literal("fallback")),
+  dropId: v.optional(v.id("drops")),
 });
 
 type StoredPlan = {
@@ -119,6 +121,7 @@ type StoredPlan = {
   weatherSwap: boolean;
   favoredUserId: string | null;
   source: "model" | "scorer" | "fallback";
+  dropId?: Id<"drops">;
 };
 
 const toStored = (plan: Plan): StoredPlan => ({
@@ -130,7 +133,7 @@ const toStored = (plan: Plan): StoredPlan => ({
   whyMemoryId: plan.whyMemoryId,
   whyInputs: plan.whyInputs,
   chips: plan.chips,
-  cost: plan.costPerPersonCents,
+  cost: plan.costPerPersonCents / 100,
   costLabel: plan.costLabel,
   payUpFront: plan.payUpFront,
   startsAt: plan.startsAt,
@@ -141,6 +144,7 @@ const toStored = (plan: Plan): StoredPlan => ({
   weatherSwap: plan.weatherSwap,
   favoredUserId: plan.favoredUserId,
   source: plan.source,
+  dropId: plan.drop ? (plan.drop.dropId as Id<"drops">) : undefined,
 });
 
 function buildInput(args: {
@@ -150,6 +154,7 @@ function buildInput(args: {
   inputs: DropInputs;
   weather: DayWeather | null;
   memory: MemoryContext;
+  drops?: DropOffer[];
 }): DropInput {
   return {
     day: args.day,
@@ -161,6 +166,7 @@ function buildInput(args: {
     memory: args.memory,
     history: args.inputs.history,
     lastFrolicDay: args.inputs.lastFrolicDay,
+    drops: args.drops ?? [],
   };
 }
 
@@ -314,7 +320,8 @@ export const pickStep = internalAction({
   },
   returns: v.union(vStoredPlan, v.null()),
   handler: async (ctx, args): Promise<StoredPlan | null> => {
-    const input = buildInput(args);
+    const drops: DropOffer[] = await ctx.runQuery(internal.drops.offers, { day: args.day });
+    const input = buildInput({ ...args, drops });
     const key = pickCacheKey(input);
     const cached = process.env.OPENAI_API_KEY
       ? await ctx.runQuery(internal.plans.drop.cachedPick, { groupId: args.groupId, day: args.day, key })
@@ -344,7 +351,7 @@ export const pickStep = internalAction({
       candidates: plan.candidates,
     });
     if (!picked) return null;
-    if (picked.whySource !== "memory") {
+    if (picked.whySource !== "memory" && !picked.drop) {
       const place = PLACE_BY_SLUG.get(picked.placeSlug);
       const hit: { memoryId: string; text: string } | null = place
         ? await ctx.runAction(internal.memory.read.whyThis, { groupId: args.groupId, tags: [place.name.replace(/^the /, ""), ...place.tags.map((t) => TAG_LABEL[t])] }).catch(() => null)
@@ -419,6 +426,7 @@ async function storePlan(
     weatherSwap: args.plan.weatherSwap,
     favoredUserId: args.plan.favoredUserId ? (args.plan.favoredUserId as Id<"users">) : undefined,
     source: args.plan.source,
+    dropId: args.plan.dropId,
     generatedAt: Date.now(),
   });
 }
@@ -456,6 +464,7 @@ export const patchPlan = internalMutation({
       sunsetAt: args.plan.sunsetAt,
       weather: args.plan.weather ?? undefined,
       weatherSwap: args.plan.weatherSwap,
+      dropId: args.plan.dropId,
       weatherCheckedAt: Date.now(),
     });
     return existing._id;
@@ -498,7 +507,8 @@ export const weatherSwapStep = internalAction({
       groupId: args.groupId,
       day: args.day,
     });
-    const input = buildInput({ groupId: args.groupId, day: args.day, kind: args.kind, inputs, weather, memory });
+    const drops: DropOffer[] = await ctx.runQuery(internal.drops.offers, { day: args.day });
+    const input = buildInput({ groupId: args.groupId, day: args.day, kind: args.kind, inputs, weather, memory, drops });
     const plan = generatePlan(input);
     if (!plan || !validatePlan(plan, input)) return null;
     const stored = toStored(plan);

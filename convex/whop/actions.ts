@@ -11,6 +11,7 @@ type ChargeResult = { ok: true; status: string; clientSecret: string | null } | 
 type BeginResult =
   | { ok: true; shareId: Id<"shares">; frolicId: Id<"frolics">; userId: Id<"users">; kind: "deposit" | "chipIn"; amountCents: number; title: string }
   | { ok: false; message: string };
+type DropTarget = { productId: string; planId: string; priceCents: number; dropId: Id<"drops"> } | null;
 type ShareView = { status: string; kind: "deposit" | "chipIn"; whopPaymentId: string | null; updatedAt: number; capturable: boolean } | null;
 
 function errorText(e: unknown): string {
@@ -33,6 +34,21 @@ export const charge = internalAction({
     if (!begun.ok) return begun;
     const cfg = whopConfig();
     const isHold = begun.kind === "deposit";
+    const target: DropTarget = isHold ? null : await ctx.runQuery(internal.drops.chargeTarget, { frolicId: begun.frolicId });
+    const productId = target?.productId ?? (isHold ? cfg.holdProductId : cfg.plansProductId);
+    const purchase =
+      target && target.priceCents === begun.amountCents
+        ? { variant_id: target.planId }
+        : {
+            variant: {
+              currency: "usd",
+              initial_price: begun.amountCents / 100,
+              billing_type: "one_time",
+              visibility: "hidden",
+              product_id: productId,
+              title: isHold ? "Frolic hold" : `${begun.title}, your share`,
+            },
+          };
     const startedAt = Date.now();
     try {
       const payment = await whop.createPayment(
@@ -41,15 +57,8 @@ export const charge = internalAction({
           confirmation_token: confirmationToken,
           capture: !isHold,
           return_url: payUrl(token),
-          metadata: { shareId: begun.shareId, frolicId: begun.frolicId, userId: begun.userId, kind: begun.kind },
-          variant: {
-            currency: "usd",
-            initial_price: begun.amountCents / 100,
-            billing_type: "one_time",
-            visibility: "hidden",
-            product_id: isHold ? cfg.holdProductId : cfg.plansProductId,
-            title: isHold ? "Frolic hold" : `${begun.title}, your share`,
-          },
+          metadata: { shareId: begun.shareId, frolicId: begun.frolicId, userId: begun.userId, kind: begun.kind, ...(target ? { dropId: target.dropId } : {}) },
+          ...purchase,
         },
         `${begun.shareId}:charge:${confirmationToken}`,
       );
@@ -59,7 +68,7 @@ export const charge = internalAction({
       return { ok: true as const, status: payment.substatus ?? payment.status ?? "pending", clientSecret: payment.client_secret ?? null };
     } catch (e) {
       const unknown = !(e instanceof WhopError) || !e.status;
-      const lost = unknown ? await findLost(begun.shareId, isHold ? cfg.holdProductId : cfg.plansProductId, startedAt) : null;
+      const lost = unknown ? await findLost(begun.shareId, productId, startedAt) : null;
       if (lost) {
         const { signal } = await readSignal(lost);
         await ctx.runMutation(internal.whop.money.recordCharge, { shareId: begun.shareId, whopPaymentId: lost.id, signal });
@@ -70,7 +79,7 @@ export const charge = internalAction({
       if (unknown) {
         await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.adoptLost, {
           shareId: begun.shareId,
-          productId: isHold ? cfg.holdProductId : cfg.plansProductId,
+          productId,
           since: startedAt,
         });
       }
