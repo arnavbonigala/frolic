@@ -102,6 +102,13 @@ struct TodayView: Codable, Hashable {
     var frolicNumber: Double?
 }
 
+struct TodayEta: Codable, Hashable {
+    var userId: String
+    var minutes: Double
+    var onTheWay: Bool
+    var updatedAt: Double
+}
+
 struct TodayPayment: Codable, Hashable {
     var state: String
     var kind: String
@@ -227,6 +234,11 @@ enum TodayCopy {
         return String(format: "$%.2f", dollars)
     }
 
+    static func either(_ names: [String]) -> String {
+        guard names.count > 1 else { return names.first ?? "" }
+        return names.dropLast().joined(separator: ", ") + " or " + (names.last ?? "")
+    }
+
     static func dropCountdown(_ now: Date) -> String {
         let drop = Calendar.current.date(bySettingHour: 15, minute: 0, second: 0, of: now) ?? now
         let minutes = Int(drop.timeIntervalSince(now) / 60)
@@ -285,9 +297,7 @@ enum TodayCopy {
         if let walk {
             chips.append("\(Int(walk)) min walk")
         }
-        if let sunset = plan.sunsetAt {
-            chips.append("Golden hour " + clock(sunset - 30 * 60 * 1000))
-        }
+        chips.append("Starts " + clock(plan.startsAt))
         return chips
     }
 
