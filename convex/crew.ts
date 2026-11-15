@@ -80,7 +80,7 @@ export const crew = query({
       groupName: group.name,
       holdEnabled: group.holdEnabled,
       holdCents: holdCents(),
-      memberCount: memberships.length,
+      memberCount: members.length,
       createdAt: group._creationTime,
       members,
     };

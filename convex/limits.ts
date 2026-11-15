@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { internalQuery, mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
 import { userFromToken } from "./lib/identity";
 import { energy } from "./schema";
 
@@ -11,6 +11,14 @@ const view = v.object({
   maxMinutes: v.union(v.number(), v.null()),
   homeBy: v.union(v.number(), v.null()),
 });
+
+async function limitsRows(ctx: QueryCtx, userId: Doc<"limits">["userId"]): Promise<Doc<"limits">[]> {
+  const rows = await ctx.db
+    .query("limits")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .take(4);
+  return rows.sort((a, b) => b.updatedAt - a.updatedAt || b._creationTime - a._creationTime);
+}
 
 const toView = (l: Doc<"limits"> | null) => ({
   budgetCap: l?.budgetCap ?? null,
@@ -24,8 +32,7 @@ export const mine = query({
   returns: view,
   handler: async (ctx, { deviceToken }) => {
     const user = await userFromToken(ctx, deviceToken);
-    const limits = await ctx.db.query("limits").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
-    return toView(limits);
+    return toView((await limitsRows(ctx, user._id))[0] ?? null);
   },
 });
 
@@ -40,11 +47,14 @@ export const set = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await userFromToken(ctx, args.deviceToken);
-    const bad = (x: number | null | undefined, max: number) => typeof x === "number" && (x < 0 || x > max);
+    const bad = (x: number | null | undefined, max: number) =>
+      typeof x === "number" && (!Number.isFinite(x) || x < 0 || x > max);
     if (bad(args.budgetCap, 10000) || bad(args.maxMinutes, 600) || bad(args.homeBy, 36 * 60)) {
       throw new ConvexError({ code: "BAD_LIMIT", message: "That limit is out of range" });
     }
-    const existing = await ctx.db.query("limits").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
+    const rows = await limitsRows(ctx, user._id);
+    const existing = rows[0] ?? null;
+    for (const stale of rows.slice(1)) await ctx.db.delete("limits", stale._id);
     const pick = <K extends "budgetCap" | "energy" | "maxMinutes" | "homeBy">(k: K) =>
       args[k] === undefined ? existing?.[k] : (args[k] ?? undefined);
     const doc = {
@@ -83,8 +93,7 @@ export const forUsers = internalQuery({
   handler: async (ctx, { userIds }) => {
     const out = [];
     for (const userId of userIds) {
-      const l = await ctx.db.query("limits").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-      out.push({ userId, ...toView(l) });
+      out.push({ userId, ...toView((await limitsRows(ctx, userId))[0] ?? null) });
     }
     return out;
   },
