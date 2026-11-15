@@ -1,4 +1,4 @@
-import { BERKELEY_PLACES, heroKeyFor, type HeroKey, type Place, type PlaceTag } from "../places/data";
+import { BERKELEY_PLACES, heroKeyFor, type HeroKey, type Place, type PlaceTag, type WeekHours } from "../places/data";
 import type { MemoryContext } from "./memoryContext";
 import { addDays, clockLabel, dateLabel, daysBetween, localParts, localTimeToMs, solarTimes } from "./time";
 import { conditionLabel, hourAt, isClear, isRainy, type DayWeather, type HourWeather } from "./weather";
@@ -7,7 +7,20 @@ import { tripLabel, tripTo, type LatLng, type Trip } from "./travel";
 export type Limits = { budgetCents: number | null; energy: "chill" | "anything"; maxMinutes: number | null; homeBy: number | null };
 export type Attendee = { userId: string; limits: Limits; origin: LatLng | null; window: { start: number; end: number }; taste: string[] };
 export type HistoryEntry = { day: string; placeSlug: string; favoredUserId: string | null };
-export type DropKind = "daily" | "weekend" | "solo";
+export type DropKind = "daily" | "weekend" | "solo" | "free";
+export type DropOffer = {
+  dropId: string;
+  sellerName: string;
+  title: string;
+  priceCents: number;
+  seatsLeft: number;
+  placeSlug: string;
+  tags: string[];
+  validDays: number[];
+  startMinute: number;
+  endMinute: number;
+  durationMinutes: number;
+};
 
 export type DropInput = {
   day: string;
@@ -20,6 +33,7 @@ export type DropInput = {
   history: HistoryEntry[];
   lastFrolicDay: string | null;
   places?: Place[];
+  drops?: DropOffer[];
 };
 
 export type Candidate = {
@@ -72,6 +86,7 @@ export type Plan = {
   source: "scorer" | "model" | "fallback";
   candidates: string[];
   minutesAway: Record<string, number>;
+  drop: { dropId: string; sellerName: string; priceCents: number } | null;
 };
 
 const MINUTE = 60_000;
@@ -166,7 +181,7 @@ export function blockedBySkips(memory: MemoryContext): Blocked {
   return b;
 }
 
-const isBlocked = (p: Place, b: Blocked) => b.slugs.has(p.slug) || p.tags.some((t) => b.tags.has(t));
+const isBlocked = (p: Place, b: Blocked) => b.slugs.has(p.slug) || (p.tags[0] !== undefined && b.tags.has(p.tags[0]));
 
 export function favoredUser(attendees: Attendee[], history: HistoryEntry[], seed: string): string | null {
   if (attendees.length === 0) return null;
@@ -253,6 +268,7 @@ function scoreCandidate(c: Omit<Candidate, "dryScore" | "score">, ctx: Ctx): { d
   s -= Math.max(0, c.maxTrip.minutes - 12) * 1.5 + c.maxTrip.minutes * 0.3;
   if (c.golden) s += 15;
   if (c.comeback) s += 45;
+  if (p.drop && taste > 0) s += DROP_BOOST;
   if (ctx.input.memory.pastNights.some((n) => n.placeId === p.slug)) s += 10;
   for (const h of ctx.input.history) {
     if (h.placeSlug !== p.slug) continue;
@@ -295,7 +311,40 @@ function buildCtx(input: DropInput): Ctx {
   };
 }
 
-export function rankCandidates(input: DropInput, ctx = buildCtx(input), pool = input.places ?? BERKELEY_PLACES): Candidate[] {
+export const DROP_BOOST = 8;
+
+export const centsLabel = (cents: number) => "$" + (cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2));
+
+export function dropPlaces(input: DropInput): Place[] {
+  const base = input.places ?? BERKELEY_PLACES;
+  const need = input.attendees.length >= 2 ? 2 : 1;
+  return (input.drops ?? []).flatMap((d) => {
+    const place = base.find((p) => p.slug === d.placeSlug);
+    if (!place || d.seatsLeft < need) return [];
+    const hours = Array.from({ length: 7 }, (_, i) => (d.validDays.includes(i) ? [[d.startMinute, d.endMinute]] : [])) as WeekHours;
+    return [
+      {
+        ...place,
+        title: d.title,
+        costPerPersonCents: d.priceCents,
+        costLabel: centsLabel(d.priceCents),
+        payUpFront: true,
+        priceVerified: true,
+        tags: [...new Set(d.tags.flatMap(normalizeTag))],
+        hours,
+        needsDaylight: false,
+        durationMin: d.durationMinutes,
+        drop: { dropId: d.dropId, sellerName: d.sellerName, seatsLeft: d.seatsLeft },
+      },
+    ];
+  });
+}
+
+export function rankCandidates(
+  input: DropInput,
+  ctx = buildCtx(input),
+  pool = [...(input.places ?? BERKELEY_PLACES), ...dropPlaces(input)],
+): Candidate[] {
   if (input.attendees.length === 0) return [];
   const out: Candidate[] = [];
   for (const place of pool) {
@@ -368,8 +417,18 @@ export function memoryWhy(text: string): string {
   return "you remembered it like this: \u201c" + trimQuote(text) + ".\u201d";
 }
 
+function dropWhy(c: Candidate): string | null {
+  const d = c.place.drop;
+  if (!d) return null;
+  const when = c.golden ? "at golden hour" : localParts(c.startMs).minutes >= 21 * 60 ? "tonight" : "at " + clockLabel(c.startMs);
+  const why = d.sellerName + " has " + d.seatsLeft + (d.seatsLeft === 1 ? " seat " : " seats ") + when + ".";
+  return copyOk(why) ? why : null;
+}
+
 function writeWhy(c: Candidate, ctx: Ctx, swap: boolean): { why: string; whySource: WhySource; whyMemoryId: string | null; memory: string | null } {
   const p = c.place;
+  const hosted = dropWhy(c);
+  if (hosted) return { why: hosted, whySource: "template", whyMemoryId: null, memory: null };
   const night = ctx.input.memory.pastNights.find((n) => n.placeId === p.slug);
   if (c.comeback) {
     const why = cap(p.name) + " was your favorite. Same time?";
@@ -449,6 +508,7 @@ function toPlan(c: Candidate, ctx: Ctx, candidates: Candidate[], source: Plan["s
     source,
     candidates: candidates.map((x) => x.place.slug),
     minutesAway: Object.fromEntries(Object.entries(c.trips).map(([u, t]) => [u, t.minutes])),
+    drop: p.drop ? { dropId: p.drop.dropId, sellerName: p.drop.sellerName, priceCents: p.costPerPersonCents } : null,
   };
 }
 
@@ -488,7 +548,9 @@ export function validatePlan(plan: Plan, input: DropInput): boolean {
   const allowed = new Set([...ranked.map((c) => c.place.slug), ...(plan.source === "fallback" ? FALLBACK_SLUGS : [])]);
   if (!allowed.has(plan.placeSlug)) return false;
   if (![plan.title, plan.line, plan.why, ...plan.chips].every(copyOk)) return false;
-  const place = (input.places ?? BERKELEY_PLACES).find((p) => p.slug === plan.placeSlug);
+  const place = plan.drop
+    ? dropPlaces(input).find((p) => p.drop?.dropId === plan.drop?.dropId)
+    : (input.places ?? BERKELEY_PLACES).find((p) => p.slug === plan.placeSlug);
   return !!place && isOpenFor(place, plan.startsAt, place.durationMin);
 }
 

@@ -9,16 +9,16 @@ test:
   build:
     name: "frolic-ios"
   device:
-    model: "iPhone 17 Pro"
+    model: "iPhone 17 Pro Max"
     orientation: "portrait"
   blocks:
     - type: "manual"
       step_type: "navigate"
       step_description: "frolic://e2e/today:open"
     - type: "instructions"
-      step_description: "Tap \"Only with…\""
+      step_description: "Tap \"Only if…\""
     - type: "validation"
-      step_description: "A sheet titled \"I'm down only with…\" shows \"Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them.\""
+      step_description: "A sheet titled \"I'm down only if…\" shows \"Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them.\""
     - type: "validation"
       step_description: "The primary button reads \"Pick at least one friend\" and is disabled"
     - type: "instructions"
