@@ -884,3 +884,19 @@ private struct TodaySkeleton: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
+            HStack(spacing: 8) {
+                ProgressView().tint(FrolicColor.secondaryText)
+                Text("Checking who's free")
+                    .todayFont(13, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.secondaryText)
+            }
+            .padding(.top, 14)
+        }
+        .opacity(reduceMotion ? 1 : (pulse ? 1 : 0.6))
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.9).repeatForever(), value: pulse)
+        .onAppear { pulse = true }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Checking who's free")
+        .accessibilityIdentifier("state.loading")
+    }
+}
