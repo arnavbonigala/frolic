@@ -75,7 +75,7 @@ When working in `convex/`, read `convex/_generated/ai/guidelines.md` and `.agent
 
 ## Build iOS on Revyl
 
-Linux machines cannot build iOS. The build runs on Revyl's runners, from a Capy thread, and the run happens on a cloud iPhone 17 Pro.
+Linux machines cannot build iOS. The build runs on Revyl's runners, from a Capy thread, and the run happens on a cloud iPhone 17 Pro Max, which is the device in Revyl's list closest to the 17 Pro.
 
 1. Build from the thread with `tools.mobile.build`. It creates a build named `frolic-ios`, which is the name every flow in `e2e/` resolves to.
 2. Install and drive it on a cloud iPhone, either with `tools.capy.phone` or from `e2e/`:

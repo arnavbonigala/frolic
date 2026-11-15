@@ -44,6 +44,7 @@ Ten minutes out, in this order. Every item is a check, not a setup step.
 8. Cloud phones are asleep. Only the three podium phones and Priya's are awake. Phone time is budgeted at $5.40 an hour and three awake phones is the crew limit.
 9. Jordan's card is already on file from a rehearsal payment, so his hold at beat 7 takes one tap rather than a card entry. If the card is not saved, place his hold from his pay link before the run and say so, because a capture needs a hold that exists.
 10. If the room is not the venue, Dev's check-in is the manual "I'm here" button, which calls the same mutation the geofence calls. Do not claim the geofence fired.
+11. Say which Whop mode the run is in, sandbox or production, and check the key on the deployment matches it. A sandbox key against the production base refuses every call, and the failure looks like a broken pay page.
 
 ## Run of show
 
@@ -57,7 +58,7 @@ Times are seconds from the first word. Line is what the room hears. Fallback key
 | 4 | 18 | Jordan's phone is unchanged: an open plan, free flowers, no count. Neither bud shows who is in. | Arnav holds one hand up, everyone waits | Neither phone can read the other's answer. The server is the only thing that knows. | F3 |
 | 5 | 24 | Both phones flip to "It's on." in the same frame, confetti, haptic. Jordan's phone gets "Jordan, it's happening". | Jordan hops in with one tap | One server timestamp, both phones, same frame. | F4 |
 | 6 | 28 | Overlay: the two cloud iPhone flips, frozen, with "Maya +0.31 s, Dev +0.34 s from one server release" burned in | Operator drops the overlay for four seconds, then clears it | Two cloud iPhones in two places in Berkeley, flipped by the same release. | F5 |
-| 7 | 32 | Whop pane: "Hold $3 to lock it in" on Maya's phone, then the Apple Pay sheet. Jordan pays his hold from the pay page on his hop-in. | Maya pays | Whop puts a three dollar hold on her card. It comes back when she arrives. | F6 |
+| 7 | 32 | Whop pane: "Hold $3 to lock it in" on Maya's phone, then the pay page with the test card on screen. Jordan pays his hold from the pay page on his hop-in. | Maya pays | Whop puts a three dollar hold on her card. It comes back when she arrives. | F6 |
 | 8 | 38 | Dev's phone: "You made it. Your $3 is back." The Whop pane flips that payment to Voided | Dev taps "I'm here" on his phone, the same mutation the geofence calls | Dev checked in. Whop released it. | F6 |
 | 9 | 42 | Jordan's hold moves to Captured. Crew tab: the Frolic Fund ticks from $0 to $3, "toward the next one". Tomorrow's kayaks card now reads "Frolic Fund covers $3, your share $7". | Jordan's phone is face down in his pocket | Jordan didn't show, so his three dollars is the crew's Frolic Fund, and it comes off tomorrow's kayaks before the split. | F6 |
 | 10 | 46 | Tomorrow's kayaks on three surfaces: Maya's app, Dev's lock screen notification with its three buttons, Priya's iMessage thread. Priya's "down" is typed and unsent. | Priya holds her phone up | Priya has never installed Frolic. She's texting our Keiki agent. | F8 |
@@ -67,7 +68,7 @@ Times are seconds from the first word. Line is what the room hears. Fallback key
 | 14 | 70 | GitHub pull requests, each with a Revyl replay link. Then the Captain's Drive, the crew's reports for today | Operator scrolls slowly once | Every screen here arrived as a pull request with a recording of it on a real iPhone. Capy agents wrote them today. | F10 |
 | 15 | 82 | Back to the three phones, all on "It's on.", with the fund visible on Crew | Arnav at the podium | Frolic. Your friend group's plans, actually happening. | none |
 
-The lines total 182 words, about 66 seconds of speech, which leaves 22 seconds of deliberate silence for the taps, the flip and the Apple Pay sheet. Do not fill that silence. If the room is running long, cut the Supermemory beat and its line, and the run lands at 78 seconds with every other sponsor still represented.
+The lines total 182 words, about 66 seconds of speech, which leaves 22 seconds of deliberate silence for the taps, the flip and the pay page. Do not fill that silence. If the room is running long, cut the Supermemory beat and its line, and the run lands at 78 seconds with every other sponsor still represented.
 
 ## What the script needs that does not exist yet
 
@@ -105,7 +106,7 @@ Each key names the failure, the recovery, and the exact words. Never say "let me
 
 **F5, no cloud recording.** Recovery: drop the overlay and go straight to the Whop pane. The two phone panes already showed the flip. Say nothing about Revyl here; Revyl's moment moves to beat 14 with the replays.
 
-**F6, Whop jams.** Either the Apple Pay sheet does not appear or the dashboard does not move. Recovery: switch the projector to the Whop dashboard on the rehearsal's payments and narrate the state machine while pointing: "Hold, arrive, void. No show, capture, fund." Then say "This ran on real cards an hour ago and the recording is on the pull request." Never enter card details on stage.
+**F6, Whop jams.** Either the pay page does not load or the dashboard does not move. Recovery: switch the projector to the Whop dashboard on the rehearsal's payments and narrate the state machine while pointing: "Hold, arrive, void. No show, capture, fund." Then say "This ran on the sandbox an hour ago and the recording is on the pull request." Never type a card number on stage.
 
 **F7, the dashboard is blank.** Recovery: it is one tab. Switch to the `frolics` table and the reveal timestamp instead of `taps`. If the whole backend is unreachable, the phones are also dead, which means F4.
 
@@ -174,7 +175,12 @@ Status is this file's truth as of 5:00pm PT on Nov 15 2026. Where a lane lands a
 
 The hold amount is still a decision. The spec proposes $3, and the demo works the same at $1, so the number follows Arnav's call rather than the other way round.
 
-One operational fact the spec found by probing the company, and it matters on stage: the only Whop key on our machines is a **production** key. There is no sandbox key yet, so every hold in a rehearsal is real money on a real card. A voided hold costs nothing and a captured no-show costs the amount plus the 2.7 percent processing fee, which is why the hold stays small. Say which mode the demo is in before it starts, and never leave a hold open: an uncaptured hold lapses on its own within five days, but a captured one is a charge someone has to refund.
+**Which Whop mode the demo runs in.** The crew now has both keys: `WHOP_SANDBOX_API_KEY` with `WHOP_API_BASE` pointed at the sandbox, and the production key beside it, and the crew rule is to use the sandbox for testing and the demo. That is the default the script assumes, and it has two consequences worth saying out loud.
+
+- The sandbox has no Apple Pay, so the pay page takes a card. `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` declines, and `5385 3083 6013 5181` forces 3D Secure with Whop's documented test code, which is in the spec. Budget about eight seconds for the entry, which is why beat 7 starts at t32 and not later.
+- Nothing moves real money, including a captured no-show. The fund tick at beat 9 is a captured test payment, which is honest and also means nobody has to refund anything afterwards.
+
+If the demo runs on production instead, three things change: the hold is real, the pay page can show Apple Pay through Whop Elements with Face ID, and the one captured no-show is a real charge that someone refunds after the run. A voided hold costs nothing, and a capture costs the amount plus 2.7 percent, which is why the hold stays small.
 
 **If it is not ready.** If no hidden Frolic product and no hold variant exist, the beat cannot run at all, because a hold needs a variant to authorize against. Then the dashboard and the state machine are narrated over the rehearsal's payments, with the spec's state diagram on screen. Do not mime a payment.
 
