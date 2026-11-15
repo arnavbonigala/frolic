@@ -119,8 +119,18 @@ async function locationFrom(call: Call): Promise<{ lat: number; lng: number } | 
 async function run(ctx: ActionCtx, tool: ToolName, call: Call): Promise<unknown> {
   const { input, now } = call;
   switch (tool) {
-    case "get_member":
-      return await ctx.runQuery(internal.keiki.tools.getMember, { phone: phoneOf(call) });
+    case "get_member": {
+      const member = await ctx.runQuery(internal.keiki.tools.getMember, { phone: phoneOf(call) });
+      if (!("groupId" in member) || !member.groupId) return member;
+      const { groupId, timezone, ...rest } = member;
+      try {
+        const day = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
+        const memory = await ctx.runAction(internal.memory.read.getMemoryContext, { groupId, day });
+        return { ...rest, crewTaste: { loves: memory.likedTags.slice(0, 5), keepsPassingOn: memory.skipped.slice(0, 3).map((s) => s.tag) } };
+      } catch {
+        return rest;
+      }
+    }
     case "join_crew":
       return await ctx.runMutation(internal.keiki.tools.joinCrew, {
         phone: phoneOf(call),
@@ -170,7 +180,11 @@ async function run(ctx: ActionCtx, tool: ToolName, call: Call): Promise<unknown>
     case "pay_deposit": {
       const target = await ctx.runQuery(internal.keiki.tools.depositTarget, { phone: phoneOf(call), now });
       if (!target.ok) return target.body;
-      if (call.context.preflight === true) return { ok: true, preflight: true };
+      const preflightAmount = target.amountCents === null ? null : "$" + (target.amountCents / 100).toFixed(target.amountCents % 100 ? 2 : 0);
+      if (call.context.preflight === true) {
+        if (target.amountCents === null) return { ok: false, error: "no_deposit", say: "This plan has no deposit." };
+        return { ok: true, preflight: true, amount: preflightAmount };
+      }
       const args = { userId: target.userId, frolicId: target.frolicId };
       let link: string | { url?: string; amountCents?: number } | null;
       try {

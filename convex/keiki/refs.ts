@@ -68,12 +68,7 @@ export const recordMemoryEvent = makeFunctionReference<
     groupId: Id<"groups">;
     userId: Id<"users">;
     payload: { text: string };
+    source: "imessage";
   },
   unknown
 >("memory/events:recordEvent");
-
-export const memoryContextForUser = makeFunctionReference<
-  "query",
-  { userId: Id<"users"> },
-  { summary: string } | null
->("memory/context:forUser");

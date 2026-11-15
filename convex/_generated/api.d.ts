@@ -19,6 +19,7 @@ import type * as etas from "../etas.js";
 import type * as frolics from "../frolics.js";
 import type * as http from "../http.js";
 import type * as keiki_auth from "../keiki/auth.js";
+import type * as keiki_devSeed from "../keiki/devSeed.js";
 import type * as keiki_env from "../keiki/env.js";
 import type * as keiki_lib from "../keiki/lib.js";
 import type * as keiki_outbound from "../keiki/outbound.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   frolics: typeof frolics;
   http: typeof http;
   "keiki/auth": typeof keiki_auth;
+  "keiki/devSeed": typeof keiki_devSeed;
   "keiki/env": typeof keiki_env;
   "keiki/lib": typeof keiki_lib;
   "keiki/outbound": typeof keiki_outbound;

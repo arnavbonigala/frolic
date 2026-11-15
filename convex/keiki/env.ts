@@ -6,5 +6,6 @@ export function keikiEnv() {
     apiKey: env.KEIKI_API_KEY,
     signingSecret: env.KEIKI_TOOL_SIGNING_SECRET,
     agentId: env.KEIKI_AGENT_ID,
+    heroBaseUrl: env.FROLIC_HERO_BASE_URL?.replace(/\/$/, ""),
   };
 }

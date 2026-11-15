@@ -80,10 +80,17 @@ async function context(ctx: MutationCtx, frolicId: Id<"frolics">) {
   return { frolic, group, details };
 }
 
-export function dropText(view: { title: string; place: string | null; startsAt: string; why: string | null }, inGroup: boolean) {
+function heroLine(key: string) {
+  const base = keikiEnv().heroBaseUrl;
+  return base ? base + "/" + key + ".png" : null;
+}
+
+export function dropText(view: { title: string; place: string | null; startsAt: string; why: string | null; heroKey: string }, inGroup: boolean) {
   const where = view.place && view.place !== view.title ? " at " + view.place : "";
   const lines = [view.title + where + ", " + view.startsAt + "."];
   if (view.why) lines.push(view.why);
+  const hero = heroLine(view.heroKey);
+  if (hero) lines.push(hero);
   lines.push(inGroup ? "DM me \"down\", \"only if…\", or \"pass\". It stays secret unless someone else is down too." : "Reply \"down\", \"only if…\", or \"pass\".");
   return lines.join("\n");
 }
@@ -130,6 +137,8 @@ export const onReveal = internalMutation({
     const drafts = await personal(ctx, [...goingIds], (user) => {
       const others = users.filter((u) => u._id !== user._id).map((u) => firstName(u.name));
       const lines = ["It's on. You, " + joinNames(others) + ".", "Meet at " + (view.meetingPoint ?? view.title) + " at " + view.startsAt + ". Leave at " + view.leaveAt + "."];
+      const hero = heroLine(view.heroKey);
+      if (hero) lines.push(hero);
       if (deposit) lines.push("Hold $" + (deposit.amountCents / 100).toFixed(deposit.amountCents % 100 ? 2 : 0) + " to lock it in. It comes back when you arrive. Want the link?");
       return { key: "reveal:" + args.frolicId + ":" + user._id, kind: "reveal", text: lines.join("\n"), notBefore: revealAt };
     });

@@ -134,6 +134,15 @@ export async function goingAttendees(ctx: QueryCtx, frolicId: Id<"frolics">) {
   return rows.filter((row) => row.status === "going");
 }
 
+export function heroKey(tags: string[], cost: number | undefined): string {
+  const has = (...words: string[]) => tags.some((tag) => words.some((word) => tag.toLowerCase().includes(word)));
+  if (has("sunset", "golden")) return "plan-sunsets";
+  if (has("food", "late", "taco", "pizza", "noodle", "boba")) return "plan-late-night-food";
+  if (has("game", "trivia", "arcade", "bowling")) return "plan-games";
+  if (cost === 0 || has("free")) return "plan-free-stuff";
+  return "plan-outdoors";
+}
+
 export async function planDetails(ctx: QueryCtx, frolic: Doc<"frolics">, timeZone: string, walkMinutes: number) {
   const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
   const place = plan ? await ctx.db.get("places", plan.placeId) : null;
@@ -156,6 +165,7 @@ export async function planDetails(ctx: QueryCtx, frolic: Doc<"frolics">, timeZon
       cost: plan ? (plan.cost === 0 ? "Free" : "$" + plan.cost) : null,
       weather: plan?.weather ?? null,
       why: plan?.why ?? null,
+      heroKey: heroKey(place?.tags ?? [], plan?.cost),
     },
   };
 }

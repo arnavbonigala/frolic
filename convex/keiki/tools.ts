@@ -24,7 +24,6 @@ import {
   checkInAs,
   createUserAs,
   joinAs,
-  memoryContextForUser,
   recordMemoryEvent,
   setEtaAs,
   tapAs,
@@ -79,12 +78,6 @@ export const getMember = internalQuery({
     const me = await who(ctx, phone);
     if (!me) return { ok: true, member: false, say: "They are new. Ask their first name, then call join_crew with the invite code from their first message." };
     const members = await crewMembers(ctx, me.group._id);
-    let memory: string | null = null;
-    try {
-      memory = (await ctx.runQuery(memoryContextForUser, { userId: me.user._id }))?.summary ?? null;
-    } catch {
-      memory = null;
-    }
     return {
       ok: true,
       member: true,
@@ -92,7 +85,8 @@ export const getMember = internalQuery({
       crew: me.group.name,
       friends: members.filter((m) => m._id !== me.user._id).map((m) => firstName(m.name)),
       paused: me.link.paused,
-      memory,
+      groupId: me.group._id,
+      timezone: me.group.timezone,
     };
   },
 });
@@ -121,7 +115,7 @@ export const getToday = internalQuery({
     const details = await planDetails(ctx, frolic, group.timezone, walk);
     const revealed = isRevealed(frolic, now);
     const closed = frolic.status === "faded" || (!revealed && now >= frolic.deadline);
-    const phase = revealed ? "on" : closed ? "faded" : "open";
+    const phase = frolic.status === "done" ? "done" : revealed ? "on" : closed ? "faded" : "open";
     if (!me) {
       return { ok: true, plan: details.view, phase, groupChat: true, say: "This is the group chat. Answers here are not secret. Tell people to DM you their answer." };
     }
@@ -133,23 +127,21 @@ export const getToday = internalQuery({
 async function openFrolicFor(ctx: QueryCtx, me: Who, now: number) {
   const frolic = await currentFrolic(ctx, me.group._id);
   if (!frolic) return { error: { ok: false, error: "no_plan", say: "There is no plan open right now." } } as const;
-  if (isRevealed(frolic, now)) {
-    const going = await goingAttendees(ctx, frolic._id);
-    const mine = going.some((a) => a.userId === me.user._id);
-    return {
-      error: {
-        ok: false,
-        error: "already_on",
-        youreGoing: mine,
-        going: await namesOf(ctx, going.map((a) => a.userId)),
-        say: mine ? "It's already on and they're in. Call get_reveal." : "It's already on. Offer the hop in.",
-      },
-    } as const;
-  }
-  if (frolic.status === "faded" || frolic.status === "done" || now >= frolic.deadline) {
+  if (frolic.status === "done" || frolic.status === "faded" || (!isRevealed(frolic, now) && now >= frolic.deadline)) {
     return { error: { ok: false, error: "closed", say: "Today's plan has closed. Tomorrow's drop is the next chance." } } as const;
   }
-  return { frolic } as const;
+  return { frolic, revealed: isRevealed(frolic, now) } as const;
+}
+
+async function afterReveal(ctx: QueryCtx, me: Who, frolicId: Id<"frolics">, kind: "down" | "pass", wasGoing: boolean) {
+  const going = await goingAttendees(ctx, frolicId);
+  const mine = going.some((a) => a.userId === me.user._id);
+  const names = await namesOf(ctx, going.filter((a) => a.userId !== me.user._id).map((a) => a.userId));
+  if (kind === "pass") {
+    return { ok: true, answer: "pass", satOut: wasGoing, say: wasGoing ? "Confirm they're out in one line. The group gets a refill if someone is free." : "Confirm in one line. Never ask why." };
+  }
+  if (mine) return { ok: true, answer: "down", youreGoing: true, going: names, say: "It's already on and they're in. Call get_reveal for the details." };
+  return { ok: false, error: "already_on", youreGoing: false, going: names, say: "It's on without room for that answer. Name only who's going." };
 }
 
 function resolveNames(members: Doc<"users">[], selfId: Id<"users">, names: string[]) {
@@ -189,8 +181,10 @@ export const tap = internalMutation({
     const open = await openFrolicFor(ctx, me, args.now);
     if ("error" in open) return open.error;
     const frolic = open.frolic;
+    const wasGoing = open.revealed && (await goingAttendees(ctx, frolic._id)).some((a) => a.userId === me.user._id);
     if (args.kind === "pass") {
       await ctx.runMutation(tapAs, { userId: me.user._id, frolicId: frolic._id, kind: "notToday", onlyIf: [], source: "imessage" });
+      if (open.revealed) return await afterReveal(ctx, me, frolic._id, "pass", wasGoing);
       return { ok: true, answer: "pass", say: "Confirm in one line. Never ask why." };
     }
     if (args.onlyWith.length > 3) return { ok: false, error: "too_many_names", say: "Only if works with up to 3 friends." };
@@ -215,6 +209,7 @@ export const tap = internalMutation({
       ...(window ? { window } : {}),
       source: "imessage",
     });
+    if (open.revealed) return await afterReveal(ctx, me, frolic._id, "down", wasGoing);
     const onlyWithNames = await namesOf(ctx, resolved.ids);
     return {
       ok: true,
@@ -233,6 +228,7 @@ export const getReveal = internalQuery({
     if (!me) return notMember;
     const frolic = await currentFrolic(ctx, me.group._id);
     if (!frolic) return { ok: true, state: "no_plan" };
+    if (frolic.status === "done") return { ok: true, state: "done", say: "That plan has wrapped. Ask how it was, or mention tomorrow's drop." };
     if (!isRevealed(frolic, now)) {
       if (frolic.status === "faded" || (frolic.status === "open" && now >= frolic.deadline)) {
         return { ok: true, state: "faded", say: "Say it faded, gently, and mention tomorrow. No guilt." };
@@ -378,6 +374,7 @@ export const remember = internalMutation({
       groupId: me.group._id,
       userId: me.user._id,
       payload: { text: clean },
+      source: "imessage",
     });
     return { ok: true, remembered: clean };
   },
