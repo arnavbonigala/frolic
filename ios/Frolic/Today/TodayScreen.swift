@@ -55,13 +55,22 @@ struct TodayScreen: View {
         .background(SkyBackground())
         .accessibilityIdentifier("today.screen")
         .environment(\.todayOnline, connectivity.isOnline)
-        .task(id: routeKey) { store.start(backend: backend, route: route) }
+        .task(id: routeKey) {
+            if let location = router.simulatedLocation {
+                store.walkFrom = (location.latitude, location.longitude)
+            }
+            store.start(backend: backend, route: route)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { store.becameActive() }
         }
         .onAppear { store.takePendingAction() }
         .onReceive(NotificationCenter.default.publisher(for: TodayInbox.openOnlyIfNotification)) { _ in
             store.takePendingAction()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("frolic.garden.imFree"))) { _ in
+            router.tab = .today
+            store.sheet = .imFree
         }
         .sheet(item: $store.sheet) { sheet in
             TodaySheetHost(sheet: sheet, store: store)
@@ -144,7 +153,7 @@ private struct TodayOfflineBanner: View {
         HStack(spacing: 8) {
             Image(systemName: "wifi.slash")
                 .accessibilityHidden(true)
-            Text("You're offline. Frolic will catch up as soon as you're back online.")
+            Text("You're offline.")
         }
         .todayFont(13, .semibold, relativeTo: .footnote)
         .foregroundStyle(FrolicColor.cream)
@@ -215,9 +224,16 @@ private struct TodayPlanPacket: View {
                 .foregroundStyle(FrolicColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
-            ChipRow(chips: TodayCopy.chips(plan: plan, minutesAway: store.myFree?.minutesAway))
-            if let hostedBy {
-                Text("Hosted by \(hostedBy)")
+            if let line = plan?.line, !line.isEmpty {
+                Text(line)
+                    .todayFont(15, relativeTo: .subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("today.plan.line")
+            }
+            ChipRow(chips: TodayCopy.chips(plan: plan, walk: store.walkMinutes))
+            if let hostedBy = hostedBy ?? store.drop?.hostedBy {
+                Text(hostedBy.hasPrefix("Hosted by") ? hostedBy : "Hosted by \(hostedBy)")
                     .todayFont(13, .semibold, relativeTo: .footnote)
                     .foregroundStyle(FrolicColor.chipText)
                     .accessibilityIdentifier("today.plan.hostedBy")
@@ -252,9 +268,22 @@ private struct TodayOpenView: View {
             TodayMeadow(people: free, waiting: false) { router.tab = .crew }
                 .accessibilityIdentifier("today.meadow")
             TodayCaption(text: free.isEmpty ? "Nobody's free yet. Your yes still counts." : TodayCopy.names(free.map(\.name)) + (free.count == 1 ? " is free" : " are free"), identifier: "today.freeRow")
+            if store.frolic?.origin == "free", let notice = store.frolic?.notice {
+                Text(notice)
+                    .todayFont(15, .semibold, relativeTo: .subheadline)
+                    .foregroundStyle(FrolicColor.ink)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 10)
+                    .accessibilityIdentifier("today.freeNotice")
+            }
             TodayPlanPacket(store: store)
             HStack(spacing: 10) {
-                Button("I'm down") { store.tapDown(onlyIf: []) }
+                Button("I'm down") {
+                    store.seeHint()
+                    store.tapDown(onlyIf: [])
+                }
                     .buttonStyle(.frolicPrimary)
                     .accessibilityIdentifier("today.down")
                 Button("Only with…") {
@@ -267,7 +296,51 @@ private struct TodayOpenView: View {
             .disabled(!online)
             .padding(.horizontal, 16)
             .padding(.top, 14)
-            TodayHush(text: "Nobody sees you're down unless they are too", identifier: "today.hush")
+            if store.hintSeen {
+                TodayHush(text: "Nobody sees you're down unless they are too", identifier: "today.hush")
+            } else {
+                Text("Only friends who are also down will ever see this.")
+                    .todayFont(13, .semibold, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.chipText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(FrolicColor.chip))
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("today.hint")
+            }
+            TodayTomorrowRow(store: store)
+        }
+    }
+}
+
+private struct TodayTomorrowRow: View {
+    var store: TodayStore
+
+    var body: some View {
+        if let tomorrow = store.tomorrow, let plan = tomorrow.frolic?.plan {
+            let going = (tomorrow.reveal?.going ?? []).filter { $0.userId != store.meMember?.userId }.map(\.name)
+            let text = going.isEmpty
+                ? plan.title + " is looking likely."
+                : TodayCopy.names(going) + (going.count == 1 ? " is going to " : " are going to ") + plan.title + ". There's room for you."
+            HStack(spacing: 12) {
+                TodayHeroImage(asset: TodayCopy.heroAsset(plan), remote: nil, description: nil)
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                (Text("Tomorrow: ").fontWeight(.bold).foregroundColor(FrolicColor.ink) + Text(text))
+                    .todayFont(15, relativeTo: .subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .frame(minHeight: 60)
+            .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("today.tomorrowRow")
         }
     }
 }
@@ -282,7 +355,7 @@ private struct TodayWaitingView: View {
         VStack(spacing: 0) {
             TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson]) { router.tab = .crew }
                 .accessibilityIdentifier("today.meadow")
-            TodayCaption(text: "Your bud is planted. Waiting for a friend", identifier: "today.caption.waiting", showsDots: true)
+            TodayCaption(text: "Waiting for a friend", identifier: "today.caption.waiting", showsDots: true)
             TodayPlanPacket(store: store, showsWhy: false)
             TodayStatusCard(
                 title: TodayCopy.downLine(onlyIf),
@@ -298,6 +371,13 @@ private struct TodayWaitingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
                 .accessibilityIdentifier("today.takeBack")
+            Text("We'll tell you the moment it's on.")
+                .todayFont(13, relativeTo: .footnote)
+                .foregroundStyle(FrolicColor.secondaryText)
+                .padding(.top, 8)
+                .accessibilityIdentifier("today.next")
+            TodayAnsweredSlot(store: store)
+            TodayTomorrowRow(store: store)
         }
     }
 }
@@ -317,7 +397,7 @@ private struct TodaySoloView: View {
             )
             .accessibilityIdentifier("today.meadow")
             TodayCaption(
-                text: waiting ? "Your bud is planted. Waiting for a friend" : "Your crew grows from here. Today's plan is still yours.",
+                text: waiting ? "Waiting for a friend" : "Your crew grows from here. Today's plan is still yours.",
                 identifier: waiting ? "today.caption.waiting" : "today.freeRow",
                 showsDots: waiting
             )
@@ -327,7 +407,7 @@ private struct TodaySoloView: View {
             if waiting {
                 TodayStatusCard(
                     title: "You're down",
-                    message: "Send it to the group chat so someone can say yes too.",
+                    message: "You're in. You'll know if anyone else is.",
                     identifier: "today.status.down",
                     bodyIdentifier: "today.status.downBody"
                 )
@@ -342,6 +422,7 @@ private struct TodaySoloView: View {
                     .buttonStyle(.frolicText)
                     .padding(.top, 4)
                     .accessibilityIdentifier("today.takeBack")
+                TodayAnsweredSlot(store: store)
             } else {
                 HStack(spacing: 10) {
                     Button("Send to the group chat") { openShare() }
@@ -378,7 +459,7 @@ private struct TodayOffView: View {
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.off.title")
-                Text("No plan for you today, and nobody gets told. If your crew's plan happens, you can still hop in.")
+                Text("Nobody gets told.")
                     .todayFont(17, relativeTo: .body)
                     .foregroundStyle(FrolicColor.secondaryText)
             }
@@ -391,7 +472,16 @@ private struct TodayOffView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 22)
                 .accessibilityIdentifier("today.off.back")
+            TodayAnsweredSlot(store: store)
         }
+    }
+}
+
+struct TodayAnsweredSlot: View {
+    var store: TodayStore
+
+    var body: some View {
+        EmptyView()
     }
 }
 
@@ -466,19 +556,24 @@ private struct TodayOnView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 20)
-            if !store.notGoingNames.isEmpty {
-                Text(TodayCopy.names(store.notGoingNames) + " can still hop in.")
-                    .todayFont(13, relativeTo: .footnote)
-                    .foregroundStyle(FrolicColor.secondaryText)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 10)
-                    .padding(.horizontal, 22)
-                    .accessibilityIdentifier("today.on.hopInNote")
+            if let plan {
+                TodayRowLink(
+                    thumb: TodayCopy.heroAsset(plan),
+                    thumbRemote: plan.place?.photoUrl,
+                    prefix: plan.title,
+                    text: [plan.place?.name, plan.place?.neighborhood, store.walkMinutes.map { "\(Int($0)) min walk" }].compactMap { $0 }.joined(separator: " · "),
+                    identifier: "today.on.plan",
+                    action: { directions(plan) }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
             }
             TodayMoneyCard(store: store)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
+            TodayPainting(name: "state-its-on", height: 170)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 14)
             Button("I can't make it") { store.sheet = .bail }
                 .buttonStyle(.frolicText)
                 .frame(maxWidth: .infinity)
@@ -490,8 +585,8 @@ private struct TodayOnView: View {
                   let frolicId = store.frolic?.frolicId, heldPrompted != frolicId, store.bloomID > 0 || store.isFixture
             else { return }
             heldPrompted = frolicId
-            try? await Task.sleep(nanoseconds: 1_600_000_000)
-            if store.sheet == nil, store.visiblePayment?.state == "due" { store.sheet = .hold }
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if store.bloomed, store.sheet == nil, store.visiblePayment?.state == "due" { store.sheet = .hold }
         }
     }
 
@@ -499,7 +594,7 @@ private struct TodayOnView: View {
         guard let plan else { return Text("") }
         let start = TodayCopy.clock(plan.startsAt)
         var text = Text(TodayCopy.meetPlace(plan) + " at ") + Text(start).fontWeight(.bold).foregroundColor(FrolicColor.ink)
-        if let minutes = store.myFree?.minutesAway, minutes > 0 {
+        if let minutes = store.walkMinutes, minutes > 0 {
             let leave = TodayCopy.clock(plan.startsAt - minutes * 60_000)
             text = text + Text(". Leave by ") + Text(leave).fontWeight(.bold).foregroundColor(FrolicColor.ink)
         }
@@ -562,7 +657,7 @@ private struct TodayHopInView: View {
             if reveal?.me.hopInWaiting == true {
                 TodayStatusCard(
                     title: "You're next in line",
-                    message: "It's full right now. If someone sits out, their spot is yours and you'll bloom right away."
+                    message: "If someone sits out, the spot is yours."
                 )
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
@@ -578,7 +673,7 @@ private struct TodayHopInView: View {
             } else {
                 TodayStatusCard(
                     title: "It's full this time",
-                    message: "Tomorrow's plan arrives at 3, picked for whoever's free."
+                    message: "Tomorrow's plan arrives at 3."
                 )
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
@@ -609,6 +704,7 @@ private struct TodayFadedView: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 22)
             .padding(.top, 34)
+            TodayTomorrowRow(store: store)
         }
     }
 }
@@ -626,7 +722,7 @@ private struct TodayDoneView: View {
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.done.title")
-                Text("Your first flower is in the garden, and the crew saw it bloom.")
+                Text("Your first flower is in the garden.")
                     .todayFont(17, relativeTo: .body)
                     .foregroundStyle(FrolicColor.secondaryText)
             }
@@ -642,42 +738,66 @@ private struct TodayDoneView: View {
             TodayMoneyCard(store: store)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
+            TodayTomorrowRow(store: store)
         }
     }
 }
 
 private struct TodayNoPlanStart: View {
     var store: TodayStore
+    @Environment(AppRouter.self) private var router
     @Environment(\.todayOnline) private var online
 
     var body: some View {
-        if store.startingPlan {
+        if store.startingPlan || (store.frolic != nil && store.plan == nil) {
             VStack(spacing: 0) {
                 TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson])
-                TodayCaption(text: "Your bud is planted. Picking a plan for whoever's free", identifier: "today.caption.waiting", showsDots: true)
+                TodayCaption(text: "Finding something good…", identifier: "today.planning", showsDots: true)
                     .padding(.horizontal, 22)
-                TodaySkeleton()
-                    .padding(.top, -128)
-                    .accessibilityHidden(true)
+                TodayPainting(name: "state-waiting", height: 170)
+                    .padding(.top, 18)
+                Text("Your crew sees a plan, not who started it.")
+                    .todayFont(13, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .padding(.top, 10)
             }
         } else {
             VStack(spacing: 0) {
-                TodayNoPlan(title: "No plan yet", message: "Today's plan arrives at 3. Your crew's flowers bloom here when they're free.")
-                if store.startFailed {
-                    TodayStatusCard(title: "That didn't start", message: "Nobody was told. Try again, or wait for today's plan at 3.")
+                TodayNoPlan(title: "No plan yet", message: "Today's plan arrives at 3.")
+                if let line = store.gardenHealth?.line, !line.isEmpty {
+                    Text(line)
+                        .todayFont(15, .semibold, relativeTo: .subheadline)
+                        .foregroundStyle(FrolicColor.ink)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 10)
+                        .accessibilityIdentifier("today.garden.health")
+                }
+                if let error = store.startError {
+                    TodayStatusCard(title: error, message: "Nobody was told.")
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
                         .accessibilityIdentifier("today.imFree.error")
                 }
-                if store.imFreeEnabled {
-                    Button("I'm free") { store.sheet = .imFree }
-                        .buttonStyle(.frolicPrimary)
-                        .disabled(!online)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 18)
-                        .accessibilityIdentifier("today.imFree")
-                    TodayHush(text: "Your crew gets a plan. Nobody sees who started it.", identifier: "today.imFree.hush")
+                Button("I'm free") { store.sheet = .imFree }
+                    .buttonStyle(.frolicPrimary)
+                    .disabled(!online)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 18)
+                    .accessibilityIdentifier("today.imFree")
+                if let past = store.onThisDay, let title = past.title {
+                    TodayRowLink(
+                        thumb: past.heroKey.flatMap { UIImage(named: $0) != nil ? $0 : nil } ?? "plan-free-stuff",
+                        thumbRemote: past.photoUrl,
+                        prefix: (past.label ?? "On this day") + ":",
+                        text: title,
+                        identifier: "today.onThisDay",
+                        action: { router.tab = .garden }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
                 }
+                TodayTomorrowRow(store: store)
             }
         }
     }

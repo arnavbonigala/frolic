@@ -14,7 +14,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:on"
+      step_description: "frolic://e2e/today:on?fixture=1"
     - type: "validation"
       step_description: "The headline \"It's on.\" is visible above the line \"You, Maya and Dev\""
     - type: "validation"

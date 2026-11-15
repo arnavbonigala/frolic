@@ -17,7 +17,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:on?deposit=1"
+      step_description: "frolic://e2e/today:on?deposit=1&fixture=1"
     - type: "validation"
       step_description: "A deposit prompt appears with the exact copy from the Frolic spec for the deposit amount {{deposit_amount}} and a Whop checkout button"
     - type: "instructions"
