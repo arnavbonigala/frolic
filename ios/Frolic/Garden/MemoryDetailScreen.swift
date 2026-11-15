@@ -104,7 +104,7 @@ struct MemoryDetailScreen: View {
             PhasePlaceholder(
                 phase: shown == .ready ? .loading : shown,
                 copy: PlaceholderCopy(
-                    loading: "Fetching that night",
+                    loading: "Opening that night",
                     emptyTitle: "That night is gone",
                     emptyMessage: "This frolic has faded.",
                     errorTitle: "Couldn't load that night"
@@ -138,7 +138,7 @@ struct MemoryDetailScreen: View {
         .frame(height: 96)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Went: \(memory.namesLine)")
+        .accessibilityLabel("\(memory.namesLine) went.")
     }
 
     @ViewBuilder

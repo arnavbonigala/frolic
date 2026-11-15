@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyFunctions,
+  declaredModules,
   describeExports,
   discoverSurface,
   internalExports,
   makeTest,
   publicQueries,
+  surfaceDrift,
 } from "./surface";
 
 describe("matcher API surface", () => {
@@ -40,5 +42,14 @@ describe("matcher API surface", () => {
     expect(internalNames).toContain("taps:tapAs");
     expect(publicNames, "the reveal must never be client reachable").not.toContain("reveal:flip");
     expect(publicNames, "the matcher must never be client reachable").not.toContain("taps:tapAs");
+  });
+
+  it("discovers every module api.d.ts declares, so a new module cannot slip out silently", async () => {
+    expect(surfaceDrift(), "the audit table and the generated api must name the same modules").toEqual([]);
+    expect(declaredModules().length, "api.d.ts names the modules").toBeGreaterThan(50);
+    const paths = (await publicQueries()).map((entry) => `${entry.module}:${entry.name}`);
+    for (const path of ["frolics:today", "crew:crew", "crews:mine", "you:totals", "garden:overview"]) {
+      expect(paths, `${path} is a public query, so the audit must resolve it`).toContain(path);
+    }
   });
 });

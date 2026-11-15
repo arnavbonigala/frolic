@@ -146,7 +146,7 @@ struct TodayFixture {
             startsAt: start,
             sunsetAt: TodayCopy.todayAt(hour: 16) + 58 * 60_000,
             place: TodayPlace(placeId: "indian-rock", name: "Indian Rock", lat: 37.8925, lng: -122.2726, photoUrl: nil, neighborhood: "Northbrae"),
-            chips: ["Free", "12 min walk", "Golden hour 4:28"],
+            chips: ["Free", "12 min walk", "Starts " + TodayCopy.clock(start)],
             meetSpot: "Top of Indian Rock",
             tip: "bring a layer, it gets windy up there"
         )

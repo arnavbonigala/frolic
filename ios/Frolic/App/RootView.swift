@@ -45,7 +45,7 @@ struct RootView: View {
                 .accessibilityIdentifier("tab.you")
             }
         }
-        .tint(Color(hex: 0xE2441F))
+        .tint(Color(hex: 0x2E8A4E))
         .accessibilityIdentifier("app.root")
         .checkInFlowPresenter()
         #if DEBUG || E2E

@@ -551,17 +551,8 @@ function writeTitle(c: Candidate, ctx: Ctx): string {
   return tight && (when === "evening" || when === "late") && copyOk(base + " before close") ? base + " before close" : base;
 }
 
-function writeChips(c: Candidate, ctx: Ctx, swap: boolean): string[] {
-  const third = swap
-    ? "Dry inside"
-    : c.golden
-      ? "Golden hour " + clockLabel(ctx.sunsetMs - 30 * MINUTE)
-      : c.hour
-        ? conditionLabel(c.hour) + ", " + c.hour.tempF + "\u00b0"
-        : sunsetRelevant(c, ctx.sunsetMs) || closesAt(c) === null
-          ? "Sunset " + clockLabel(ctx.sunsetMs)
-          : "Open until " + clockLabel(closesAt(c)!);
-  return [c.place.costLabel, tripLabel(c.maxTrip), third];
+function writeChips(c: Candidate): string[] {
+  return [c.place.costLabel, tripLabel(c.maxTrip), "Starts " + clockLabel(c.startMs)];
 }
 
 function toPlan(c: Candidate, ctx: Ctx, candidates: Candidate[], source: Plan["source"], swap: boolean): Plan {
@@ -585,7 +576,7 @@ function toPlan(c: Candidate, ctx: Ctx, candidates: Candidate[], source: Plan["s
       sunsetAt: ctx.sunsetMs,
       rainSwap: swap,
     },
-    chips: writeChips(c, ctx, swap),
+    chips: writeChips(c),
     startsAt: c.startMs,
     endsAt: c.endMs,
     durationMinutes: p.durationMin,

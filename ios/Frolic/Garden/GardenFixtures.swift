@@ -44,26 +44,26 @@ enum GardenFixtures {
             memories: memories,
             health: health(route: route),
             collection: collection,
-            milestone: GardenMilestone(reached: nil, next: nil, nextAt: 20, line: "7 more frolics to unlock the bench")
+            milestone: GardenMilestone(reached: nil, next: nil, nextAt: 25, line: "25 frolics: the garden gets string lights")
         )
     }
 
     private static let collection = GardenCollection(varieties: [
         GardenVariety(key: "golden-poppy", name: "Golden poppy", count: 3, unlocked: true, hint: nil),
-        GardenVariety(key: "lupine", name: "Lupine", count: 1, unlocked: true, hint: nil),
-        GardenVariety(key: "night-jasmine", name: "Night jasmine", count: 0, unlocked: false, hint: "Grows after a late-night food frolic"),
-        GardenVariety(key: "sweet-pea", name: "Sweet pea", count: 0, unlocked: false, hint: "Grows after a game night"),
+        GardenVariety(key: "lupine", name: "Wild lupine", count: 1, unlocked: true, hint: nil),
+        GardenVariety(key: "night-jasmine", name: "Night jasmine", count: 0, unlocked: false, hint: "Grab late-night food together"),
+        GardenVariety(key: "sweet-pea", name: "Sweet pea", count: 0, unlocked: false, hint: "Play a game together"),
         GardenVariety(key: "daisy", name: "Daisy", count: 2, unlocked: true, hint: nil),
-        GardenVariety(key: "ranunculus", name: "Ranunculus", count: 0, unlocked: false, hint: "Grows after a paid drop"),
+        GardenVariety(key: "ranunculus", name: "Ranunculus", count: 0, unlocked: false, hint: "Book a Frolic Drop together"),
     ])
 
     private static func health(route: E2ERoute) -> GardenHealth {
         let state = GardenHealthState(rawValue: route.query["health"] ?? "fine") ?? .fine
         switch state {
-        case .thriving: return GardenHealth(state: .thriving, daysSince: 1, line: "Your garden is glowing. Two frolics this week.", cta: nil)
-        case .fine: return GardenHealth(state: .fine, daysSince: 3, line: "Your garden is doing well.", cta: nil)
-        case .thirsty: return GardenHealth(state: .thirsty, daysSince: 7, line: "Your garden would love a frolic soon.", cta: "imFree")
-        case .wilting: return GardenHealth(state: .wilting, daysSince: 14, line: "It has been a while. The flowers are resting, and they never wilt for good.", cta: "I'm free")
+        case .thriving: return GardenHealth(state: .thriving, daysSince: 1, line: "Your garden is thriving", cta: nil)
+        case .fine: return GardenHealth(state: .fine, daysSince: 3, line: "Your garden is doing fine", cta: nil)
+        case .thirsty: return GardenHealth(state: .thirsty, daysSince: 7, line: "Your garden is getting thirsty. Anyone free?", cta: "imFree")
+        case .wilting: return GardenHealth(state: .wilting, daysSince: 14, line: "The flowers are resting. They never wilt for good.", cta: "imFree")
         }
     }
 

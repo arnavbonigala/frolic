@@ -19,6 +19,7 @@ import {
   type WhopWorld,
 } from "./harness";
 import { signWebhook } from "../../../convex/whop/signature";
+import { internal } from "../../../convex/_generated/api";
 import { makeT } from "./harness";
 
 let world: WhopWorld;
@@ -272,5 +273,98 @@ describe("duplicates and replays", () => {
     expect(await fundBalance(t, c.groupId), "the fund is never credited above the hold").toBeLessThanOrEqual(
       300,
     );
+  });
+});
+
+describe("payer data at rest", () => {
+  const payer = {
+    card_holder_name: "Ada Lovelace",
+    email: "ada.lovelace@example.com",
+    phone: "+15105550142",
+    billing_address: { line1: "12 Analytical Way", city: "Oakland", postal_code: "94612", country: "US" },
+    client_secret: "cs_9f8e7d6c5b4a3f2e1d0c",
+  };
+  const secrets = [
+    "Ada Lovelace",
+    "ada.lovelace@example.com",
+    "+15105550142",
+    "Analytical Way",
+    "94612",
+    "cs_9f8e7d6c5b4a3f2e1d0c",
+    "card_holder_name",
+    "billing_address",
+    "client_secret",
+    "email",
+  ];
+
+  test("a delivery with payer details keeps only what the decision reads", async () => {
+    const t = makeT();
+    const c = await crew(t, ["Maya", "Dev"]);
+    await revealed(t, c, ["Maya", "Dev"]);
+    const share = (await shares(t, c.frolicId))[0];
+    const paymentId = await charge(t, share._id, world);
+    const data = { ...paymentEvent(share._id, paymentId, "paid", "succeeded"), ...payer, customer: payer };
+    const res = await deliver(t, { id: "evt_payer", type: "payment.succeeded", data });
+    expect(res.status).toBe(200);
+    await drain(t);
+    const events = await t.run(async (ctx: any) => await ctx.db.query("webhookEvents").collect());
+    expect(events, "one row per delivery").toHaveLength(1);
+    const stored = JSON.stringify(events[0]);
+    for (const secret of secrets) {
+      expect(stored, `the stored event must not carry ${secret}`).not.toContain(secret);
+    }
+    expect(events[0].payload, "the payment id survives").toContain(paymentId);
+    expect(events[0].payload, "the status survives").toContain("succeeded");
+    expect(events[0].payload, "the share id survives").toContain(share._id);
+    const rows = await ledger(t, c.groupId);
+    expect(rows.filter((r: any) => r.entry === "forfeit"), "a shrinking payload still moves money").toHaveLength(1);
+  });
+
+  test("a repeated delivery of the same id keeps one row and credits the fund once", async () => {
+    const t = makeT();
+    const c = await crew(t, ["Maya", "Dev"]);
+    await revealed(t, c, ["Maya", "Dev"]);
+    const share = (await shares(t, c.frolicId))[0];
+    const paymentId = await charge(t, share._id, world);
+    const data = { ...paymentEvent(share._id, paymentId, "paid", "succeeded"), ...payer };
+    const first = await deliver(t, { id: "evt_payer_dup", type: "payment.succeeded", data });
+    const second = await deliver(t, { id: "evt_payer_dup", type: "payment.succeeded", data });
+    expect(first.status).toBe(200);
+    expect(second.status, "a duplicate is acknowledged so Whop stops retrying").toBe(200);
+    await drain(t);
+    const events = await t.run(async (ctx: any) => await ctx.db.query("webhookEvents").collect());
+    expect(events, "one row per webhook id after the payload shrank").toHaveLength(1);
+    expect(events[0].payload).toContain(paymentId);
+    const rows = await ledger(t, c.groupId);
+    expect(rows.filter((r: any) => r.entry === "forfeit"), "the fund is credited once").toHaveLength(1);
+    expect(await fundBalance(t, c.groupId)).toBeLessThanOrEqual(300);
+  });
+
+  test("an event stored before the shrink loses its payer details", async () => {
+    const t = makeT();
+    const raw = JSON.stringify({
+      type: "payment.succeeded",
+      data: { id: "pay_old", status: "paid", substatus: "succeeded", ...payer, customer: payer },
+    });
+    await t.run(async (ctx: any) => {
+      await ctx.db.insert("webhookEvents", {
+        provider: "whop",
+        eventId: "evt_old",
+        type: "payment.succeeded",
+        payload: raw,
+        receivedAt: NOON,
+      });
+    });
+    const out = await t.mutation(internal.whop.webhooks.redactStored, { cursor: null });
+    expect(out.done).toBe(true);
+    const events = await t.run(async (ctx: any) => await ctx.db.query("webhookEvents").collect());
+    const stored = JSON.stringify(events[0]);
+    for (const secret of secrets) {
+      expect(stored, `a stored event must not keep ${secret}`).not.toContain(secret);
+    }
+    expect(events[0].payload).toContain("pay_old");
+    expect(events[0].payload).toContain("succeeded");
+    const again = await t.mutation(internal.whop.webhooks.redactStored, { cursor: null });
+    expect(again.rows, "a second pass finds nothing left to redact").toBe(0);
   });
 });

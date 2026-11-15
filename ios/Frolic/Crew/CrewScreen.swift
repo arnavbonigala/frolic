@@ -16,17 +16,10 @@ struct CrewScreen: View {
         @Bindable var store = store
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ScreenTitle(
+                CrewSwitcherTitle(
                     title: store.view?.groupName ?? "Crew",
-                    subtitle: store.view?.subtitle,
-                    identifier: "crew"
+                    subtitle: store.view?.subtitle
                 )
-                if let view = store.view, shown == .ready || shown == .empty {
-                    CrewFreeControl(text: view.me.status == .notSaid ? "I'm free" : view.me.detail, isFree: view.me.isFree) {
-                        store.showsFreeSheet = true
-                    }
-                    .padding(.top, 14)
-                }
                 PhasedContent(
                     phase: shown,
                     copy: PlaceholderCopy(
@@ -143,7 +136,7 @@ private struct CrewContent: View {
     var body: some View {
         SectionHeader(title: "Today")
         FrolicGroup {
-            CrewPersonRowView(row: view.me, showsDivider: false, onTap: nil)
+            CrewPersonRowView(row: view.me, showsDivider: false, onTap: { store.showsFreeSheet = true })
             ForEach(view.rows) { row in
                 CrewPersonRowView(row: row, showsDivider: true, onTap: { store.friend = row })
             }
@@ -182,23 +175,5 @@ private struct CrewContent: View {
                 .padding(.top, 2)
         }
 
-        if !view.lately.isEmpty {
-            SectionHeader(title: "Lately")
-            CrewLatelyGroup(rows: view.lately)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("crew.lately")
-        }
-
-        if view.wentToday, let title = view.todayTitle {
-            SectionHeader(title: "New this week")
-            CrewNewThisWeek(title: title, hero: PlanPainted.hero(for: title))
-        }
-
-        if !view.favorites.isEmpty {
-            SectionHeader(title: "Your crew's favorites")
-            CrewFavoritesGroup(rows: view.favorites)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("crew.favorites")
-        }
     }
 }

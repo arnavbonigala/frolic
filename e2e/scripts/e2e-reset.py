@@ -14,4 +14,5 @@ req = urllib.request.Request(
 with urllib.request.urlopen(req, timeout=120) as res:
     body = json.load(res)
 
-print(json.dumps(body))
+print("run     " + body["run"])
+print("cleared " + str(body["cleared"]) + " rows")

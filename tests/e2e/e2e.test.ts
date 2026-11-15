@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { HERO_KEYS } from "../../convex/places/data";
+import { HERO_KEYS, PLACE_BY_SLUG } from "../../convex/places/data";
+import { solarTimes } from "../../convex/plans/time";
 import { NOON, flipDue, makeT, type T } from "../backend/setup.helpers";
 
 const SECRET = "e2e-secret-for-tests";
@@ -16,6 +17,7 @@ type SeedBody = {
   inviteCode: string;
   frolicId: Id<"frolics">;
   deadline: number;
+  plan: { title: string; line: string; chips: string[]; startsAt: number };
   users: { maya: SeededUser; dev: SeededUser; jordan: SeededUser; priya: SeededUser };
   reveal_at: null;
 };
@@ -169,8 +171,8 @@ describe("seed and reset", () => {
       return rows[0]?.window ?? null;
     });
     expect(priyaWindow).toEqual({
-      start: Date.UTC(2026, 10, 16, 1, 0),
-      end: Date.UTC(2026, 10, 16, 4, 0),
+      start: Date.UTC(2026, 10, 16, 0, 15),
+      end: Date.UTC(2026, 10, 16, 3, 30),
     });
 
     const reset = await post(t, "/e2e/reset", { run: RUN });
@@ -222,7 +224,7 @@ describe("demo scenario", () => {
     });
     expect(HERO_KEYS).toContain(paid.frolic!.plan!.heroKey);
     expect(paid.frolic!.plan!.cost).toBe(8);
-    expect(paid.frolic!.plan!.costLabel).toBe("$8");
+    expect(paid.frolic!.plan!.costLabel).toBe("$8 each");
     expect(paid.frolic!.plan!.payUpFront).toBe(true);
 
     await t.mutation(api.taps.tap, {
@@ -257,7 +259,7 @@ describe("demo scenario", () => {
     });
     expect(second.frolic!.frolicId).toBe(frolicId);
     expect(second.frolic!.plan?.title).toBe("Kayaks at the Marina");
-    expect(second.frolic!.durationMinutes).toBe(90);
+    expect(second.frolic!.durationMinutes).toBe(120);
     expect(second.frolic!.day).toBe("2026-11-15");
     expect(second.frolic!.day).toBe(first.frolic!.day);
 
@@ -333,7 +335,204 @@ describe("reveal log", () => {
 
     expect(await reveals(t, "another-run")).toEqual([]);
   });
-});describe("demo portraits", () => {
+});describe("the seeded plan", () => {
+  beforeEach(() => vi.stubEnv("E2E_SECRET", SECRET));
+  afterEach(() => vi.unstubAllEnvs());
+
+  test("is the catalog's place at an hour it is open, in the catalog's words", async () => {
+    const t = makeT();
+    const body = await seed(t);
+    const rock = PLACE_BY_SLUG.get("indian-rock")!;
+    const found = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("plans")
+        .withIndex("by_groupId_and_day", (q) => q.eq("groupId", body.groupId))
+        .first();
+      const place = row ? await ctx.db.get("places", row.placeId) : null;
+      return { row, place };
+    });
+    expect(body.plan.startsAt).toBe(found.row?.startsAt);
+    expect(body.plan.title).toBe(found.row?.title);
+    expect(body.plan.chips).toEqual(found.row?.chips);
+    expect(found.place?.address).toBe(rock.address);
+    expect(found.place?.source).toBe(rock.source);
+    expect(found.place?.meetSpot).toBe(rock.meetSpot);
+    expect(found.row?.title).toBe(rock.title);
+    expect(found.row?.title).toBe("Sunset at Indian Rock");
+    expect(found.row?.cost).toBe(0);
+    expect(found.row?.costLabel).toBe(rock.costLabel);
+    expect(found.row?.startsAt).toBe(Date.UTC(2026, 10, 16, 0, 30));
+    expect(found.row?.line).toContain("Take the stairs when the rock is damp");
+    expect(found.row?.line).toContain("Open until 10:00.");
+    expect(found.row?.line).toContain("20 min by bus.");
+    expect(found.row?.chips).toEqual(["Free", "20 min by bus", "Golden hour 4:28"]);
+    expect(found.row?.why).toBe(rock.fallbackWhy);
+    expect(found.row?.weather).toBeUndefined();
+    expect(found.row?.sunsetAt).toBe(solarTimes("2026-11-15").sunsetMs);
+  });
+
+  test("reveals the plan at the seeded hour, not at the tap", async () => {
+    const t = makeT();
+    const body = await seed(t);
+    await t.mutation(api.taps.tap, {
+      deviceToken: body.users.maya.deviceToken,
+      frolicId: body.frolicId,
+      kind: "down",
+      onlyIf: [body.users.dev.userId],
+    });
+    await t.mutation(api.taps.tap, {
+      deviceToken: body.users.dev.deviceToken,
+      frolicId: body.frolicId,
+      kind: "down",
+    });
+    await flipDue(t);
+    const maya = (await t.query(api.frolics.today, {
+      deviceToken: body.users.maya.deviceToken,
+      groupId: body.groupId,
+    })) as { phase: string; reveal: { startsAt: number } | null };
+    expect(maya.phase).toBe("on");
+    expect(maya.reveal?.startsAt).toBe(body.plan.startsAt);
+  });
+
+  test("starts far enough out that the leave-by time is still ahead", async () => {
+    const t = makeT();
+    vi.setSystemTime(NOON + 5 * HOUR);
+    const body = await seed(t);
+    const start = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("plans")
+        .withIndex("by_groupId_and_day", (q) => q.eq("groupId", body.groupId))
+        .first();
+      return row?.startsAt ?? 0;
+    });
+    expect(start).toBeGreaterThanOrEqual(NOON + 5 * HOUR + 45 * 60 * 1000);
+    expect(start).toBe(Date.UTC(2026, 10, 16, 1, 45));
+    const chips = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("plans")
+        .withIndex("by_groupId_and_day", (q) => q.eq("groupId", body.groupId))
+        .first();
+      return row?.chips ?? [];
+    });
+    expect(chips).toEqual(["Free", "20 min by bus", "Open until 10:00"]);
+  });
+
+  test("seeds twice into one crew with no duplicate rows", async () => {
+    const t = makeT();
+    const first = await seed(t);
+    const second = await seed(t);
+    expect(second.groupId).not.toBe(first.groupId);
+    expect(second.users.maya.userId).not.toBe(first.users.maya.userId);
+    expect(await counts(t)).toEqual({
+      groups: 1,
+      users: 4,
+      memberships: 4,
+      invites: 1,
+      availability: 1,
+      plans: 1,
+      frolics: 1,
+      taps: 0,
+      attendees: 0,
+      revealLog: 0,
+    });
+  });
+
+  test("reset clears the money, memory and nudge rows a run writes", async () => {
+    const t = makeT();
+    const body = await seed(t, RUN, "demo");
+    await t.mutation(api.taps.tap, {
+      deviceToken: body.users.maya.deviceToken,
+      frolicId: body.frolicId,
+      kind: "down",
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("shares", {
+        frolicId: body.frolicId,
+        groupId: body.groupId,
+        userId: body.users.maya.userId,
+        amountCents: 300,
+        kind: "deposit",
+        status: "held",
+        updatedAt: NOON,
+      });
+      await ctx.db.insert("fundLedger", {
+        groupId: body.groupId,
+        frolicId: body.frolicId,
+        userId: body.users.jordan.userId,
+        entry: "forfeit",
+        amountCents: 300,
+        at: NOON,
+      });
+      await ctx.db.insert("memoryOutbox", {
+        containerTag: "frolic_g_" + body.groupId,
+        kind: "tap",
+        content: "Maya is down",
+        frolicId: body.frolicId,
+        status: "pending",
+        attempts: 0,
+        createdAt: NOON,
+      });
+      await ctx.db.insert("memoryContainers", {
+        scope: "group",
+        groupId: body.groupId,
+        containerTag: "frolic_g_" + body.groupId,
+      });
+      await ctx.db.insert("keikiOutbox", {
+        key: "reveal:" + body.frolicId,
+        kind: "reveal",
+        frolicId: body.frolicId,
+        target: "+15555550100",
+        text: "it's on",
+        notBefore: NOON,
+        status: "queued",
+        attempts: 0,
+      });
+      await ctx.db.insert("gardenNudges", {
+        groupId: body.groupId,
+        anchor: body.frolicId,
+        text: "two of you are free",
+        sentAt: NOON,
+      });
+      await ctx.db.insert("limits", {
+        userId: body.users.priya.userId,
+        budgetCap: 1500,
+        updatedAt: NOON,
+      });
+    });
+
+    const reset = await post(t, "/e2e/reset", { run: RUN });
+    expect(reset.status).toBe(200);
+    const left = await t.run(async (ctx) => ({
+      taps: (await ctx.db.query("taps").take(50)).length,
+      shares: (await ctx.db.query("shares").take(50)).length,
+      fundLedger: (await ctx.db.query("fundLedger").take(50)).length,
+      memoryOutbox: (await ctx.db.query("memoryOutbox").take(50)).length,
+      memoryContainers: (await ctx.db.query("memoryContainers").take(50)).length,
+      keikiOutbox: (await ctx.db.query("keikiOutbox").take(50)).length,
+      gardenNudges: (await ctx.db.query("gardenNudges").take(50)).length,
+      limits: (await ctx.db.query("limits").take(50)).length,
+      users: (await ctx.db.query("users").take(50)).length,
+      groups: (await ctx.db.query("groups").take(50)).length,
+    }));
+    expect(left).toEqual({
+      taps: 0,
+      shares: 0,
+      fundLedger: 0,
+      memoryOutbox: 0,
+      memoryContainers: 0,
+      keikiOutbox: 0,
+      gardenNudges: 0,
+      limits: 0,
+      users: 0,
+      groups: 0,
+    });
+    expect((await counts(t)).plans).toBe(0);
+    const reseeded = await seed(t, RUN, "demo");
+    expect(reseeded.groupId).not.toBe(body.groupId);
+  });
+});
+
+describe("demo portraits", () => {
   beforeEach(() => vi.stubEnv("E2E_SECRET", SECRET));
   afterEach(() => vi.unstubAllEnvs());
 

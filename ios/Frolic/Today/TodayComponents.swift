@@ -21,12 +21,10 @@ struct TodayPacket<Content: View>: View {
     var teaches = false
     @ViewBuilder var content: Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var drag: CGSize = .zero
-    @State private var flung = false
     @State private var landed = 0
 
     private let stems: [CGFloat] = [30, 12, 38, 20, 26]
-    private let heroHeight: CGFloat = 300
+    private let heroHeight: CGFloat = 352
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -41,13 +39,13 @@ struct TodayPacket<Content: View>: View {
                 VStack(spacing: 0) {
                     Color.black
                     LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 90)
+                        .frame(height: 120)
                 }
                 .frame(height: heroHeight + 600)
             }
             .overlay(alignment: .bottom) { meadow }
             ticket
-                .padding(.top, flickable ? 12 : 6)
+                .padding(.top, flickable ? 19 : 6)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.plan.card")
@@ -59,135 +57,55 @@ struct TodayPacket<Content: View>: View {
     private var ticket: some View {
         let body = ticketBody
         if flickable {
-            VStack(spacing: 22) {
+            VStack(spacing: 14) {
                 body
-                    .background(
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .fill(FrolicColor.paper)
-                            .shadow(color: Color(hex: 0x78501E, opacity: 0.12 + Double(min(abs(drag.width), 160)) / 1600), radius: 14 + abs(drag.width) / 14, y: 8)
-                    )
-                    .overlay(alignment: .topLeading) {
-                        stamp("I'm down", color: FrolicColor.sun, angle: -12)
-                            .opacity(Double(min(max(drag.width, 0), 110)) / 110)
-                            .padding(18)
-                    }
-                    .overlay(alignment: .topTrailing) {
-                        stamp("Not today", color: FrolicColor.secondaryText, angle: 12)
-                            .opacity(Double(min(max(-drag.width, 0), 110)) / 110)
-                            .padding(18)
-                    }
-                    .rotationEffect(.degrees(Double(drag.width) / 22), anchor: .bottom)
-                    .offset(x: drag.width, y: drag.height * 0.25)
-                    .opacity(flung ? 0 : 1)
-                    .background(alignment: .top) {
-                        RoundedRectangle(cornerRadius: 26, style: .continuous)
-                            .fill(FrolicColor.paper.opacity(0.7))
-                            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 1))
-                            .scaleEffect(x: 0.92, y: 1, anchor: .top)
-                            .offset(y: 10)
-                            .opacity(flung ? 0 : 1)
-                    }
                     .padding(.horizontal, 16)
-                    .highPriorityGesture(
-                        DragGesture(minimumDistance: 12)
-                            .onChanged { value in drag = value.translation }
-                            .onEnded { value in
-                                let projected = value.predictedEndTranslation.width
-                                if projected > 200 {
-                                    fling(right: true)
-                                } else if projected < -200 {
-                                    fling(right: false)
-                                } else {
-                                    withAnimation(.spring(response: 0.38, dampingFraction: 0.68)) { drag = .zero }
-                                }
-                            }
-                    )
-                    .accessibilityElement(children: .combine)
-                    .accessibilityAction(named: "I'm down") { onFlickUp?() }
-                    .accessibilityAction(named: "Not today") { onFlickDown?() }
-                HStack(alignment: .top, spacing: 28) {
-                    choice(icon: "xmark", title: "Not today", size: 58, fill: FrolicColor.paper, glyph: FrolicColor.tertiaryText) { fling(right: false) }
+                HStack(alignment: .top, spacing: 32) {
+                    choice(icon: "xmark", title: "Not today", size: 58, fill: StoryColor.control, glyph: StoryColor.faint) { answer(down: false) }
                         .accessibilityIdentifier("today.notToday")
-                    choice(icon: "camera.macro", title: "I'm down", size: 76, fill: Color(hex: 0xE2441F), glyph: .white) { fling(right: true) }
+                    choice(icon: "camera.macro", title: "I'm down", size: 76, fill: StoryColor.lantern, glyph: .white) { answer(down: true) }
                         .accessibilityIdentifier("today.down")
                     if let onOnlyWith {
-                        choice(icon: "person.2.fill", title: "Only with…", size: 58, fill: FrolicColor.paper, glyph: Color(hex: 0x2C4FD6), action: onOnlyWith)
+                        choice(icon: "person.2.fill", title: "Only with…", size: 58, fill: StoryColor.control, glyph: StoryColor.ink, action: onOnlyWith)
                             .accessibilityIdentifier("today.onlyIf")
                     }
                 }
             }
             .sensoryFeedback(.success, trigger: landed)
-            .task(id: teaches) {
-                guard teaches, !reduceMotion else { return }
-                try? await Task.sleep(for: .seconds(1.2))
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.5)) { drag = CGSize(width: 46, height: 0) }
-                try? await Task.sleep(for: .seconds(0.4))
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { drag = .zero }
-            }
         } else {
             body
-                .background(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(FrolicColor.paper)
-                        .shadow(color: Color(hex: 0x78501E, opacity: 0.12), radius: 14, y: 8)
-                )
                 .padding(.horizontal, 16)
         }
     }
 
-    private func stamp(_ text: String, color: Color, angle: Double) -> some View {
-        Text(text.uppercased())
-            .todayFont(20, .heavy, rounded: true, relativeTo: .title3)
-            .foregroundStyle(color)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(color, lineWidth: 3))
-            .rotationEffect(.degrees(angle))
-            .accessibilityHidden(true)
-    }
 
     private func choice(icon: String, title: String, size: CGFloat, fill: Color, glyph: Color, action: @escaping () -> Void) -> some View {
-        let filled = fill != FrolicColor.paper
+        let filled = fill == StoryColor.lantern
         return Button(action: action) {
             VStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: size * 0.36, weight: .bold, design: .rounded))
                     .foregroundStyle(glyph)
                     .frame(width: size, height: size)
-                    .background(Circle().fill(fill))
-                    .overlay(Circle().stroke(FrolicColor.ink.opacity(filled ? 0 : 0.12), lineWidth: 1.5))
-                    .shadow(color: filled ? fill.opacity(0.35) : Color(hex: 0x78501E, opacity: 0.12), radius: filled ? 14 : 10, y: filled ? 7 : 5)
+                    .glassEffect(filled ? .regular.tint(fill).interactive() : .regular.interactive(), in: .circle)
+                    .shadow(color: filled ? fill.opacity(0.45) : .clear, radius: 18, y: 6)
                     .frame(width: 86, height: 76)
                 Text(title)
                     .todayFont(14, .bold, rounded: true, relativeTo: .footnote)
-                    .foregroundStyle(FrolicColor.ink)
+                    .foregroundStyle(StoryColor.ink)
             }
         }
         .buttonStyle(PressScale())
         .accessibilityLabel(title)
     }
 
-    private func fling(right: Bool) {
-        let action = right ? onFlickUp : onFlickDown
-        if reduceMotion {
-            action?()
-            return
-        }
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.9)) {
-            drag = CGSize(width: right ? 640 : -640, height: 40)
-            flung = true
-        }
+    private func answer(down: Bool) {
         landed += 1
-        action?()
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.9))
-            flung = false
-            drag = .zero
-        }
+        (down ? onFlickUp : onFlickDown)?()
     }
 
     private var ticketBody: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .center, spacing: 0) {
             HStack(spacing: 6) {
                 Text(label)
                 if let number {
@@ -196,42 +114,40 @@ struct TodayPacket<Content: View>: View {
                 }
             }
             .todayFont(14, .bold, rounded: true, relativeTo: .subheadline)
-            .foregroundStyle(FrolicColor.sun)
+            .foregroundStyle(StoryColor.accent)
             .lineLimit(1)
-            .padding(.trailing, flickable && me != nil ? 40 : 0)
             .accessibilityElement(children: .combine)
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .center, spacing: 8) {
                 content
             }
+            .multilineTextAlignment(.center)
             .padding(.top, 10)
             if (showsWhy && why != nil) || flickable {
-                Rectangle()
-                    .fill(FrolicColor.line)
-                    .frame(height: 1)
-                    .padding(.top, 14)
-                VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Rectangle().fill(StoryColor.rule).frame(height: 1)
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(StoryColor.accent)
+                    Rectangle().fill(StoryColor.rule).frame(height: 1)
+                }
+                .padding(.top, 12)
+                .accessibilityHidden(true)
+                VStack(alignment: .center, spacing: 10) {
                     if showsWhy, let why {
-                        noteRow(icon: "heart.fill", tint: Color(hex: 0xE2441F), text: why)
+                        noteRow(icon: "heart.fill", tint: StoryColor.lantern, text: why)
                             .accessibilityIdentifier("today.plan.why")
                     }
                     if flickable {
-                        noteRow(icon: "lock.fill", tint: FrolicColor.chipText, text: "Secret until a friend is down too")
+                        noteRow(icon: "lock.fill", tint: StoryColor.faint, text: "Secret until a friend is down too")
                             .accessibilityIdentifier("today.hush")
                     }
                 }
-                .padding(.top, 14)
+                .padding(.top, 10)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .overlay(alignment: .topTrailing) {
-            if flickable, let me {
-                TodayFlower(person: me, state: .bud, radius: 13, stem: 0)
-                    .frame(width: 30, height: 30)
-                    .padding(16)
-                    .accessibilityHidden(true)
-            }
-        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
     }
 
     private func noteRow(icon: String, tint: Color, text: String) -> some View {
@@ -242,7 +158,7 @@ struct TodayPacket<Content: View>: View {
                 .frame(width: 16)
             Text(text)
                 .todayFont(15, .medium, rounded: true, relativeTo: .subheadline)
-                .foregroundStyle(FrolicColor.chipText)
+                .foregroundStyle(StoryColor.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
@@ -264,7 +180,6 @@ struct TodayPacket<Content: View>: View {
                                     .strokeBorder(FrolicColor.cream, style: StrokeStyle(lineWidth: 2.5, dash: [5, 4]))
                                     .background(Circle().fill(FrolicColor.cream.opacity(0.28)))
                                     .frame(width: 48, height: 48)
-                                    .scaleEffect(1 + min(max(drag.width, 0), 200) / 900)
                                 Text("You?")
                                     .todayFont(13, .bold, rounded: true, relativeTo: .caption)
                                     .foregroundStyle(FrolicColor.ink)
@@ -293,8 +208,7 @@ struct TodayPacket<Content: View>: View {
                             .minimumScaleFactor(0.85)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 7)
-                            .background(Capsule().fill(FrolicColor.cream.opacity(0.95)))
-                            .shadow(color: Color(hex: 0x78501E, opacity: 0.18), radius: 8, y: 3)
+                            .glassEffect(.regular, in: .capsule)
                             .padding(.horizontal, 20)
                             .accessibilityIdentifier("today.freeRow")
                     }
