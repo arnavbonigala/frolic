@@ -11,33 +11,11 @@ struct YouFlowerHead: View {
     var body: some View {
         FlowerView(
             state: state,
-            person: FlowerPerson(name: name, color: color),
+            person: FlowerPerson(name: name, color: color, photoUrl: photoURL),
             radius: radius,
             stem: 0,
             status: status
         )
-        .overlay {
-            avatar
-        }
-    }
-
-    @ViewBuilder
-    private var avatar: some View {
-        if state != .bud, let photoURL, let url = URL(string: photoURL) {
-            AsyncImage(url: url, transaction: Transaction(animation: nil)) { phase in
-                if case .success(let image) = phase {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(width: radius, height: radius)
-            .clipShape(Circle())
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
     }
 }
 

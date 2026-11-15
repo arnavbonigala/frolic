@@ -257,9 +257,11 @@ struct MemoryDetailScreen: View {
     }
 
     private func shareMemory() {
-        let urls = (memory?.going ?? row.going).compactMap { $0.photoUrl.flatMap(URL.init(string:)) }
+        let refs = (memory?.going ?? row.going).compactMap { person in
+            person.photoUrl.flatMap(URL.init(string:)).map { PortraitRef(id: person.userId, url: $0) }
+        }
         Task {
-            for url in urls { await PortraitCache.shared.load(url) }
+            await PortraitCache.shared.warm(refs)
             renderShare()
         }
     }
