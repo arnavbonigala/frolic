@@ -3,6 +3,7 @@ import { env, httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { PAGE_TEMPLATE } from "./pageTemplate";
 import { OG_IMAGE_BASE64 } from "./ogImage";
+import { heroBytes } from "./hero";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) =>
@@ -25,7 +26,8 @@ function renderPage(boot: Record<string, unknown>, share: Share, origin: string)
   const title = share.card ? `${share.card.title} · Frolic` : "Frolic";
   const desc =
     "Anyone free for this? Say you're down. It stays secret unless someone else is too.";
-  const image = share.card?.imageUrl ?? `${origin}/p/og.png`;
+  const card = share.card?.imageUrl;
+  const image = card ? (card.startsWith("http") ? card : `${origin}${card}`) : `${origin}/p/og.png`;
   const values: Record<string, string> = {
     TITLE: escapeHtml(title),
     DESC: escapeHtml(desc),
@@ -45,10 +47,26 @@ export function registerWebRoutes(http: ReturnType<typeof httpRouter>): void {
     method: "GET",
     handler: httpAction(async () => {
       const bytes = Uint8Array.from(atob(OG_IMAGE_BASE64), (c) => c.charCodeAt(0));
-      return new Response(bytes, {
+      return new Response(bytes.buffer as ArrayBuffer, {
         headers: {
           "Content-Type": "image/png",
           "Cache-Control": "public, max-age=86400, immutable",
+        },
+      });
+    }),
+  });
+
+  http.route({
+    pathPrefix: "/p/hero/",
+    method: "GET",
+    handler: httpAction(async (_ctx, req) => {
+      const key = new URL(req.url).pathname.slice("/p/hero/".length).replace(/\.png$/, "");
+      const bytes = heroBytes(key);
+      if (!bytes) return new Response("Not found", { status: 404 });
+      return new Response(bytes.buffer as ArrayBuffer, {
+        headers: {
+          "Content-Type": "image/png",
+          "Cache-Control": "public, max-age=31536000, immutable",
         },
       });
     }),

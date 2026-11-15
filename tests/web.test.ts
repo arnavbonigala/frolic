@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../convex/_generated/api";
 import { NOON, flipDue, makeT, setupCrew, tap, token, type Crew } from "../convex/tests/setup.helpers";
+import { heroKey } from "../convex/web/hero";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -122,6 +123,19 @@ describe("what the page can see", () => {
     expect(view.group).toBe("Sunset Crew");
     expect(view.card?.title).toBe("Sunset at Indian Rock");
     expect(view.me).toBeNull();
+  });
+
+  test("the card image comes from the plan's taste tag, and falls back to the place photo", async () => {
+    const t = makeT();
+    const crew = await planned(t, await setupCrew(t, ["Maya", "Dev"]));
+    const link = await shareLink(t, crew);
+    const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Guest") });
+    expect(["https://images.example/hills_sunset.jpg", "/p/hero/plan-sunsets.png"]).toContain(view.card?.imageUrl);
+    expect(heroKey(["Sunsets"])).toBe("plan-sunsets");
+    expect(heroKey(["Late-night food"])).toBe("plan-late-night-food");
+    expect(heroKey(["Games"])).toBe("plan-games");
+    expect(heroKey(["Free stuff"])).toBe("plan-free-stuff");
+    expect(heroKey(["nothing in particular"])).toBeNull();
   });
 
   test("a revoked invite is invalid", async () => {
@@ -311,6 +325,18 @@ describe("http routes", () => {
     const link = await shareLink(t, crew);
     const html = await (await t.fetch(`/p/${link.code}`)).text();
     expect(html.length).toBeLessThan(120000);
+  });
+
+  test("a plan hero is served with a year of cache, or a clean 404 before the art lands", async () => {
+    const t = makeT();
+    const hero = await t.fetch("/p/hero/plan-sunsets.png");
+    if (hero.status === 200) {
+      expect(hero.headers.get("content-type")).toBe("image/png");
+      expect(hero.headers.get("cache-control")).toContain("immutable");
+    } else {
+      expect(hero.status).toBe(404);
+    }
+    expect((await t.fetch("/p/hero/../../etc/passwd")).status).toBe(404);
   });
 
   test("the preview image is a real png", async () => {

@@ -4,6 +4,7 @@ import { api, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { findMembership, findUserByToken } from "../lib/identity";
+import { heroUrl } from "./hero";
 
 export const card = v.object({
   label: v.string(),
@@ -78,7 +79,7 @@ async function cardFor(ctx: QueryCtx, frolic: Doc<"frolics">) {
     title: plan.title,
     chips,
     why: plan.why ?? plan.line,
-    imageUrl: place?.photoUrl ?? null,
+    imageUrl: heroUrl(place?.tags ?? []) ?? place?.photoUrl ?? null,
   };
 }
 

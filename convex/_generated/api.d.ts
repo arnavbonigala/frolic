@@ -33,6 +33,8 @@ import type * as snaps from "../snaps.js";
 import type * as taps from "../taps.js";
 import type * as users from "../users.js";
 import type * as web_devSeed from "../web/devSeed.js";
+import type * as web_hero from "../web/hero.js";
+import type * as web_heroes from "../web/heroes.js";
 import type * as web_ogImage from "../web/ogImage.js";
 import type * as web_pageTemplate from "../web/pageTemplate.js";
 import type * as web_routes from "../web/routes.js";
@@ -72,6 +74,8 @@ declare const fullApi: ApiFromModules<{
   taps: typeof taps;
   users: typeof users;
   "web/devSeed": typeof web_devSeed;
+  "web/hero": typeof web_hero;
+  "web/heroes": typeof web_heroes;
   "web/ogImage": typeof web_ogImage;
   "web/pageTemplate": typeof web_pageTemplate;
   "web/routes": typeof web_routes;
