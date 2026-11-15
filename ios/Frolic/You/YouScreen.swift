@@ -145,6 +145,13 @@ private struct YouContent: View {
         }
     }
 
+    private var identityLine: String? {
+        guard let crew = model.crewName else { return nil }
+        guard let count = model.wentCount else { return crew }
+        if count == 0 { return "Your first frolic is one tap away." }
+        return "\(count) \(count == 1 ? "frolic" : "frolics") with \(crew)"
+    }
+
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             YouFlowerHead(
@@ -161,8 +168,8 @@ private struct YouContent: View {
                     .minimumScaleFactor(0.6)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("you.title")
-                if let crew = model.crewName {
-                    Text(crew)
+                if let line = identityLine {
+                    Text(line)
                         .frolicFont(.subheadline)
                         .foregroundStyle(FrolicColor.secondaryText)
                 }

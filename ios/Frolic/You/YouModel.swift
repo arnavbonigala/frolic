@@ -61,6 +61,14 @@ struct YouToday: Decodable {
     }
 }
 
+struct YouOverview: Decodable {
+    var memories: [Memory]
+
+    struct Memory: Decodable {
+        var youWent: Bool
+    }
+}
+
 struct YouCardPerson: Codable, Equatable {
     var name: String
     var color: FlowerColor
@@ -128,6 +136,7 @@ final class YouModel {
     var homeBy: YouHomeBy?
     var readCalendar = YouPreferences.readCalendar
     var tasteTags: [String] = []
+    var wentCount: Int?
     var savePhase: YouSavePhase = .idle
     var accountPhase: YouAccountPhase = .idle
 
@@ -173,6 +182,7 @@ final class YouModel {
             group.addTask { await self.trackLimits(client: client, token: token) }
             group.addTask { await self.trackProfile(client: client, token: token) }
             group.addTask { await self.trackCard(client: client, token: token) }
+            group.addTask { await self.trackCount(client: client, token: token) }
         }
     }
 
@@ -323,6 +333,22 @@ final class YouModel {
             return
         } catch {
             card = cardOverride ?? YouCard.none
+        }
+    }
+
+    private func trackCount(client: ConvexClient, token: String) async {
+        guard let groupId = await resolvedGroupId() else { return }
+        let publisher = client.subscribe(
+            to: "garden:overview",
+            with: ["deviceToken": token, "groupId": groupId],
+            yielding: YouOverview.self
+        )
+        do {
+            for try await overview in publisher.values {
+                wentCount = overview.memories.filter(\.youWent).count
+            }
+        } catch {
+            return
         }
     }
 
