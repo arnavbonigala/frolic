@@ -46,12 +46,12 @@ const OLD_PHRASES = [
     why: "the bail sheet must never tell anyone that someone bailed",
   },
   {
-    re: /only with\s*[,.?"”…]/i,
-    why: "the button and the sheet say only if, not only with",
+    re: /Only if…/,
+    why: "the button and the sheet use the mock's words: only with",
   },
   {
-    re: /I'm down only with/i,
-    why: "the only-if sheet says I'm down only if",
+    re: /I'm down only if/i,
+    why: "the sheet title is I'm down only with",
   },
 ];
 

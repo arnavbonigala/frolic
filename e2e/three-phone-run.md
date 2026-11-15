@@ -99,7 +99,7 @@ Two things the Capy path cannot do, and the CLI path can: `set_location` has no 
 
 ## What each phone does
 
-**Maya (`tp-maya`).** Deep links to her seeded Today screen, sets `37.8719,-122.2585`, validates the free line and the plan card, arrives at `t0`. At `t30` she taps "Only if…", taps Dev, taps "I'm down if Dev". Asserts the status card reads "You're down, if Dev" and that nothing on screen shows another person down, no count, and no "It's on.". Then a `while` loop waits for the headline "It's on.", reads the clock off the status bar, stamps the server clock, and asserts "You, Dev" with both flowers. It waits 15 seconds and asserts the reveal happened exactly once. Then "I'm on my way".
+**Maya (`tp-maya`).** Deep links to her seeded Today screen, sets `37.8719,-122.2585`, validates the free line and the plan card, arrives at `t0`. At `t30` she taps "Only with…", taps Dev, taps "I'm down if Dev". Asserts the status card reads "You're down, if Dev" and that nothing on screen shows another person down, no count, and no "It's on.". Then a `while` loop waits for the headline "It's on.", reads the clock off the status bar, stamps the server clock, and asserts "You, Dev" with both flowers. It waits 15 seconds and asserts the reveal happened exactly once. Then "I'm on my way".
 
 **Dev (`tp-dev`).** Same setup at `37.8651,-122.2578`. Arrives `t0`, is released at `t30`, asserts nothing shows Maya down before he taps, then taps "I'm down" and asserts "Your bud is planted. Waiting for a friend" and no "It's on." yet. Then the same flip wait, clock read and server stamp, asserting "You, Maya".
 

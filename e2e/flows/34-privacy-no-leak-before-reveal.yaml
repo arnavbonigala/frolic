@@ -17,7 +17,7 @@ test:
       step_type: "navigate"
       step_description: "frolic://e2e/today:open"
     - type: "instructions"
-      step_description: "Tap \"Only if…\", tap Dev, then tap \"I'm down if Dev\""
+      step_description: "Tap \"Only with…\", tap Dev, then tap \"I'm down if Dev\""
     - type: "validation"
       step_description: "The status card reads \"You're down, if Dev\""
     - type: "manual"
