@@ -191,7 +191,7 @@ final class OnboardingModel {
             isSolo = true
             return
         }
-        invitePhase = .loading
+        invitePhase = .ready
         failure = nil
         Task {
             do {

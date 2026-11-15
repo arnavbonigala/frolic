@@ -112,8 +112,8 @@ struct JoinScreen: View {
     private var bar: some View {
         switch model.invitePhase {
         case .ready:
-            Button(model.preview.map { "Join \($0.groupName)" } ?? "Get started") {
-                if model.preview == nil { model.startSolo() } else { model.acceptInvite() }
+            Button(model.preview.map { "Join \($0.groupName)" } ?? (model.link == nil ? "Get started" : "Join your crew")) {
+                if model.link == nil { model.startSolo() } else { model.acceptInvite() }
             }
             .buttonStyle(.frolicPrimary)
             .accessibilityIdentifier("join.join")
