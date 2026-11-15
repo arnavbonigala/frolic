@@ -156,7 +156,7 @@ struct GroupSnapScreen: View {
                 Text("You're all here")
                     .font(.system(.body, design: .rounded, weight: .bold))
                     .foregroundStyle(.white)
-                Text("You'll see theirs once you add yours.")
+                Text("Everyone's shot unlocks when you add yours.")
                     .font(.footnote)
                     .foregroundStyle(.white.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
