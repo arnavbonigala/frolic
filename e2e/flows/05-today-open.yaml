@@ -15,7 +15,7 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/today:open?fixture=1"
+      step_description: "frolic://e2e/today:open?fixture=1&tomorrow=1"
     - type: "validation"
       step_description: "A pill at the top right reads \"Free till 8\""
     - type: "validation"
@@ -29,7 +29,7 @@ test:
     - type: "validation"
       step_description: "The line \"Nobody sees you're down unless they are too\" is visible"
     - type: "validation"
-      step_description: "A row starting \"Tomorrow:\" reads \"Maya and Dev are kayaking. There's room for you.\""
+      step_description: "A row starting \"Tomorrow: \" reads \"Maya and Dev are going to Kayaks at the Marina. There's room for you.\""
     - type: "validation"
       step_description: "The bottom tab bar shows Today, Crew, Garden and You with Today selected"
     - type: "validation"

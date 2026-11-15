@@ -7,6 +7,8 @@ if [ ! -d "$deps/node_modules/yaml" ]; then
   npm install --prefix "$deps" --silent --no-fund --no-audit yaml@2
 fi
 node "$here/tools/lint.mjs" "$@"
+echo "--- flow drift ---"
+node "$here/tools/drift.mjs"
 echo "--- copy privacy ---"
 node "$here/tools/copy-lint.mjs"
 echo "--- revyl backend validation (needs revyl auth login) ---"

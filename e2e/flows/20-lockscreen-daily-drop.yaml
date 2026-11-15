@@ -37,4 +37,4 @@ test:
     - type: "instructions"
       step_description: "Open the Frolic app"
     - type: "validation"
-      step_description: "The Today screen shows \"Your bud is planted. Waiting for a friend\""
+      step_description: "The Today screen shows \"Waiting for a friend\""

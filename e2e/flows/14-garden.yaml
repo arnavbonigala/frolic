@@ -14,11 +14,11 @@ test:
   blocks:
     - type: "manual"
       step_type: "navigate"
-      step_description: "frolic://e2e/garden"
+      step_description: "frolic://e2e/garden?fixture=1"
     - type: "validation"
       step_description: "The heading \"Garden\" and \"Every frolic grows a flower. It never wilts.\" are visible"
     - type: "validation"
-      step_description: "A garden counter reads \"N frolics\" with a caption underneath"
+      step_description: "A garden counter reads \"13 frolics\" with a caption underneath"
     - type: "validation"
       step_description: "A row begins \"Your crew this week:\" and describes the crew's taste"
     - type: "instructions"
