@@ -39,8 +39,10 @@ struct E2ERoute: Equatable {
         let route = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !route.isEmpty else { return nil }
         let parts = route.split(separator: ":", maxSplits: 1).map(String.init)
-        let path = parts[0].split(separator: "/", maxSplits: 1).map(String.init)
-        screen = path[0]
+        guard let head = parts.first else { return nil }
+        let path = head.split(separator: "/", maxSplits: 1).map(String.init)
+        guard let screen = path.first else { return nil }
+        self.screen = screen
         argument = path.count > 1 ? path[1] : nil
         state = parts.count > 1 ? parts[1] : nil
         query = Dictionary(
