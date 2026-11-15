@@ -46,6 +46,7 @@ struct OnboardingTitle: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.top, 28)
     }
 }
 

@@ -16,6 +16,7 @@ struct NameScreen: View {
             nameField
                 .padding(.top, 20)
             HStack(alignment: .firstTextBaseline) {
+                Spacer(minLength: 0)
                 Text("Your crew sees your name and photo.")
                     .accessibilityIdentifier("name.foot")
                 Spacer(minLength: 8)
