@@ -42,17 +42,19 @@ struct FlowerView: View {
     var status: String?
     var swayDelay: Double = 0
     var animatesIn = false
+    var appearDelay: Double = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var lean: Double = 0
     @State private var breathing = false
-    @State private var appeared = true
+    @State private var appeared = false
     @State private var wind = Double.random(in: 0...1)
 
     private var tint: FlowerColor { color ?? person?.color ?? .marigold }
     private var width: CGFloat { radius * 2 + 8 }
     private var height: CGFloat { stem > 0 ? radius * 2 + stem + 4 : width }
     private var sways: Bool { state != .folded && !reduceMotion }
+    private var shown: Bool { !animatesIn || appeared }
 
     var body: some View {
         VStack(spacing: 2) {
@@ -70,9 +72,9 @@ struct FlowerView: View {
             }
         }
         .rotationEffect(.degrees(sways ? lean : 0), anchor: .bottom)
-        .scaleEffect(reduceMotion || appeared ? 1 : 0.2, anchor: .bottom)
-        .offset(y: reduceMotion || appeared ? 0 : 60)
-        .opacity(appeared ? 1 : 0)
+        .scaleEffect(reduceMotion || shown ? 1 : 0.2, anchor: .bottom)
+        .offset(y: reduceMotion || shown ? 0 : 40)
+        .opacity(shown ? 1 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
         .onAppear(perform: startMotion)
@@ -215,25 +217,24 @@ struct FlowerView: View {
     }
 
     private func startMotion() {
-        if animatesIn {
-            appeared = false
-            withAnimation(reduceMotion ? .easeInOut(duration: 0.4) : .spring(response: 0.6, dampingFraction: 0.55)) {
+        if animatesIn, !appeared {
+            withAnimation((reduceMotion ? Animation.easeInOut(duration: 0.4) : .spring(response: 0.6, dampingFraction: 0.62)).delay(appearDelay)) {
                 appeared = true
             }
         }
         guard !reduceMotion else { return }
         if state == .bud {
-            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
                 breathing = true
             }
         }
     }
 
-    private var gust: Animation { .spring(response: 0.35, dampingFraction: 1) }
+    private var gust: Animation { .easeInOut(duration: tempo * 0.85) }
 
     private var reach: Double { 2.2 + (1 - wind) * 1.6 }
 
-    private var tempo: Double { 1.8 + wind * 1.4 }
+    private var tempo: Double { 2.4 + wind * 1.4 }
 
     @MainActor
     private func sway() async {
@@ -244,9 +245,9 @@ struct FlowerView: View {
         try? await Task.sleep(for: .seconds(swayDelay + wind * 1.2))
         while !Task.isCancelled {
             withAnimation(gust) { lean = reach * Double.random(in: 0.55...1) }
-            try? await Task.sleep(for: .seconds(tempo * Double.random(in: 0.5...0.8)))
+            try? await Task.sleep(for: .seconds(tempo * Double.random(in: 0.9...1.1)))
             withAnimation(gust) { lean = -reach * Double.random(in: 0.3...0.7) }
-            try? await Task.sleep(for: .seconds(tempo * Double.random(in: 0.8...1.4)))
+            try? await Task.sleep(for: .seconds(tempo * Double.random(in: 0.95...1.3)))
         }
     }
 }

@@ -38,7 +38,7 @@ struct GardenBed: View {
             )
             HStack(alignment: .bottom, spacing: -10) {
                 ForEach(colors.indices, id: \.self) { index in
-                    FlowerView(color: colors[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
+                    FlowerView(color: colors[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4, animatesIn: true, appearDelay: 0.1 + Double(index) * 0.06)
                         .scaleEffect(health.flowerScale, anchor: .bottom)
                         .saturation(health.saturation)
                         .rotationEffect(.degrees(health.droop * (index.isMultiple(of: 2) ? 1 : -1) * (0.6 + Double(index % 3) * 0.25)), anchor: .bottom)
