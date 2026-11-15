@@ -23,7 +23,7 @@ Steps 3 to 9 cannot run on main. Expected: main's Today is a placeholder until #
 | 3 | "Maya, Dev, Jordan and Priya are free" under four flowers | PASS |
 | 4 | Plan card "Sunset at Indian Rock" with chips Free, 12 min walk, Golden hour 4:28 | PASS |
 | 5 | "Why this:" line | PASS, exact mock copy |
-| 6 | Buttons "I'm down" and the only-if control | PASS: the second button is titled "Only if…" |
+| 6 | Buttons "I'm down" and "Only with…" | PARTIAL: the second button is titled "Only if…" |
 | 7 | "Nobody sees you're down unless they are too" | PASS |
 | 8 | Row starting "Tomorrow:" | **FAIL: not rendered** |
 | 9 | Tab bar shows Today, Crew, Garden and You with Today selected | **FAIL: the tree exposes one `group "Tab Bar"` with no children**, so no tab is labelled or selectable by name; the tabs do work by coordinate |

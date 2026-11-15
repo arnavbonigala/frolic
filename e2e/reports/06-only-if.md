@@ -6,14 +6,14 @@ Method: every step is checked by reading the iOS accessibility tree before and a
 
 ## main, build `01M7GB4ZDHP66D3JMTAR6WZ9WG`
 
-**FAIL at step 2 of 10**: no only-if control exists, because Today is the placeholder.
+**FAIL at step 2 of 10**: no "Only with…" or "Only if…" control exists, because Today is the placeholder.
 
 ## FROL-14 branch, build `01M7GBKTNCXWK01AYDTJ0J8VTB`
 
 | # | Step | Result |
 | - | - | - |
-| 2 | Tap "Only if…" | PASS |
-| 3 | Sheet title and body | PASS: the title reads "I'm down only if…" and the body is exact mock copy |
+| 2 | Tap "Only with…" | PASS via the button titled "Only if…" |
+| 3 | Sheet title and body | PARTIAL: title reads "I'm down only if…" (mock: "I'm down only with…"); body is exact mock copy |
 | 4 | Primary button "Pick at least one friend", disabled | PASS |
 | 5 | Tap Maya | PASS |
 | 6 | Primary reads "I'm down if Maya" | PARTIAL: reads "I'm down if Maya is in" |
