@@ -24,6 +24,7 @@ final class GardenStore {
     private(set) var memory: GardenMemory?
     private(set) var onThisDay: GardenOnThisDay?
     private(set) var myUserId: String?
+    @ObservationIgnored private var emptyTask: Task<Void, Never>?
     @ObservationIgnored private var meTask: Task<Void, Never>?
     @ObservationIgnored private var onThisDayTask: Task<Void, Never>?
     private(set) var memoryPhase: ScreenPhase = .loading
@@ -56,6 +57,12 @@ final class GardenStore {
             phase = cached.isEmpty ? .empty : .ready
         } else if overview == nil {
             phase = .loading
+            emptyTask?.cancel()
+            emptyTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled, let self, overview == nil, phase == .loading else { return }
+                phase = .empty
+            }
         }
         let args: [String: ConvexEncodable?] = ["deviceToken": identity.deviceToken, "groupId": identity.groupId]
         meTask?.cancel()
