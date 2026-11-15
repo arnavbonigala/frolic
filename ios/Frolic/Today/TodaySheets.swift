@@ -30,11 +30,14 @@ struct TodaySheetHost: View {
 private struct TodaySheetTitle: View {
     var text: String
     var identifier: String
+    var centered = false
 
     var body: some View {
         Text(text)
-            .todayFont(22, .heavy, rounded: true, relativeTo: .title2)
+            .font(.system(.title, design: .serif, weight: .heavy))
             .foregroundStyle(FrolicColor.ink)
+            .multilineTextAlignment(centered ? .center : .leading)
+            .frame(maxWidth: centered ? .infinity : nil, alignment: centered ? .center : .leading)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier(identifier)
@@ -44,11 +47,14 @@ private struct TodaySheetTitle: View {
 private struct TodaySheetBody: View {
     var text: String
     var identifier: String = ""
+    var centered = false
 
     var body: some View {
         Text(text)
             .todayFont(15, relativeTo: .subheadline)
             .foregroundStyle(FrolicColor.secondaryText)
+            .multilineTextAlignment(centered ? .center : .leading)
+            .frame(maxWidth: centered ? .infinity : nil, alignment: centered ? .center : .leading)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 6)
             .accessibilityIdentifier(identifier)
@@ -231,7 +237,7 @@ private struct TodayHoldSheet: View {
                     TodayPainting(name: share ? "whop-fund-jar" : "whop-deposit-back", height: 120)
                     Spacer()
                 }
-                TodaySheetTitle(text: share ? "Chip in for " + TodayMoneyCard.shortTitle(store.plan) : "Hold \(amount) to lock it in", identifier: share ? "chip.sheet.title" : "hold.sheet.title")
+                TodaySheetTitle(text: share ? "Chip in for " + TodayMoneyCard.shortTitle(store.plan) : "Hold \(amount) to lock it in", identifier: share ? "chip.sheet.title" : "hold.sheet.title", centered: true)
                     .padding(.top, 8)
                 if share {
                     FrolicGroup {
@@ -266,9 +272,9 @@ private struct TodayHoldSheet: View {
                         }
                     }
                     .padding(.top, 12)
-                    TodaySheetBody(text: "If it gets called off, you get it back automatically.")
+                    TodaySheetBody(text: "If it gets called off, you get it back automatically.", centered: true)
                 } else {
-                    TodaySheetBody(text: "You get it back the moment you arrive.", identifier: "hold.sheet.body")
+                    TodaySheetBody(text: "You get it back the moment you arrive.", identifier: "hold.sheet.body", centered: true)
                 }
                 Button {
                     store.openPayPage()
