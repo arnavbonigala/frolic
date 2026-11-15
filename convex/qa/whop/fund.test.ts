@@ -209,7 +209,7 @@ describe("the two minute sweep", () => {
     expect((await shareOf(t, c.frolicId, c.ids.Maya)).status).toBe("pending");
     vi.advanceTimersByTime(31 * MINUTE);
     await t.action(internal.whop.actions.reconcile, { shareId: share._id });
-    await drain(t, 3, 1);
+    await drain(t, 4, 6 * MINUTE);
     expect(
       (await shareOf(t, c.frolicId, c.ids.Maya)).status,
       "a share that never got a payment is closed out, not left pending",
