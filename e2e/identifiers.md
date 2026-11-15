@@ -14,6 +14,10 @@ Bundle prefix `frolic.` comes free from the bundle; do not repeat it in ids.
 | `state.loading` | any loading placeholder | the screen's own loading copy |
 | `state.error` | any error card | the error copy, never an empty state |
 
+Tab bar: `tab.today`, `tab.crew`, `tab.garden`, `tab.you`, one per tab, with the selected tab carrying the selected trait. Before #55 the bar exposed a single unlabelled `group "Tab Bar"`; these ids are what flows assert now.
+
+Sign-in deep link: `frolic://e2e/signin?token=<deviceToken>&group=<groupId>`. The older `frolic://signin?deviceToken=..&groupId=..` still resolves, and the seed's `users.<who>.link` comes back in that older shape, so a run rewrites it to the new one or leaves it, either works.
+
 Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`, `name`, `taste`, `reading`, `calendar`, `today:open|waiting|on|faded|done`, `today` with `solo` query, `crew`, `garden`, `memory/<n>`, `you`, `otw`, `checkin`, `sunday`, `hopin`).
 
 ## Join (`#join`)
