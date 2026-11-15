@@ -19,9 +19,9 @@ enum AppTab: String, CaseIterable, Hashable {
     var systemImage: String {
         switch self {
         case .today: "sun.horizon.fill"
-        case .crew: "person.2.fill"
-        case .garden: "camera.macro"
-        case .you: "person.crop.circle"
+        case .crew: "person.3.fill"
+        case .garden: "leaf.fill"
+        case .you: "person.crop.circle.fill"
         }
     }
 }

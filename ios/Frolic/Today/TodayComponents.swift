@@ -26,7 +26,7 @@ struct TodayPacket<Content: View>: View {
     @State private var landed = 0
 
     private let stems: [CGFloat] = [30, 12, 38, 20, 26]
-    private let heroHeight: CGFloat = 340
+    private let heroHeight: CGFloat = 300
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -43,7 +43,7 @@ struct TodayPacket<Content: View>: View {
                     .frame(height: heroHeight + 600)
             }
             ticket
-                .padding(.top, flickable ? 18 : 6)
+                .padding(.top, flickable ? 12 : 6)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.plan.card")
@@ -55,7 +55,7 @@ struct TodayPacket<Content: View>: View {
     private var ticket: some View {
         let body = ticketBody
         if flickable {
-            VStack(spacing: 30) {
+            VStack(spacing: 22) {
                 body
                     .background(
                         RoundedRectangle(cornerRadius: 26, style: .continuous)
@@ -102,12 +102,12 @@ struct TodayPacket<Content: View>: View {
                     .accessibilityAction(named: "I'm down") { onFlickUp?() }
                     .accessibilityAction(named: "Not today") { onFlickDown?() }
                 HStack(alignment: .top, spacing: 28) {
-                    choice(icon: "xmark", title: "Not today", size: 58, filled: false) { fling(right: false) }
+                    choice(icon: "xmark", title: "Not today", size: 58, fill: FrolicColor.paper, glyph: FrolicColor.tertiaryText) { fling(right: false) }
                         .accessibilityIdentifier("today.notToday")
-                    choice(icon: "camera.macro", title: "I'm down", size: 72, filled: true) { fling(right: true) }
+                    choice(icon: "camera.macro", title: "I'm down", size: 76, fill: Color(hex: 0xE2441F), glyph: .white) { fling(right: true) }
                         .accessibilityIdentifier("today.down")
                     if let onOnlyWith {
-                        choice(icon: "person.2.fill", title: "Only with…", size: 58, filled: false, action: onOnlyWith)
+                        choice(icon: "person.2.fill", title: "Only with…", size: 58, fill: FrolicColor.paper, glyph: Color(hex: 0x2C4FD6), action: onOnlyWith)
                             .accessibilityIdentifier("today.onlyIf")
                     }
                 }
@@ -142,17 +142,18 @@ struct TodayPacket<Content: View>: View {
             .accessibilityHidden(true)
     }
 
-    private func choice(icon: String, title: String, size: CGFloat, filled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func choice(icon: String, title: String, size: CGFloat, fill: Color, glyph: Color, action: @escaping () -> Void) -> some View {
+        let filled = fill != FrolicColor.paper
+        return Button(action: action) {
             VStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: size * 0.36, weight: .bold, design: .rounded))
-                    .foregroundStyle(filled ? FrolicColor.cream : FrolicColor.ink)
+                    .foregroundStyle(glyph)
                     .frame(width: size, height: size)
-                    .background(Circle().fill(filled ? FrolicColor.ink : FrolicColor.paper))
-                    .overlay(Circle().stroke(FrolicColor.ink.opacity(filled ? 0 : 0.16), lineWidth: 1.5))
-                    .shadow(color: Color(hex: 0x78501E, opacity: 0.14), radius: 10, y: 5)
-                    .frame(width: 86, height: 72)
+                    .background(Circle().fill(fill))
+                    .overlay(Circle().stroke(FrolicColor.ink.opacity(filled ? 0 : 0.12), lineWidth: 1.5))
+                    .shadow(color: filled ? fill.opacity(0.35) : Color(hex: 0x78501E, opacity: 0.12), radius: filled ? 14 : 10, y: filled ? 7 : 5)
+                    .frame(width: 86, height: 76)
                 Text(title)
                     .todayFont(14, .bold, rounded: true, relativeTo: .footnote)
                     .foregroundStyle(FrolicColor.ink)
@@ -200,19 +201,21 @@ struct TodayPacket<Content: View>: View {
             }
             .padding(.top, 10)
             if (showsWhy && why != nil) || flickable {
-                VStack(alignment: .leading, spacing: 8) {
+                Rectangle()
+                    .fill(FrolicColor.line)
+                    .frame(height: 1)
+                    .padding(.top, 14)
+                VStack(alignment: .leading, spacing: 10) {
                     if showsWhy, let why {
-                        WhyThis(text: why)
+                        noteRow(icon: "heart.fill", tint: Color(hex: 0xE2441F), text: why)
                             .accessibilityIdentifier("today.plan.why")
                     }
                     if flickable {
-                        Label("Secret until a friend is down too", systemImage: "lock.fill")
-                            .todayFont(14, .semibold, rounded: true, relativeTo: .footnote)
-                            .foregroundStyle(FrolicColor.chipText)
+                        noteRow(icon: "lock.fill", tint: FrolicColor.chipText, text: "Secret until a friend is down too")
                             .accessibilityIdentifier("today.hush")
                     }
                 }
-                .padding(.top, 16)
+                .padding(.top, 14)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -225,6 +228,20 @@ struct TodayPacket<Content: View>: View {
                     .accessibilityHidden(true)
             }
         }
+    }
+
+    private func noteRow(icon: String, tint: Color, text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 16)
+            Text(text)
+                .todayFont(15, .medium, rounded: true, relativeTo: .subheadline)
+                .foregroundStyle(FrolicColor.chipText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder

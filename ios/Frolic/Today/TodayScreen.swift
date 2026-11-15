@@ -92,6 +92,7 @@ struct TodayScreen: View {
             if phase == .active { store.becameActive() }
         }
         .onAppear { store.takePendingAction() }
+        .task(id: store.meMember?.photoUrl) { await MyAvatar.shared.load(store.meMember?.photoUrl) }
         .onReceive(NotificationCenter.default.publisher(for: TodayInbox.openOnlyIfNotification)) { _ in
             store.takePendingAction()
         }
@@ -153,7 +154,14 @@ private struct TodayTopBar: View {
 
     var body: some View {
         HStack {
-            Wordmark()
+            Wordmark(width: 74)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 44)
+                .background(Capsule().fill(FrolicColor.paper))
+                .overlay(Capsule().stroke(FrolicColor.ink.opacity(0.14), lineWidth: 1))
+                .shadow(color: Color(hex: 0x3C5078, opacity: 0.08), radius: 6, y: 4)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Frolic")
             Spacer()
             if ready {
                 if store.scene == .done {
@@ -278,13 +286,21 @@ private struct TodayPlanPacket: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.plan.line")
             }
-            let chips = TodayCopy.chips(plan: plan, walk: store.walkMinutes)
-            if !chips.isEmpty {
-                Text(chips.joined(separator: "  ·  "))
-                    .todayFont(14, .semibold, rounded: true, relativeTo: .footnote)
-                    .foregroundStyle(FrolicColor.chipText)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("today.plan.chips")
+            if let plan {
+                HStack(alignment: .top, spacing: 0) {
+                    stat(value: TodayCopy.clock(plan.startsAt), label: "Starts")
+                    stat(value: plan.costLabel, label: "Cost")
+                    if let walk = store.walkMinutes {
+                        stat(value: "\(Int(walk)) min", label: "Walk")
+                    } else if let sunset = plan.sunsetAt {
+                        stat(value: TodayCopy.clock(sunset), label: "Sunset")
+                    } else if let area = plan.place?.neighborhood {
+                        stat(value: area, label: "Where")
+                    }
+                }
+                .padding(.top, 10)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("today.plan.chips")
             }
             if let hostedBy = hostedBy ?? store.drop?.hostedBy {
                 Text(hostedBy.hasPrefix("Hosted by") ? hostedBy : "Hosted by \(hostedBy)")
@@ -294,6 +310,20 @@ private struct TodayPlanPacket: View {
             }
         }
     }
+}
+
+private func stat(value: String, label: String) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+        Text(value)
+            .todayFont(20, .bold, rounded: true, relativeTo: .title3)
+            .foregroundStyle(FrolicColor.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        Text(label)
+            .todayFont(13, .medium, rounded: true, relativeTo: .caption)
+            .foregroundStyle(FrolicColor.tertiaryText)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
 }
 
 private struct TodayHush: View {

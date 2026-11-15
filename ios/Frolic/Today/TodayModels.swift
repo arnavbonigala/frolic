@@ -302,7 +302,7 @@ enum TodayCopy {
     }
 
     static func freeLabel(_ free: CrewFree?) -> String {
-        guard let free else { return "When are you free?" }
+        guard let free else { return "Free when?" }
         switch free.state {
         case "now":
             if let end = free.window?.end { return "Free till \(shortClock(end))" }
@@ -313,7 +313,7 @@ enum TodayCopy {
         case "busy":
             return "Not today"
         default:
-            return "When are you free?"
+            return "Free when?"
         }
     }
 

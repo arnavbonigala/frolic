@@ -33,11 +33,19 @@ struct RootView: View {
             Tab(value: AppTab.you) {
                 YouScreen()
             } label: {
-                Label(AppTab.you.title, systemImage: AppTab.you.systemImage)
-                    .accessibilityIdentifier("tab.you")
+                Label {
+                    Text(AppTab.you.title)
+                } icon: {
+                    if let avatar = MyAvatar.shared.image {
+                        Image(uiImage: avatar)
+                    } else {
+                        Image(systemName: AppTab.you.systemImage)
+                    }
+                }
+                .accessibilityIdentifier("tab.you")
             }
         }
-        .tint(FrolicColor.ink)
+        .tint(Color(hex: 0xE2441F))
         .accessibilityIdentifier("app.root")
         .checkInFlowPresenter()
         #if DEBUG || E2E
