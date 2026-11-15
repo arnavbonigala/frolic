@@ -206,7 +206,7 @@ private struct DailyPickResultsView: View {
                     Capsule()
                         .fill(mine ? FrolicColor.band.opacity(0.35) : FrolicColor.meadow)
                         .frame(width: max(54, proxy.size.width * (grown ? fraction : 0)))
-                        .opacity(people == nil ? 0 : 1)
+                        .opacity(count == 0 ? 0 : 1)
                 }
             }
             .background(Capsule().fill(FrolicColor.chip))
