@@ -13,19 +13,18 @@ final class SnapCamera: NSObject, AVCapturePhotoCaptureDelegate {
     }
 
     var mode: Mode = .idle
-    var isRunning = false
     let session = AVCaptureSession()
     private let output = AVCapturePhotoOutput()
     private var configured = false
-    private var pending: CheckedContinuation<UIImage?, Never>?
+    private var waiting: [Int64: CheckedContinuation<UIImage?, Never>] = [:]
 
     func prepare() async {
+        if mode == .denied { return }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             break
         case .notDetermined:
-            let granted = await AVCaptureDevice.requestAccess(for: .video)
-            guard granted else {
+            guard await AVCaptureDevice.requestAccess(for: .video) else {
                 mode = .denied
                 return
             }
@@ -33,63 +32,66 @@ final class SnapCamera: NSObject, AVCapturePhotoCaptureDelegate {
             mode = .denied
             return
         }
-        guard AVCaptureDevice.default(for: .video) != nil else {
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+            ?? AVCaptureDevice.default(for: .video),
+              let input = try? AVCaptureDeviceInput(device: device)
+        else {
             mode = .unavailable
             return
         }
-        configureIfNeeded()
-        mode = configured ? .ready : .unavailable
-    }
-
-    private func configureIfNeeded() {
-        guard !configured else { return }
-        guard let device = AVCaptureDevice.default(for: .video),
-              let input = try? AVCaptureDeviceInput(device: device)
-        else { return }
-        session.beginConfiguration()
-        session.sessionPreset = .photo
-        if session.canAddInput(input) { session.addInput(input) }
-        if session.canAddOutput(output) { session.addOutput(output) }
-        session.commitConfiguration()
-        configured = true
-    }
-
-    func start() {
-        guard configured, !isRunning else { return }
+        if !configured {
+            session.beginConfiguration()
+            session.sessionPreset = .photo
+            if session.canAddInput(input) { session.addInput(input) }
+            if session.canAddOutput(output) { session.addOutput(output) }
+            output.maxPhotoQualityPrioritization = .speed
+            if output.isZeroShutterLagSupported { output.isZeroShutterLagEnabled = true }
+            if output.isResponsiveCaptureSupported { output.isResponsiveCaptureEnabled = true }
+            session.commitConfiguration()
+            configured = true
+        }
         let session = session
-        Task.detached { if !session.isRunning { session.startRunning() } }
-        isRunning = true
+        await Task.detached { if !session.isRunning { session.startRunning() } }.value
+        mode = .ready
     }
 
     func stop() {
-        guard isRunning else { return }
         let session = session
         Task.detached { if session.isRunning { session.stopRunning() } }
-        isRunning = false
     }
 
-    func capture() async -> UIImage? {
-        guard configured, session.isRunning else { return nil }
-        return await withCheckedContinuation { continuation in
-            pending = continuation
-            let settings = AVCapturePhotoSettings()
-            settings.flashMode = .off
-            output.capturePhoto(with: settings, delegate: self)
+    func trigger() -> Task<UIImage?, Never>? {
+        guard mode == .ready, configured, session.isRunning else { return nil }
+        let settings = AVCapturePhotoSettings()
+        settings.flashMode = .off
+        settings.photoQualityPrioritization = .speed
+        let id = settings.uniqueID
+        output.capturePhoto(with: settings, delegate: self)
+        return Task {
+            if let image = early.removeValue(forKey: id) { return image }
+            return await withCheckedContinuation { continuation in
+                if let image = early.removeValue(forKey: id) {
+                    continuation.resume(returning: image)
+                } else {
+                    waiting[id] = continuation
+                }
+            }
         }
     }
 
-    nonisolated func photoOutput(
-        _ output: AVCapturePhotoOutput,
-        didFinishProcessingPhoto photo: AVCapturePhoto,
-        error: (any Error)?
-    ) {
-        let data = photo.fileDataRepresentation()
-        let image = data.flatMap { UIImage(data: $0) }
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: (any Error)?) {
+        let image = photo.fileDataRepresentation().flatMap(UIImage.init(data:))
+        let id = photo.resolvedSettings.uniqueID
         Task { @MainActor in
-            self.pending?.resume(returning: image)
-            self.pending = nil
+            if let continuation = waiting.removeValue(forKey: id) {
+                continuation.resume(returning: image)
+            } else {
+                early[id] = image
+            }
         }
     }
+
+    private var early: [Int64: UIImage?] = [:]
 }
 
 struct CameraPreview: UIViewRepresentable {
@@ -106,9 +108,6 @@ struct CameraPreview: UIViewRepresentable {
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-
-        var videoLayer: AVCaptureVideoPreviewLayer {
-            layer as! AVCaptureVideoPreviewLayer
-        }
+        var videoLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
     }
 }

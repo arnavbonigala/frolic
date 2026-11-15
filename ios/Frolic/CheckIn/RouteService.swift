@@ -34,7 +34,7 @@ enum RouteService {
         item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
     }
 
-    static func angle(for minutes: Int) -> Double {
+    static func progress(for minutes: Int) -> Double {
         min(0.96, max(0.08, 1 - Double(minutes) * 0.06))
     }
 }

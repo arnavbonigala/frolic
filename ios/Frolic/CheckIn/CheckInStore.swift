@@ -2,6 +2,7 @@ import Combine
 import ConvexMobile
 import CoreLocation
 import Foundation
+import UIKit
 
 enum CheckInStep: Equatable {
     case onTheWay
@@ -18,20 +19,17 @@ final class CheckInStore {
     var money: WireMoney = .none
     var myMinutes: Int?
     var checkedIn = false
-    var isCheckingIn = false
     var actionError: String?
     var clockOffset: Double = 0
     var step: CheckInStep = .onTheWay
-    var snapAt: Double?
-    var snapFailed = false
     var snaps: [WireSnap] = []
     var myShot: UIImage?
+    var myUserId: String?
 
-    let frolicId: String?
+    private(set) var frolicId: String?
     private let session = CheckInSession.shared
     private var client: ConvexClient?
     private var token: String?
-    private var groupId: String?
     private var todayCancellable: AnyCancellable?
     private var etaCancellable: AnyCancellable?
     private var moneyCancellable: AnyCancellable?
@@ -43,82 +41,79 @@ final class CheckInStore {
         self.frolicId = frolicId
     }
 
-    var frolic: WireFrolic? { today?.frolic }
     var plan: WirePlan? { today?.frolic?.plan }
-    var place: WirePlace? { today?.frolic?.plan?.place }
+    var place: WirePlace? { plan?.place }
     var reveal: WireReveal? { today?.reveal }
+    var snapAt: Double? { reveal?.snapAt }
 
-    var title: String { plan?.title ?? "Today's frolic" }
+    var title: String { plan?.title ?? "" }
     var kicker: String {
         guard let reveal else { return "It's on" }
         return "It's on · \(CheckInClock.time(reveal.startsAt))"
     }
     var placeName: String {
-        let raw = place?.name ?? "the spot"
+        let raw = place?.name ?? ""
         return raw.hasPrefix("the ") ? "The" + raw.dropFirst(3) : raw
     }
-    var others: [WirePerson] { reveal?.going.filter { !isMe($0) } ?? [] }
+    var others: [WirePerson] { reveal?.going.filter { $0.userId != myUserId } ?? [] }
     var otherNames: String { FrolicNames.list(others.map(\.name)) }
-    var myPerson: WirePerson? { reveal?.going.first(where: isMe) }
+    var myPerson: WirePerson? { reveal?.going.first { $0.userId == myUserId } }
 
     var sharedNote: String {
-        others.isEmpty ? "Your crew can see you're on your way." : "Shared only with \(otherNames), and only until you arrive."
+        others.isEmpty ? "Shared only until you arrive." : "Shared only with \(otherNames), and only until you arrive."
     }
 
     var lockTitle: String { "\(placeName) at \(CheckInClock.time(reveal?.startsAt ?? 0))" }
 
     var lockLine: String {
-        guard let first = others.first else { return "You're on your way." }
-        var parts = ["\(first.name)'s there."]
-        if others.count > 1, let second = others.dropFirst().first {
-            let minutes = minutes(for: second.userId)
-            parts.append("\(second.name) is \(minutesLabel(minutes)) out.")
+        let lines = others.prefix(2).compactMap { person -> String? in
+            guard let row = eta(for: person) else { return nil }
+            if isHere(row) { return "\(person.name)'s there." }
+            return "\(person.name) is \(Int(row.minutes)) min out."
         }
-        return parts.joined(separator: " ")
+        return lines.isEmpty ? "Your crew is on the way." : lines.joined(separator: " ")
     }
 
     var leaveBy: String? {
-        guard let startsAt = reveal?.startsAt, let myMinutes else { return nil }
-        return "Leave by \(CheckInClock.time(startsAt - Double(myMinutes) * 60000))"
+        guard let startsAt = reveal?.startsAt, let myMinutes, !checkedIn else { return nil }
+        let leave = startsAt - Double(myMinutes) * 60000
+        guard leave > Date().timeIntervalSince1970 * 1000 + clockOffset else { return nil }
+        return "Leave by \(CheckInClock.time(leave))"
     }
 
     var canShowArrival: Bool {
         money.state == "returned" || money.state == "returning"
     }
 
-    func minutes(for userId: String) -> Int {
-        Int(etas.first { $0.userId == userId }?.minutes ?? 0)
+    func eta(for person: WirePerson) -> WireEta? {
+        etas.first { $0.userId == person.userId }
     }
 
-    func minutesLabel(_ minutes: Int) -> String {
-        minutes <= 0 ? "here" : "\(minutes) min"
+    private func isHere(_ row: WireEta) -> Bool {
+        !row.onTheWay || row.minutes <= 0
+    }
+
+    func isMe(_ person: WirePerson) -> Bool {
+        person.userId == myUserId
     }
 
     func rowStatus(for person: WirePerson) -> String {
         if isMe(person) {
+            if checkedIn { return "Here" }
             return myMinutes.map { $0 <= 0 ? "Here" : "\($0) min away" } ?? "On the way"
         }
-        let row = etas.first { $0.userId == person.userId }
-        guard let row else { return person.id == others.first?.id ? "Here" : "On the way" }
-        if !row.onTheWay || row.minutes <= 0 { return "Here" }
-        return "\(Int(row.minutes)) min away"
+        guard let row = eta(for: person) else { return "On the way" }
+        return isHere(row) ? "Here" : "\(Int(row.minutes)) min away"
     }
 
     func rowProgress(for person: WirePerson) -> Double {
         if isMe(person) {
-            return RouteService.angle(for: myMinutes ?? 12)
+            if checkedIn { return 1 }
+            return myMinutes.map(RouteService.progress(for:)) ?? 0.08
         }
-        let row = etas.first { $0.userId == person.userId }
-        guard let row, row.onTheWay else { return 1 }
-        return RouteService.angle(for: Int(row.minutes))
+        guard let row = eta(for: person) else { return 0.08 }
+        return isHere(row) ? 1 : RouteService.progress(for: Int(row.minutes))
     }
-
-    func isMe(_ person: WirePerson) -> Bool {
-        if let myId = sessionMyId { return person.userId == myId }
-        return false
-    }
-
-    private var sessionMyId: String?
 
     func attach(watcher: ArrivalWatcher) {
         self.watcher = watcher
@@ -130,24 +125,36 @@ final class CheckInStore {
             return
         }
         self.client = client
+        phase = .loading
         do {
             let token = try session.requireToken()
             self.token = token
-            guard let me = try await session.me(client: client, token: token),
-                  let groupId = me.groups.first?.groupId
-            else { throw CheckInFailure.noCrew }
-            self.groupId = groupId
-            sessionMyId = me.userId
-            let now: Double = try await client.mutation("clock:now", with: [:])
-            clockOffset = now - Date().timeIntervalSince1970 * 1000
-            subscribe(client: client, token: token, groupId: groupId)
+            async let offset = measureOffset(client: client)
+            let me = try await session.me(client: client, token: token)
+            guard let me else { throw CheckInFailure.noIdentity }
+            guard let groupId = session.groupOverride ?? me.groups.first?.groupId else { throw CheckInFailure.noCrew }
+            myUserId = me.userId
+            subscribeToday(client: client, token: token, groupId: groupId)
+            clockOffset = await offset
             startTicker()
         } catch {
             phase = .error(checkInMessage(error))
         }
     }
 
-    private func subscribe(client: ConvexClient, token: String, groupId: String) {
+    private func measureOffset(client: ConvexClient) async -> Double {
+        var best: (rtt: Double, offset: Double)?
+        for _ in 0..<3 {
+            let t0 = Date().timeIntervalSince1970 * 1000
+            guard let server: Double = try? await client.mutation("clock:now", with: [:]) else { continue }
+            let t1 = Date().timeIntervalSince1970 * 1000
+            let sample = (rtt: t1 - t0, offset: server - (t0 + t1) / 2)
+            if best == nil || sample.rtt < best!.rtt { best = sample }
+        }
+        return best?.offset ?? 0
+    }
+
+    private func subscribeToday(client: ConvexClient, token: String, groupId: String) {
         var args: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
         if let frolicId { args["frolicId"] = frolicId }
         todayCancellable = client
@@ -155,98 +162,97 @@ final class CheckInStore {
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
-                    Task { @MainActor in
-                        guard let self else { return }
-                        if case .failure(let error) = completion, self.today == nil {
-                            self.phase = .error(checkInMessage(error))
-                        }
+                    MainActor.assumeIsolated {
+                        guard let self, case .failure(let error) = completion, self.today == nil else { return }
+                        self.phase = .error(checkInMessage(error))
                     }
                 },
                 receiveValue: { [weak self] value in
-                    Task { @MainActor in self?.apply(value) }
-                }
-            )
-        guard let frolicId else { return }
-        etaCancellable = client
-            .subscribe(to: "etas:forFrolic", with: ["deviceToken": token, "frolicId": frolicId], yielding: [WireEta].self)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { _ in },
-                receiveValue: { [weak self] rows in
-                    Task { @MainActor in self?.etas = rows }
-                }
-            )
-        moneyCancellable = client
-            .subscribe(to: "whop:pay:myPayment", with: ["deviceToken": token, "frolicId": frolicId], yielding: WireMoney.self)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { _ in },
-                receiveValue: { [weak self] value in
-                    Task { @MainActor in self?.money = value }
+                    MainActor.assumeIsolated { self?.apply(value) }
                 }
             )
     }
 
+    private func subscribeFrolic(_ id: String) {
+        guard let client, let token else { return }
+        let args: [String: ConvexEncodable?] = ["deviceToken": token, "frolicId": id]
+        etaCancellable = client
+            .subscribe(to: "etas:forFrolic", with: args, yielding: [WireEta].self)
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { _ in }, receiveValue: { [weak self] rows in
+                MainActor.assumeIsolated { self?.etas = rows }
+            })
+        moneyCancellable = client
+            .subscribe(to: "whop/pay:myPayment", with: args, yielding: WireMoney.self)
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { _ in }, receiveValue: { [weak self] value in
+                MainActor.assumeIsolated { self?.money = value }
+            })
+        snapCancellable = client
+            .subscribe(to: "snaps:forFrolic", with: args, yielding: [WireSnap].self)
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { _ in }, receiveValue: { [weak self] rows in
+                MainActor.assumeIsolated { self?.snaps = rows }
+            })
+    }
+
     private func apply(_ value: WireToday) {
         today = value
-        if value.frolic == nil {
+        if let id = value.frolic?.frolicId, id != frolicId || etaCancellable == nil {
+            frolicId = id
+            subscribeFrolic(id)
+            Task { await refreshRoute() }
+        }
+        guard value.frolic != nil, value.phase == "on", value.reveal?.me.going == true else {
             phase = .empty
             return
         }
-        if value.phase == "on" {
-            if let reveal = value.reveal, reveal.snapAt != nil {
-                snapAt = reveal.snapAt
-            }
-            phase = .ready
-        } else if value.phase == "done" {
-            phase = .empty
-        } else {
-            phase = .empty
-        }
+        phase = .ready
     }
 
     private func startTicker() {
         ticker?.cancel()
         ticker = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.refreshRoute()
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
+                await self?.refreshRoute()
             }
         }
     }
 
     func refreshRoute() async {
-        guard let client, let token, let frolicId, let place, let watcher else { return }
-        let coordinate: CLLocationCoordinate2D?
-        if let simulationCoordinate = watcher.simulatedCoordinate {
-            coordinate = simulationCoordinate
-        } else {
-            coordinate = watcher.lastCoordinate
-        }
-        guard let coordinate else { return }
-        let minutes = await RouteService.walkingMinutes(from: coordinate, to: place)
-        guard let minutes else { return }
-        myMinutes = minutes
+        guard let client, let token, let frolicId, let place, let watcher, !checkedIn else { return }
+        watcher.refresh()
+        guard let coordinate = watcher.currentCoordinate else { return }
+        guard let minutes = await RouteService.walkingMinutes(from: coordinate, to: place) else { return }
+        myMinutes = watcher.arrived ? 0 : minutes
         let _: String? = try? await client.mutation(
             "etas:setMine",
-            with: ["deviceToken": token, "frolicId": frolicId, "minutes": minutes, "onTheWay": !watcher.arrived]
+            with: ["deviceToken": token, "frolicId": frolicId, "minutes": myMinutes ?? minutes, "onTheWay": !watcher.arrived]
         )
     }
 
-    func checkIn(method: String) async {
-        guard let client, let token, let frolicId else { return }
-        isCheckingIn = true
+    func checkIn(method: String) {
+        guard let client, let token, let frolicId, !checkedIn else { return }
         actionError = nil
-        defer { isCheckingIn = false }
-        do {
-            let id: String = try await client.mutation(
-                "checkins:checkInMe",
-                with: ["deviceToken": token, "frolicId": frolicId, "method": method]
-            )
-            checkedIn = !id.isEmpty
-            step = .snap
-        } catch {
-            actionError = checkInMessage(error)
+        checkedIn = true
+        myMinutes = 0
+        step = .snap
+        Task {
+            do {
+                let _: String = try await client.mutation(
+                    "checkins:checkInMe",
+                    with: ["deviceToken": token, "frolicId": frolicId, "method": method]
+                )
+                let _: String? = try? await client.mutation(
+                    "etas:setMine",
+                    with: ["deviceToken": token, "frolicId": frolicId, "minutes": 0, "onTheWay": false]
+                )
+            } catch {
+                checkedIn = false
+                step = .onTheWay
+                actionError = checkInMessage(error)
+            }
         }
     }
 
@@ -261,24 +267,14 @@ final class CheckInStore {
         }
     }
 
-    func noteSnapTaken(_ image: UIImage, frolicId: String) {
+    func noteSnapTaken(_ image: UIImage) {
         myShot = image
-        snapFailed = false
         step = .collage
-        Task { await loadSnaps(frolicId: frolicId) }
     }
 
-    func loadSnaps(frolicId: String) async {
-        guard let client, let token else { return }
-        snapCancellable = client
-            .subscribe(to: "snaps:forFrolic", with: ["deviceToken": token, "frolicId": frolicId], yielding: [WireSnap].self)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { _ in },
-                receiveValue: { [weak self] rows in
-                    Task { @MainActor in self?.snaps = rows }
-                }
-            )
+    var credentials: (ConvexClient, String, String)? {
+        guard let client, let token, let frolicId else { return nil }
+        return (client, token, frolicId)
     }
 
     func stop() {
