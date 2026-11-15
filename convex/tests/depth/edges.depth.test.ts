@@ -14,11 +14,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function planFor(t: T, groupId: Id<"groups">, title: string): Promise<Id<"plans">> {
+async function planFor(t: T, groupId: Id<"groups">, title: string, neighborhood?: string): Promise<Id<"plans">> {
   return await t.run(async (ctx) => {
     const placeId = await ctx.db.insert("places", {
       slug: `spot-${title.toLowerCase()}`,
       name: title,
+      neighborhood,
       lat: 37.87,
       lng: -122.25,
       cost: 0,
@@ -177,6 +178,11 @@ describe("hop in pool bookkeeping", () => {
     expect((await t.query(api.frolics.today, { deviceToken: token("Jordan"), groupId: crew.groupId })).reveal?.me).toMatchObject(
       { going: false, hopInWaiting: false, canHopIn: false },
     );
+
+    await t.mutation(api.frolics.sitOut, { deviceToken: token("Dev"), frolicId: crew.frolicId });
+    expect(await t.mutation(api.frolics.hopIn, { deviceToken: token("Jordan"), frolicId: crew.frolicId })).toBe("going");
+    const after = await t.run(async (ctx) => await ctx.db.query("hopIns").collect());
+    expect(after.map((h) => h.status)).toEqual(["joined"]);
   });
 
   test("today reads a frolic by its id and still hides it from another crew", async () => {
@@ -249,5 +255,42 @@ describe("missing rows never break a read", () => {
     const taps = await t.run(async (ctx) => await ctx.db.query("taps").collect());
     expect(taps).toHaveLength(1);
     expect(taps[0].onlyIf).toEqual([crew.ids.Dev]);
+  });
+
+  test("today drops a person whose user row is gone from only if", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya", { onlyIf: ["Dev"] });
+    await t.run(async (ctx) => await ctx.db.delete("users", crew.ids.Dev));
+    const view = await t.query(api.frolics.today, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(view.myTap?.onlyIf).toEqual([]);
+    expect(view.myTap?.kind).toBe("down");
+  });
+
+  test("a crew of one sees the solo phase even with a frolic open", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya"]);
+    const view = await t.query(api.frolics.today, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(view.phase).toBe("solo");
+    expect(view.frolic?.frolicId).toBe(crew.frolicId);
+    expect(view.myTap).toBeNull();
+  });
+
+  test("a plan carries its place neighborhood through to today", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    const plan = await planFor(t, crew.groupId, "Indian Rock", "Berkeley Hills");
+    await t.mutation(internal.frolics.open, {
+      groupId: crew.groupId,
+      day: DAY,
+      kind: "daily",
+      planId: plan,
+      window: { start: NOON + HOUR, end: NOON + 6 * HOUR },
+      durationMinutes: 60,
+      deadline: NOON + 4 * HOUR,
+    });
+    const view = await t.query(api.frolics.today, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(view.frolic?.plan?.place?.neighborhood).toBe("Berkeley Hills");
+    expect(view.frolic?.plan?.place?.name).toBe("Indian Rock");
   });
 });
