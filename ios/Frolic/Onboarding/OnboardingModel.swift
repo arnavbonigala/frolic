@@ -128,6 +128,7 @@ final class OnboardingModel {
                 photo = photoImage?.jpegData(compressionQuality: 0.8)
             }
             firstName = seed.query["name"] ?? ""
+            if seed.query["error"] == "offline" { failure = .offline }
             preview = Self.demoPreview
         case .taste, .reading:
             preview = Self.demoPreview
@@ -138,6 +139,7 @@ final class OnboardingModel {
             if step == .reading { runReading() }
         case .share:
             preview = Self.demoPreview
+            createdInviteCode = seed.query["code"] ?? "sunset34"
         case .calendar:
             preview = Self.demoPreview
             applyCalendarSeed(seed)
@@ -251,6 +253,9 @@ final class OnboardingModel {
     }
 
     static let nameLimit = 40
+    static let counterFrom = 30
+
+    var showsCounter: Bool { firstName.count >= Self.counterFrom }
 
     func editName(_ raw: String) {
         let trimmedLeading = String(raw.drop(while: { $0.isWhitespace }))

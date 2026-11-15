@@ -20,7 +20,7 @@ test:
     - type: "validation"
       step_description: "The text \"Every afternoon, one plan for whoever's free. Say you're down in secret. It only happens if a friend is down too.\" is visible"
     - type: "validation"
-      step_description: "Three explainer captions are visible: \"Friends who are free bloom\", \"Your yes is a secret bud\" and \"Both yes: it's on\""
+      step_description: "A card under the headline reads \"One plan a day\" and cycles one line at a time through \"Friends who are free bloom\", \"Your yes is a secret bud\" and \"Both yes: it's on\""
     - type: "validation"
       step_description: "A \"Join Sunset Crew\" button and a \"No invite? Start on your own\" text button are visible"
     - type: "validation"

@@ -27,9 +27,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `join.title` | Sunset Crew |
 | `join.invitedBy` | Maya invited you to |
 | `join.blurb` | Every afternoon, one plan for whoever's free. Say you're down in secret. It only happens if a friend is down too. |
-| `join.caption.free` | Friends who are free bloom |
-| `join.caption.bud` | Your yes is a secret bud |
-| `join.caption.on` | Both yes: it's on |
+| `join.beat` | One plan a day, then one line cycling: Friends who are free bloom, Your yes is a secret bud, Both yes: it's on |
 | `join.join` | Join Sunset Crew |
 | `join.solo` | No invite? Start on your own |
 
@@ -40,7 +38,8 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `name.title` | What do your friends call you? |
 | `name.photo` | Add a photo, then Change photo |
 | `name.field` | First name |
-| `name.foot` | This is your flower. Your crew sees your name and photo, and nothing else. |
+| `name.foot` | Your crew sees your name and photo. |
+| `name.counter` | appears past 30 characters, reads 31/40 and up |
 | `name.continue` | Continue (disabled while empty) |
 | `photo.sheet.title` | Add a photo |
 | `photo.sheet.caption` | Recents from your photo library |
