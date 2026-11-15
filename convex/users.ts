@@ -97,22 +97,27 @@ export const joinGroup = mutation({
     via: v.optional(v.union(v.literal("invite"), v.literal("web"))),
   },
   returns: v.object({ userId: v.id("users"), groupId: v.id("groups"), frolicId: v.union(v.id("frolics"), v.null()) }),
-  handler: async (ctx, args) => {
-    assertDeviceToken(args.deviceToken);
-    await rateLimiter.limit(ctx, "join", { key: await hashToken(args.deviceToken), throws: true });
-    const invite = await ctx.db
-      .query("invites")
-      .withIndex("by_code", (q) => q.eq("code", args.inviteCode.trim().toUpperCase()))
-      .unique();
-    if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < Date.now())) {
-      throw new ConvexError({ code: "BAD_INVITE", message: "This invite link expired" });
-    }
-    const via = args.via ?? "invite";
-    const userId = await upsertDeviceUser(ctx, args.deviceToken, args.firstName, via === "web" ? "web" : "app");
-    await addMember(ctx, invite.groupId, userId, via);
-    return { userId, groupId: invite.groupId, frolicId: invite.frolicId ?? null };
-  },
+  handler: async (ctx, args) => await joinWithInvite(ctx, args),
 });
+
+export async function joinWithInvite(
+  ctx: MutationCtx,
+  args: { deviceToken: string; firstName: string; inviteCode: string; via?: "invite" | "web" },
+) {
+  assertDeviceToken(args.deviceToken);
+  await rateLimiter.limit(ctx, "join", { key: await hashToken(args.deviceToken), throws: true });
+  const invite = await ctx.db
+    .query("invites")
+    .withIndex("by_code", (q) => q.eq("code", args.inviteCode.trim().toUpperCase()))
+    .unique();
+  if (!invite || invite.revoked || (invite.expiresAt !== undefined && invite.expiresAt < Date.now())) {
+    throw new ConvexError({ code: "BAD_INVITE", message: "This invite link expired" });
+  }
+  const via = args.via ?? "invite";
+  const userId = await upsertDeviceUser(ctx, args.deviceToken, args.firstName, via === "web" ? "web" : "app");
+  await addMember(ctx, invite.groupId, userId, via);
+  return { userId, groupId: invite.groupId, frolicId: invite.frolicId ?? null };
+}
 
 export const createInvite = mutation({
   args: {
@@ -121,29 +126,34 @@ export const createInvite = mutation({
     frolicId: v.optional(v.id("frolics")),
   },
   returns: v.string(),
-  handler: async (ctx, args) => {
-    const user = await userFromToken(ctx, args.deviceToken);
-    if (!(await findMembership(ctx, args.groupId, user._id))) {
-      throw new ConvexError({ code: "NOT_A_MEMBER", message: "You are not in this crew" });
-    }
-    if (args.frolicId) {
-      const frolic = await ctx.db.get("frolics", args.frolicId);
-      if (!frolic || frolic.groupId !== args.groupId) {
-        throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
-      }
-    }
-    const code = newCode();
-    await ctx.db.insert("invites", {
-      code,
-      groupId: args.groupId,
-      createdBy: user._id,
-      kind: args.frolicId ? "frolic" : "group",
-      frolicId: args.frolicId,
-      revoked: false,
-    });
-    return code;
-  },
+  handler: async (ctx, args) => await createInviteFor(ctx, args),
 });
+
+export async function createInviteFor(
+  ctx: MutationCtx,
+  args: { deviceToken: string; groupId: Id<"groups">; frolicId?: Id<"frolics"> },
+): Promise<string> {
+  const user = await userFromToken(ctx, args.deviceToken);
+  if (!(await findMembership(ctx, args.groupId, user._id))) {
+    throw new ConvexError({ code: "NOT_A_MEMBER", message: "You are not in this crew" });
+  }
+  if (args.frolicId) {
+    const frolic = await ctx.db.get("frolics", args.frolicId);
+    if (!frolic || frolic.groupId !== args.groupId) {
+      throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
+    }
+  }
+  const code = newCode();
+  await ctx.db.insert("invites", {
+    code,
+    groupId: args.groupId,
+    createdBy: user._id,
+    kind: args.frolicId ? "frolic" : "group",
+    frolicId: args.frolicId,
+    revoked: false,
+  });
+  return code;
+}
 
 export const invitePreview = query({
   args: { inviteCode: v.string() },
