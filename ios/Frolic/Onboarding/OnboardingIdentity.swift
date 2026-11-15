@@ -41,7 +41,7 @@ enum OnboardingIdentity {
     }
 
     static func commit(groupId: String) {
-        FrolicIdentity.shared.setGroup(groupId)
+        FrolicIdentity.shared.signIn(deviceToken: FrolicIdentity.shared.deviceToken, groupId: groupId)
         UserDefaults.standard.removeObject(forKey: Keys.groupId)
         UserDefaults.standard.set(true, forKey: Keys.complete)
     }

@@ -41,6 +41,9 @@ struct OnboardingGate<Content: View>: View {
             }
         }
         .onChange(of: router.e2eRoute) { _, _ in rebuild() }
+        .onChange(of: FrolicIdentity.shared.groupId) { _, group in
+            if group != nil, OnboardingIdentity.isComplete { finished = true }
+        }
         .onOpenURL { url in
             guard url.scheme == "frolic", url.host == "join", let link = InviteLink(url: url) else { return }
             OnboardingIdentity.reset()
