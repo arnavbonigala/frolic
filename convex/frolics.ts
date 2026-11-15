@@ -344,6 +344,21 @@ export const sitOut = mutation({
   },
 });
 
+async function liveFrolic(ctx: MutationCtx, groupId: Id<"groups">, now: number, freeUntil: number) {
+  const recent = await ctx.db
+    .query("frolics")
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
+    .order("desc")
+    .take(10);
+  return (
+    recent.find((f) => f.status === "on" && f.endsAt !== undefined && now < f.endsAt) ??
+    recent.find(
+      (f) => f.status === "open" && f.origin !== "free" && now < f.deadline && f.window.start <= freeUntil,
+    ) ??
+    null
+  );
+}
+
 async function startFree(
   ctx: MutationCtx,
   userId: Id<"users">,
@@ -356,6 +371,8 @@ async function startFree(
   const now = Date.now();
   const open = await openStartedFrolic(ctx, args.groupId);
   if (open && now < open.deadline) return { frolicId: open._id, started: false };
+  const live = await liveFrolic(ctx, args.groupId, now, now + args.forMinutes * 60_000);
+  if (live) return { frolicId: live._id, started: false };
   await rateLimiter.limit(ctx, "imFree", { key: userId, throws: true });
   const day = localParts(now).day;
   const window = { start: now, end: now + args.forMinutes * 60 * 1000 };

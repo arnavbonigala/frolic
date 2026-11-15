@@ -14,6 +14,8 @@ import {
 import { keikiEnv } from "./env";
 import { fence, noticeToken } from "./notice";
 import { FADED_TEXT } from "../lib/copy";
+import { ensurePick } from "../dailyPick";
+import { smsLine } from "../dailyPickBank";
 
 export const KEIKI_BASE_URL = "https://onkeiki.com";
 export const DEFAULT_AGENT_ID = "44277a5e-b81d-4bb6-92d2-6c9c0eec47b3";
@@ -88,13 +90,14 @@ function heroLine(key: string) {
   return base ? base + "/" + key + ".png" : null;
 }
 
-export function dropText(view: { title: string; place: string | null; startsAt: string; why: string | null; heroKey: string }, inGroup: boolean) {
+export function dropText(view: { title: string; place: string | null; startsAt: string; why: string | null; heroKey: string }, inGroup: boolean, pick: string | null = null) {
   const where = view.place && view.place !== view.title ? " at " + view.place : "";
   const lines = [view.title + where + ", " + view.startsAt + "."];
   if (view.why) lines.push(view.why);
   const hero = heroLine(view.heroKey);
   if (hero) lines.push(hero);
   lines.push(inGroup ? "DM me \"down\", \"only if…\", or \"pass\". It stays secret unless someone else is too." : "Reply \"down\", \"only if…\", or \"pass\".");
+  if (pick) lines.push(pick);
   return lines.join("\n");
 }
 
@@ -104,10 +107,11 @@ export const onDrop = internalMutation({
     const c = await context(ctx, frolicId);
     if (!c) return null;
     const members = await crewMembers(ctx, c.group._id);
+    const pick = c.frolic.kind === "daily" ? smsLine((await ensurePick(ctx, c.group._id, c.frolic.day)).question.text) : null;
     const drafts = await personal(ctx, members.map((m) => m._id), () => ({
       key: "drop:" + frolicId + ":" + "dm",
       kind: "drop",
-      text: dropText(c.details.view, false),
+      text: dropText(c.details.view, false, pick),
       notBefore: Date.now(),
     }));
     for (const d of drafts) d.key = "drop:" + frolicId + ":" + d.userId;
@@ -161,6 +165,22 @@ export const onFree = internalMutation({
     return null;
   },
 });
+
+export const GARDEN_NUDGE_TEXT = "Your garden's getting thirsty. Anyone free tonight?";
+
+export async function gardenNudge(ctx: MutationCtx, groupId: Id<"groups">, frolicId: Id<"frolics">, streak: string) {
+  const members = await crewMembers(ctx, groupId);
+  const drafts = await personal(ctx, members.map((m) => m._id), (user) => ({
+    key: "garden:" + groupId + ":" + streak + ":" + user._id,
+    kind: "nudge",
+    text: GARDEN_NUDGE_TEXT,
+    notBefore: Date.now(),
+  }));
+  for (const chat of await chatsOf(ctx, groupId)) {
+    drafts.push({ key: "garden:" + groupId + ":" + streak + ":" + chat.chatId, kind: "nudge", target: chat.chatId, text: GARDEN_NUDGE_TEXT, notBefore: Date.now() });
+  }
+  return await enqueue(ctx, frolicId, drafts);
+}
 
 export const onReveal = internalMutation({
   args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")), bloomAt: v.number() },

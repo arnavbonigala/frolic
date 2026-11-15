@@ -352,7 +352,8 @@ describe("join_crew", () => {
       crew: "Sunset Crew",
       name: "Kai",
       friends: ["Maya", "Dev", "Sam", "Ana"],
-      say: "Welcome them in one line, then call get_today.",
+      welcome: "Be the friend who says yes.",
+      say: 'Open with "Be the friend who says yes.", then call get_today.',
     });
     expect(await membershipsOf(t, seed.groupId)).toHaveLength(5);
     expect((await linksOf(t)).some((link) => link.phone === "+15105550198")).toBe(true);
@@ -1009,7 +1010,8 @@ describe("im_free", () => {
     testEnv().KEIKI_IM_FREE = "1";
     vi.setSystemTime(new Date(nowFor()));
     const t = makeT();
-    await seedCrew(t);
+    const seed = await seedCrew(t);
+    await t.run((ctx) => ctx.db.patch(seed.frolicId, { window: { start: seed.now + 5 * 3_600_000, end: seed.now + 8 * 3_600_000 } }));
     const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
     expect(result.body).toMatchObject({ ok: true, started: true });
     expect(JSON.stringify(result.body)).not.toContain("Sam");

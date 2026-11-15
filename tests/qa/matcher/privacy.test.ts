@@ -82,6 +82,18 @@ const QUERY_REGISTRY: Record<string, ArgsFor> = {
     deviceToken: f.tokens[observer],
     groupId: f.groupId,
   }),
+  "dailyPick:today": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+  }),
+  "garden:onThisDay": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+  }),
+  "garden:nudge": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    groupId: f.groupId,
+  }),
   "garden:memory": (f, observer) => ({
     deviceToken: f.tokens[observer],
     frolicId: f.frolicId,
@@ -260,7 +272,7 @@ describe("privacy: another member's tap is invisible before revealAt", () => {
       atReveal,
       "at revealAt something visible does change for the rest of the crew",
     ).not.toEqual(baseline);
-    const todayKey = Object.keys(atReveal).find((k) => k.endsWith(":today"))!;
+    const todayKey = Object.keys(atReveal).find((k) => k.endsWith("frolics:today"))!;
     expect(
       JSON.stringify(atReveal[todayKey]).includes("<user:Maya>"),
       "at revealAt today names who is going",

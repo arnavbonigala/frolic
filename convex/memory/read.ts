@@ -27,17 +27,22 @@ export const saveCache = internalMutation({
 export const getMemoryContext = internalAction({
   args: { groupId: v.id("groups"), day: v.string() },
   handler: async (ctx, { groupId, day }): Promise<MemoryContext> => {
+    const picks: string[] = await ctx.runQuery(internal.dailyPick.pickTags, { groupId, day });
+    const withPicks = (context: MemoryContext): MemoryContext => ({
+      ...context,
+      likedTags: [...context.likedTags, ...picks.filter((tag) => !context.likedTags.includes(tag) && !context.suppressed.includes(tag))],
+    });
     const hit = await ctx.runQuery(internal.memory.read.cached, { groupId, day });
-    if (hit) return hit;
+    if (hit) return withPicks(hit);
     const stats = await ctx.runQuery(internal.memory.stats.tagStats, { groupId });
     let context: MemoryContext;
     try {
       context = await buildContext(getClient(), groupNamespace(groupId), stats);
     } catch {
-      return buildContextFailure(stats);
+      return withPicks(buildContextFailure(stats));
     }
     await ctx.runMutation(internal.memory.read.saveCache, { groupId, day, context });
-    return context;
+    return withPicks(context);
   },
 });
 

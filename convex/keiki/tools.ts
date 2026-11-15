@@ -21,7 +21,9 @@ import {
   planDetails,
 } from "./lib";
 import { SNAP_WINDOW_MS } from "../snaps";
+import { answerAs } from "../dailyPick";
 import { keikiEnv } from "./env";
+import { PROMISE } from "../lib/copy";
 import { imFreeAs } from "./imFreeCall";
 import {
   addSnapAs,
@@ -457,6 +459,32 @@ export const remember = internalMutation({
   },
 });
 
+export const answerPick = internalMutation({
+  args: { phone: v.string(), option: v.string() },
+  handler: async (ctx, { phone, option }) => {
+    const me = await who(ctx, phone);
+    if (!me) return notMember;
+    try {
+      const picked = await answerAs(ctx, me.group, me.user._id, option, "imessage");
+      const answers = await ctx.db
+        .query("dailyPickAnswers")
+        .withIndex("by_groupId_and_day_and_userId", (q) => q.eq("groupId", me.group._id).eq("day", picked.day))
+        .take(200);
+      const crew = [];
+      for (const label of picked.question.options.map((o) => o.label)) {
+        const names = await namesOf(ctx, answers.filter((a) => a.option === label && a.userId !== me.user._id).map((a) => a.userId));
+        crew.push({ option: label, friends: names });
+      }
+      return { ok: true, question: picked.question.text, yourPick: picked.option, crew };
+    } catch (e) {
+      if (e instanceof ConvexError) {
+        return { ok: false, error: "bad_option", say: "Ask which one: " + (e.data as { message: string }).message.replace(/^Pick one of: /, "") };
+      }
+      throw e;
+    }
+  },
+});
+
 export const pause = internalMutation({
   args: { phone: v.string(), paused: v.boolean() },
   handler: async (ctx, { phone, paused }) => {
@@ -510,7 +538,8 @@ export const joinCrew = internalMutation({
       crew: group?.name ?? null,
       name: firstName(cleanName),
       friends: uniqueFirstNames(members.filter((m) => m._id !== userId)),
-      say: "Welcome them in one line, then call get_today.",
+      welcome: PROMISE,
+      say: 'Open with "' + PROMISE + '", then call get_today.',
     };
   },
 });

@@ -7,6 +7,7 @@ import { applyTap } from "../lib/core";
 import { findMembership, findUserByToken } from "../lib/identity";
 import { createInviteFor, joinWithInvite } from "../users";
 import { photoUrlOf } from "../lib/photo";
+import { centsLabel } from "../plans/engine";
 import { heroUrl } from "./hero";
 
 export const card = v.object({
@@ -16,6 +17,7 @@ export const card = v.object({
   chips: v.array(v.string()),
   why: v.union(v.string(), v.null()),
   imageUrl: v.union(v.string(), v.null()),
+  drop: v.union(v.object({ hostedBy: v.string(), price: v.string(), seatsLeft: v.number() }), v.null()),
 });
 
 const mate = v.object({
@@ -47,7 +49,7 @@ type View = {
   phase: "invalid" | "expired" | "drifted" | "open" | "planted" | "on";
   host: string | null;
   group: string | null;
-  card: { label: string; no: string; title: string; chips: string[]; why: string | null; imageUrl: string | null } | null;
+  card: { label: string; no: string; title: string; chips: string[]; why: string | null; imageUrl: string | null; drop: { hostedBy: string; price: string; seatsLeft: number } | null } | null;
   me: string | null;
   avatar: string | null;
   revealAt: number | null;
@@ -99,11 +101,32 @@ function duration(minutes: number): string {
   return hours === 1 ? "1 hour" : `${hours} hours`;
 }
 
+async function seatsLeftFor(ctx: QueryCtx, drop: Doc<"drops">, day: string): Promise<number> {
+  const plans = await ctx.db
+    .query("plans")
+    .withIndex("by_dropId_and_day", (q) => q.eq("dropId", drop._id).eq("day", day))
+    .take(100);
+  let taken = 0;
+  for (const other of plans) {
+    const frolics = await ctx.db
+      .query("frolics")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", other.groupId).eq("day", day))
+      .take(10);
+    for (const f of frolics) {
+      if (f.planId !== other._id || f.status !== "on") continue;
+      const rows = await ctx.db.query("attendees").withIndex("by_frolicId", (q) => q.eq("frolicId", f._id)).take(100);
+      taken += rows.filter((a) => a.status === "going").length;
+    }
+  }
+  return Math.max(0, drop.capacity - taken);
+}
+
 async function cardFor(ctx: QueryCtx, frolic: Doc<"frolics">) {
   const group = await ctx.db.get(frolic.groupId);
   const plan = frolic.planId ? await ctx.db.get(frolic.planId) : null;
   if (!group || !plan) return null;
   const place = await ctx.db.get(plan.placeId);
+  const dropDoc = plan.dropId ? await ctx.db.get(plan.dropId) : null;
   const chips =
     plan.chips.length > 0
       ? plan.chips
@@ -115,6 +138,13 @@ async function cardFor(ctx: QueryCtx, frolic: Doc<"frolics">) {
     chips,
     why: plan.why ?? plan.line,
     imageUrl: heroUrl(place?.tags ?? []) ?? place?.photoUrl ?? null,
+    drop: dropDoc
+      ? {
+          hostedBy: "Hosted by " + dropDoc.sellerName,
+          price: centsLabel(dropDoc.priceCents),
+          seatsLeft: await seatsLeftFor(ctx, dropDoc, plan.day),
+        }
+      : null,
   };
 }
 

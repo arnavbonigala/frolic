@@ -810,6 +810,72 @@ describe("per crew hold setting", () => {
   });
 });
 
+describe("the hosted pay page", () => {
+  test("shows the plan, the amount, and every way back from a stall", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t, ["Maya", "Dev"]);
+    const res = await t.fetch(`/pay/${(await shareOf(t, crew, "Maya")).token}`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Hold $3 to lock it in");
+    expect(html).toContain("You get it back the moment you arrive.");
+    expect(html).toContain("Place hold");
+    expect(html).toContain("Loading card entry.");
+    expect(html).toContain("You're offline. Reconnect, then tap Reload.");
+    expect(html).toContain("Card entry could not load.");
+    expect(html).toContain("/pay-art/whop-deposit-back.webp");
+    expect(html).toContain('Today at');
+    expect(html).not.toContain("Maya");
+    expect(html).not.toContain("Dev");
+  });
+
+  test("a chip in shows the fund money it did not have to pay", async () => {
+    const t = makeT();
+    const crew = await paidCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await drain(t);
+    const html = await (await t.fetch(`/pay/${(await shareOf(t, crew, "Maya")).token}`)).text();
+    expect(html).toContain("Chip in for Sunset Park");
+    expect(html).toContain("Your share");
+    expect(html).toContain("<span>The Frolic Fund</span><span>-$1.50</span>");
+    expect(html).toContain("/pay-art/whop-fund-jar.webp");
+    expect(html).toContain("If it gets called off, you get it back automatically.");
+  });
+
+  test("a link already paid answers a closed page instead of the form", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t, ["Maya", "Dev"]);
+    const held = await hold(t, crew, "Maya");
+    const res = await t.fetch(`/pay/${held.token}`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("You&#39;re already set for this one.");
+    expect(html).toContain("/pay-art/whop-deposit-back.webp");
+    expect(html).not.toContain("Place hold");
+  });
+
+  test("an unknown token and a malformed one get no form", async () => {
+    const t = makeT();
+    const unknown = await t.fetch(`/pay/${"a".repeat(32)}`);
+    expect(unknown.status).toBe(410);
+    expect(await unknown.text()).toContain("This link has expired.");
+    const malformed = await t.fetch("/pay/nope");
+    expect(malformed.status).toBe(404);
+    expect(await malformed.text()).toContain("Open Frolic to see what's on today.");
+  });
+
+  test("the illustrations are served as webp and unknown ones are not", async () => {
+    const t = makeT();
+    const good = await t.fetch("/pay-art/whop-fund-jar.webp");
+    expect(good.status).toBe(200);
+    expect(good.headers.get("Content-Type")).toBe("image/webp");
+    expect((await good.arrayBuffer()).byteLength).toBeGreaterThan(1000);
+    expect((await t.fetch("/pay-art/nope.webp")).status).toBe(404);
+  });
+});
+
 describe("money messages over iMessage", () => {
   test("a released hold tells that friend once", async () => {
     const t = makeT();
@@ -961,5 +1027,20 @@ describe("pay views", () => {
     const dev = await t.query(api.whop.pay.myPayment, { deviceToken: token("Dev"), frolicId: crew.frolicId });
     expect(dev.state).toBe("held");
     expect(dev.paidNames).toEqual(["Maya"]);
+  });
+
+  test("my payment says nothing before the reveal time", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    await hold(t, crew, "Maya");
+    await hold(t, crew, "Dev");
+    await t.run(async (ctx) => await ctx.db.patch("frolics", crew.frolicId, { revealAt: Date.now() + 60_000 }));
+
+    const early = await t.query(api.whop.pay.myPayment, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    expect(early).toEqual({ state: "none", kind: "none", amountCents: 0, error: null, paidNames: [], noHold: false });
+
+    vi.setSystemTime(Date.now() + 61_000);
+    const later = await t.query(api.whop.pay.myPayment, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    expect(later.state).toBe("held");
   });
 });
