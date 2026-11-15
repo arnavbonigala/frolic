@@ -57,6 +57,7 @@ enum YouPreferences {
         save(card: card)
     }
 
+    @MainActor
     static func clearAll() {
         for key in [Key.limits, Key.card, Key.tasteTags] {
             AppGroup.defaults.removeObject(forKey: key)
