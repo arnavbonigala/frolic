@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+import generatedApi from "../../../convex/_generated/api.d.ts?raw";
 import { makeFunctionReference } from "convex/server";
 import { convexTest } from "convex-test";
 import presence from "@convex-dev/presence/test";
@@ -7,24 +9,95 @@ import schema from "../../../convex/schema";
 import type { FunctionReference } from "convex/server";
 import type { Id } from "../../../convex/_generated/dataModel";
 
-type T = any;
-
-const rawModules = (import.meta as unknown as {
-  glob: (pattern: string) => Record<string, () => Promise<Record<string, unknown>>>;
-}).glob("/convex/**/*.ts");
-
-export const modules: Record<string, () => Promise<Record<string, unknown>>> = rawModules;
-
-function rawSourceMap(): Record<string, () => Promise<string>> {
-  return (
-    import.meta as unknown as {
-      glob: (
-        pattern: string,
-        options: { query: string; import: string },
-      ) => Record<string, () => Promise<string>>;
-    }
-  ).glob("/convex/**/*.ts", { query: "?raw", import: "default" });
-}
+import * as ai_cache from "../../../convex/ai/cache";
+import * as ai_copy from "../../../convex/ai/copy";
+import * as ai_openai from "../../../convex/ai/openai";
+import * as ai_pick from "../../../convex/ai/pick";
+import * as avatars_portraits from "../../../convex/avatars/portraits";
+import * as avatars_routes from "../../../convex/avatars/routes";
+import * as checkins from "../../../convex/checkins";
+import * as clock from "../../../convex/clock";
+import * as crew from "../../../convex/crew";
+import * as crews from "../../../convex/crews";
+import * as crons from "../../../convex/crons";
+import * as daily from "../../../convex/daily";
+import * as dailyPick from "../../../convex/dailyPick";
+import * as dailyPickBank from "../../../convex/dailyPickBank";
+import * as drops from "../../../convex/drops";
+import * as e2e_admin from "../../../convex/e2e/admin";
+import * as e2e_routes from "../../../convex/e2e/routes";
+import * as etas from "../../../convex/etas";
+import * as frolics from "../../../convex/frolics";
+import * as garden from "../../../convex/garden";
+import * as http from "../../../convex/http";
+import * as keiki_auth from "../../../convex/keiki/auth";
+import * as keiki_env from "../../../convex/keiki/env";
+import * as keiki_imFreeCall from "../../../convex/keiki/imFreeCall";
+import * as keiki_lib from "../../../convex/keiki/lib";
+import * as keiki_notice from "../../../convex/keiki/notice";
+import * as keiki_outbound from "../../../convex/keiki/outbound";
+import * as keiki_refs from "../../../convex/keiki/refs";
+import * as keiki_routes from "../../../convex/keiki/routes";
+import * as keiki_tools from "../../../convex/keiki/tools";
+import * as lib_copy from "../../../convex/lib/copy";
+import * as lib_core from "../../../convex/lib/core";
+import * as lib_crews from "../../../convex/lib/crews";
+import * as lib_heroArt from "../../../convex/lib/heroArt";
+import * as lib_hold from "../../../convex/lib/hold";
+import * as lib_hooks from "../../../convex/lib/hooks";
+import * as lib_identity from "../../../convex/lib/identity";
+import * as lib_matcher from "../../../convex/lib/matcher";
+import * as lib_photo from "../../../convex/lib/photo";
+import * as lib_rateLimits from "../../../convex/lib/rateLimits";
+import * as limits from "../../../convex/limits";
+import * as memory_account from "../../../convex/memory/account";
+import * as memory_client from "../../../convex/memory/client";
+import * as memory_context from "../../../convex/memory/context";
+import * as memory_e2eBeat from "../../../convex/memory/e2eBeat";
+import * as memory_events from "../../../convex/memory/events";
+import * as memory_fakeSupermemory from "../../../convex/memory/fakeSupermemory";
+import * as memory_ingest from "../../../convex/memory/ingest";
+import * as memory_mapping from "../../../convex/memory/mapping";
+import * as memory_read from "../../../convex/memory/read";
+import * as memory_stats from "../../../convex/memory/stats";
+import * as memory_taste from "../../../convex/memory/taste";
+import * as memory_why from "../../../convex/memory/why";
+import * as places_data from "../../../convex/places/data";
+import * as places_seed from "../../../convex/places/seed";
+import * as plans_crons from "../../../convex/plans/crons";
+import * as plans_crowd from "../../../convex/plans/crowd";
+import * as plans_drop from "../../../convex/plans/drop";
+import * as plans_engine from "../../../convex/plans/engine";
+import * as plans_inputs from "../../../convex/plans/inputs";
+import * as plans_memoryContext from "../../../convex/plans/memoryContext";
+import * as plans_queries from "../../../convex/plans/queries";
+import * as plans_time from "../../../convex/plans/time";
+import * as plans_travel from "../../../convex/plans/travel";
+import * as plans_weather from "../../../convex/plans/weather";
+import * as reveal from "../../../convex/reveal";
+import * as snaps from "../../../convex/snaps";
+import * as taps from "../../../convex/taps";
+import * as users from "../../../convex/users";
+import * as web_devSeed from "../../../convex/web/devSeed";
+import * as web_hero from "../../../convex/web/hero";
+import * as web_heroes from "../../../convex/web/heroes";
+import * as web_ogImage from "../../../convex/web/ogImage";
+import * as web_pageTemplate from "../../../convex/web/pageTemplate";
+import * as web_routes from "../../../convex/web/routes";
+import * as web_share from "../../../convex/web/share";
+import * as whop_actions from "../../../convex/whop/actions";
+import * as whop_art from "../../../convex/whop/art";
+import * as whop_client from "../../../convex/whop/client";
+import * as whop_config from "../../../convex/whop/config";
+import * as whop_links from "../../../convex/whop/links";
+import * as whop_money from "../../../convex/whop/money";
+import * as whop_page from "../../../convex/whop/page";
+import * as whop_pay from "../../../convex/whop/pay";
+import * as whop_routes from "../../../convex/whop/routes";
+import * as whop_signature from "../../../convex/whop/signature";
+import * as whop_split from "../../../convex/whop/split";
+import * as whop_webhooks from "../../../convex/whop/webhooks";
+import * as you from "../../../convex/you";
 
 export type Visibility = "public" | "internal";
 export type ExportKind =
@@ -35,29 +108,187 @@ export type ExportKind =
   | "internalMutation"
   | "internalAction";
 
-let visibilityCache: Promise<Map<string, ExportKind>> | null = null;
+export type SurfaceEntry = {
+  name: string;
+  module: string;
+  ref: FunctionReference<any>;
+};
 
-export function describeExports(): Promise<Map<string, ExportKind>> {
-  if (visibilityCache) return visibilityCache;
-  visibilityCache = (async () => {
-    const map = new Map<string, ExportKind>();
-    const rawSources = rawSourceMap();
-    const paths = new Set([...Object.keys(rawSources), ...Object.keys(modules)]);
-    for (const path of paths) {
-      const read = rawSources[path];
-      if (SKIP.some((s) => path.includes(s))) continue;
-      if (!read) continue;
-      const source = await read();
-      const module = toModuleName(path);
-      const pattern =
-        /export\s+const\s+([A-Za-z0-9_]+)\s*(?::[^=]+)?=\s*(internalQuery|query|internalMutation|mutation|internalAction|action)\s*\(/g;
-      for (const match of source.matchAll(pattern)) {
-        map.set(`${module}:${match[1]}`, match[2] as ExportKind);
+type T = any;
+
+const MODULE_TABLE: Record<string, Record<string, unknown>> = {
+  "ai/cache": ai_cache as unknown as Record<string, unknown>,
+  "ai/copy": ai_copy as unknown as Record<string, unknown>,
+  "ai/openai": ai_openai as unknown as Record<string, unknown>,
+  "ai/pick": ai_pick as unknown as Record<string, unknown>,
+  "avatars/portraits": avatars_portraits as unknown as Record<string, unknown>,
+  "avatars/routes": avatars_routes as unknown as Record<string, unknown>,
+  "checkins": checkins as unknown as Record<string, unknown>,
+  "clock": clock as unknown as Record<string, unknown>,
+  "crew": crew as unknown as Record<string, unknown>,
+  "crews": crews as unknown as Record<string, unknown>,
+  "crons": crons as unknown as Record<string, unknown>,
+  "daily": daily as unknown as Record<string, unknown>,
+  "dailyPick": dailyPick as unknown as Record<string, unknown>,
+  "dailyPickBank": dailyPickBank as unknown as Record<string, unknown>,
+  "drops": drops as unknown as Record<string, unknown>,
+  "e2e/admin": e2e_admin as unknown as Record<string, unknown>,
+  "e2e/routes": e2e_routes as unknown as Record<string, unknown>,
+  "etas": etas as unknown as Record<string, unknown>,
+  "frolics": frolics as unknown as Record<string, unknown>,
+  "garden": garden as unknown as Record<string, unknown>,
+  "http": http as unknown as Record<string, unknown>,
+  "keiki/auth": keiki_auth as unknown as Record<string, unknown>,
+  "keiki/env": keiki_env as unknown as Record<string, unknown>,
+  "keiki/imFreeCall": keiki_imFreeCall as unknown as Record<string, unknown>,
+  "keiki/lib": keiki_lib as unknown as Record<string, unknown>,
+  "keiki/notice": keiki_notice as unknown as Record<string, unknown>,
+  "keiki/outbound": keiki_outbound as unknown as Record<string, unknown>,
+  "keiki/refs": keiki_refs as unknown as Record<string, unknown>,
+  "keiki/routes": keiki_routes as unknown as Record<string, unknown>,
+  "keiki/tools": keiki_tools as unknown as Record<string, unknown>,
+  "lib/copy": lib_copy as unknown as Record<string, unknown>,
+  "lib/core": lib_core as unknown as Record<string, unknown>,
+  "lib/crews": lib_crews as unknown as Record<string, unknown>,
+  "lib/heroArt": lib_heroArt as unknown as Record<string, unknown>,
+  "lib/hold": lib_hold as unknown as Record<string, unknown>,
+  "lib/hooks": lib_hooks as unknown as Record<string, unknown>,
+  "lib/identity": lib_identity as unknown as Record<string, unknown>,
+  "lib/matcher": lib_matcher as unknown as Record<string, unknown>,
+  "lib/photo": lib_photo as unknown as Record<string, unknown>,
+  "lib/rateLimits": lib_rateLimits as unknown as Record<string, unknown>,
+  "limits": limits as unknown as Record<string, unknown>,
+  "memory/account": memory_account as unknown as Record<string, unknown>,
+  "memory/client": memory_client as unknown as Record<string, unknown>,
+  "memory/context": memory_context as unknown as Record<string, unknown>,
+  "memory/e2eBeat": memory_e2eBeat as unknown as Record<string, unknown>,
+  "memory/events": memory_events as unknown as Record<string, unknown>,
+  "memory/fakeSupermemory": memory_fakeSupermemory as unknown as Record<string, unknown>,
+  "memory/ingest": memory_ingest as unknown as Record<string, unknown>,
+  "memory/mapping": memory_mapping as unknown as Record<string, unknown>,
+  "memory/read": memory_read as unknown as Record<string, unknown>,
+  "memory/stats": memory_stats as unknown as Record<string, unknown>,
+  "memory/taste": memory_taste as unknown as Record<string, unknown>,
+  "memory/why": memory_why as unknown as Record<string, unknown>,
+  "places/data": places_data as unknown as Record<string, unknown>,
+  "places/seed": places_seed as unknown as Record<string, unknown>,
+  "plans/crons": plans_crons as unknown as Record<string, unknown>,
+  "plans/crowd": plans_crowd as unknown as Record<string, unknown>,
+  "plans/drop": plans_drop as unknown as Record<string, unknown>,
+  "plans/engine": plans_engine as unknown as Record<string, unknown>,
+  "plans/inputs": plans_inputs as unknown as Record<string, unknown>,
+  "plans/memoryContext": plans_memoryContext as unknown as Record<string, unknown>,
+  "plans/queries": plans_queries as unknown as Record<string, unknown>,
+  "plans/time": plans_time as unknown as Record<string, unknown>,
+  "plans/travel": plans_travel as unknown as Record<string, unknown>,
+  "plans/weather": plans_weather as unknown as Record<string, unknown>,
+  "reveal": reveal as unknown as Record<string, unknown>,
+  "snaps": snaps as unknown as Record<string, unknown>,
+  "taps": taps as unknown as Record<string, unknown>,
+  "users": users as unknown as Record<string, unknown>,
+  "web/devSeed": web_devSeed as unknown as Record<string, unknown>,
+  "web/hero": web_hero as unknown as Record<string, unknown>,
+  "web/heroes": web_heroes as unknown as Record<string, unknown>,
+  "web/ogImage": web_ogImage as unknown as Record<string, unknown>,
+  "web/pageTemplate": web_pageTemplate as unknown as Record<string, unknown>,
+  "web/routes": web_routes as unknown as Record<string, unknown>,
+  "web/share": web_share as unknown as Record<string, unknown>,
+  "whop/actions": whop_actions as unknown as Record<string, unknown>,
+  "whop/art": whop_art as unknown as Record<string, unknown>,
+  "whop/client": whop_client as unknown as Record<string, unknown>,
+  "whop/config": whop_config as unknown as Record<string, unknown>,
+  "whop/links": whop_links as unknown as Record<string, unknown>,
+  "whop/money": whop_money as unknown as Record<string, unknown>,
+  "whop/page": whop_page as unknown as Record<string, unknown>,
+  "whop/pay": whop_pay as unknown as Record<string, unknown>,
+  "whop/routes": whop_routes as unknown as Record<string, unknown>,
+  "whop/signature": whop_signature as unknown as Record<string, unknown>,
+  "whop/split": whop_split as unknown as Record<string, unknown>,
+  "whop/webhooks": whop_webhooks as unknown as Record<string, unknown>,
+  "you": you as unknown as Record<string, unknown>,
+};
+
+const AUDIT_SKIP = new Set(["http", "crons"]);
+
+const globbed = (import.meta as unknown as {
+  glob: (pattern: string) => Record<string, () => Promise<Record<string, unknown>>>;
+}).glob("/convex/**/*.ts");
+
+export const modules: Record<string, () => Promise<Record<string, unknown>>> = {
+  ...globbed,
+  ...Object.fromEntries(
+    Object.entries(MODULE_TABLE).map(([module, value]) => [`/convex/${module}.ts`, async () => value]),
+  ),
+};
+
+export function declaredModules(): string[] {
+  const block = generatedApi.split("ApiFromModules<{")[1]?.split("}>;")[0] ?? "";
+  return [...block.matchAll(/^\s*"?([A-Za-z0-9_/]+)"?:\s*typeof\s+[A-Za-z0-9_]+;/gm)].map((match) => match[1]);
+}
+
+export function surfaceDrift(): string[] {
+  const declared = declaredModules().filter((module) => !AUDIT_SKIP.has(module));
+  const listed = Object.keys(MODULE_TABLE).filter((module) => !AUDIT_SKIP.has(module));
+  return [
+    ...declared.filter((module) => !listed.includes(module)).map((module) => `convex/${module}.ts is missing from the audit table`),
+    ...listed.filter((module) => !declared.includes(module)).map((module) => `convex/${module}.ts is in the audit table but not in api.d.ts`),
+  ];
+}
+
+type Flags = { isQuery?: boolean; isMutation?: boolean; isAction?: boolean; isPublic?: boolean; isInternal?: boolean };
+
+function kindOf(value: unknown): ExportKind | null {
+  if (typeof value !== "function") return null;
+  const flags = value as Flags;
+  const base = flags.isQuery ? "query" : flags.isMutation ? "mutation" : flags.isAction ? "action" : null;
+  if (!base) return null;
+  const internal = flags.isInternal === true || flags.isPublic === false;
+  if (!internal) return base as ExportKind;
+  return `internal${base.charAt(0).toUpperCase()}${base.slice(1)}` as ExportKind;
+}
+
+export async function describeExports(): Promise<Map<string, ExportKind>> {
+  const map = new Map<string, ExportKind>();
+  for (const [module, value] of Object.entries(MODULE_TABLE)) {
+    if (AUDIT_SKIP.has(module)) continue;
+    for (const [name, exported] of Object.entries(value)) {
+      const kind = kindOf(exported);
+      if (kind) map.set(`${module}:${name}`, kind);
+    }
+  }
+  return map;
+}
+
+let cache: Promise<SurfaceEntry[]> | null = null;
+
+export function discoverSurface(): Promise<SurfaceEntry[]> {
+  if (cache) return cache;
+  cache = (async () => {
+    const entries: SurfaceEntry[] = [];
+    for (const [module, value] of Object.entries(MODULE_TABLE)) {
+      if (AUDIT_SKIP.has(module)) continue;
+      for (const [name, exported] of Object.entries(value)) {
+        if (!kindOf(exported)) continue;
+        entries.push({ name, module, ref: makeFunctionReference(`${module}:${name}`) as FunctionReference<any> });
       }
     }
-    return map;
+    return entries;
   })();
-  return visibilityCache;
+  return cache;
+}
+
+export async function publicQueries(): Promise<SurfaceEntry[]> {
+  const kinds = await describeExports();
+  const all = await discoverSurface();
+  return all.filter((entry) => kinds.get(`${entry.module}:${entry.name}`) === "query");
+}
+
+export async function internalExports(): Promise<SurfaceEntry[]> {
+  const kinds = await describeExports();
+  const all = await discoverSurface();
+  return all.filter((entry) =>
+    String(kinds.get(`${entry.module}:${entry.name}`) ?? "").startsWith("internal"),
+  );
 }
 
 export async function classifyFunctions(
@@ -77,61 +308,6 @@ export async function classifyFunctions(
     }
   }
   return { queries, others };
-}
-
-export async function publicQueries(): Promise<SurfaceEntry[]> {
-  const kinds = await describeExports();
-  const all = await discoverSurface();
-  return all.filter((entry) => kinds.get(`${entry.module}:${entry.name}`) === "query");
-}
-
-export async function internalExports(): Promise<SurfaceEntry[]> {
-  const kinds = await describeExports();
-  const all = await discoverSurface();
-  return all.filter((entry) =>
-    String(kinds.get(`${entry.module}:${entry.name}`) ?? "").startsWith("internal"),
-  );
-}
-
-const SKIP = ["_generated", "/qa/", "node_modules", "convex.config", "schema.ts", "http.ts", "crons.ts"];
-
-function toModuleName(path: string): string {
-  return path.replace(/^\/convex\//, "").replace(/\.ts$/, "");
-}
-
-export type SurfaceEntry = {
-  name: string;
-  module: string;
-  ref: FunctionReference<any>;
-};
-
-let cache: Promise<SurfaceEntry[]> | null = null;
-
-export function discoverSurface(): Promise<SurfaceEntry[]> {
-  if (cache) return cache;
-  cache = (async () => {
-    const entries: SurfaceEntry[] = [];
-    for (const path of Object.keys(rawModules)) {
-      if (SKIP.some((s) => path.includes(s))) continue;
-      let mod: Record<string, unknown>;
-      try {
-        mod = (await rawModules[path]()) as Record<string, unknown>;
-      } catch {
-        continue;
-      }
-      const module = toModuleName(path);
-      for (const [name, value] of Object.entries(mod)) {
-        if (typeof value !== "function") continue;
-        entries.push({
-          name,
-          module,
-          ref: makeFunctionReference(`${module}:${name}`) as FunctionReference<any>,
-        });
-      }
-    }
-    return entries;
-  })();
-  return cache;
 }
 
 const PREFERRED_MODULE: Record<string, string[]> = {
