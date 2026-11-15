@@ -28,12 +28,29 @@ export function localParts(ms: number): LocalParts {
   };
 }
 
+function wallAt(ms: number): number {
+  const p = localParts(ms);
+  return Date.UTC(...ymd(p.day)) + p.minutes * MINUTE;
+}
+
+function offsetAt(ms: number): number {
+  return wallAt(ms) - ms;
+}
+
 export function localTimeToMs(day: string, minutes: number): number {
-  const [y, m, d] = day.split("-").map(Number);
-  const guess = Date.UTC(y, m - 1, d) + minutes * MINUTE + 8 * 60 * MINUTE;
-  const p = localParts(guess);
-  const drift = (Date.UTC(...ymd(p.day)) - Date.UTC(y, m - 1, d)) / MINUTE + p.minutes - minutes;
-  return guess - drift * MINUTE;
+  const wall = Date.UTC(...ymd(day)) + minutes * MINUTE;
+  const guess = wall - offsetAt(wall);
+  if (wallAt(guess) === wall) return guess;
+  const fixed = wall - offsetAt(guess);
+  if (wallAt(fixed) === wall) return fixed;
+  let lo = Math.min(guess, fixed);
+  let hi = Math.max(guess, fixed);
+  for (let i = 0; i < 24 && hi - lo > MINUTE; i++) {
+    const mid = lo + Math.floor((hi - lo) / 2 / MINUTE) * MINUTE;
+    if (wallAt(mid) < wall) lo = mid;
+    else hi = mid;
+  }
+  return hi;
 }
 
 function ymd(day: string): [number, number, number] {

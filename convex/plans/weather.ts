@@ -1,4 +1,4 @@
-import { BERKELEY } from "./time";
+import { BERKELEY, TIME_ZONE } from "./time";
 
 export type HourWeather = { timeMs: number; tempF: number; precipProb: number; code: number; cloudCover: number };
 export type DayWeather = { hourly: HourWeather[]; sunriseMs: number; sunsetMs: number };
@@ -12,7 +12,7 @@ export function openMeteoUrl(day: string, lat = BERKELEY.lat, lng = BERKELEY.lng
     hourly: "temperature_2m,precipitation_probability,weather_code,cloud_cover",
     daily: "sunrise,sunset",
     temperature_unit: "fahrenheit",
-    timezone: "GMT",
+    timezone: TIME_ZONE,
     timeformat: "unixtime",
     start_date: day,
     end_date: day,
@@ -31,17 +31,17 @@ export function parseOpenMeteo(body: unknown): DayWeather {
   const sunrise = b.daily?.sunrise?.[0];
   const sunset = b.daily?.sunset?.[0];
   if (typeof sunrise !== "number" || typeof sunset !== "number") throw new Error("weather: no sun times");
-  return {
-    sunriseMs: sunrise * 1000,
-    sunsetMs: sunset * 1000,
-    hourly: times.map((t, i) => ({
-      timeMs: t * 1000,
-      tempF: Math.round(hr.temperature_2m![i] ?? 60),
-      precipProb: hr.precipitation_probability?.[i] ?? 0,
-      code: hr.weather_code?.[i] ?? 0,
-      cloudCover: hr.cloud_cover?.[i] ?? 0,
-    })),
-  };
+  const hourly: HourWeather[] = [];
+  times.forEach((timeMs, i) => {
+    const tempF = hr?.temperature_2m?.[i];
+    const precipProb = hr?.precipitation_probability?.[i];
+    const code = hr?.weather_code?.[i];
+    const cloudCover = hr?.cloud_cover?.[i];
+    if (typeof tempF !== "number" || typeof precipProb !== "number" || typeof code !== "number" || typeof cloudCover !== "number") return;
+    hourly.push({ timeMs: timeMs * 1000, tempF: Math.round(tempF), precipProb, code, cloudCover });
+  });
+  if (hourly.length === 0) throw new Error("weather: no usable hours");
+  return { sunriseMs: sunrise * 1000, sunsetMs: sunset * 1000, hourly };
 }
 
 export const WEATHER_TIMEOUT_MS = 6000;
