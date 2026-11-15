@@ -8,7 +8,7 @@ import UIKit
 @Observable
 final class CrewStore {
     private(set) var phase: ScreenPhase = .loading
-    private(set) var view: CrewView?
+    private(set) var view: CrewScene?
     private(set) var isStandIn = false
     private(set) var actionError: String?
     var showsFreeSheet = false
@@ -446,7 +446,7 @@ final class CrewStore {
         }
         let fund = CrewFund(balanceCents: Int(fundWire?.balanceCents ?? 0), rows: fundRows)
 
-        view = CrewView(
+        view = CrewScene(
             groupName: crew.groupName,
             subtitle: subtitle,
             me: me,

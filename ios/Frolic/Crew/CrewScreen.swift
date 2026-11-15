@@ -123,7 +123,7 @@ struct CrewScreen: View {
 }
 
 private struct CrewContent: View {
-    var view: CrewView
+    var view: CrewScene
     var store: CrewStore
     var onComingUp: () -> Void
 

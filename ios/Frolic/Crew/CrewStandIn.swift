@@ -23,7 +23,7 @@ enum PlanPainted {
 }
 
 enum CrewStandIn {
-    static func view(route: E2ERoute?) -> CrewView? {
+    static func view(route: E2ERoute?) -> CrewScene? {
         guard let route, route.screen == "crew", route.query["token"] == nil else { return nil }
         switch route.state {
         case nil, "ready", "friend", "invite":
@@ -46,7 +46,7 @@ enum CrewStandIn {
         return CrewStandIn.view(route: route)?.rows.first
     }
 
-    private static func sampleScene(went: Bool) -> CrewView {
+    private static func sampleScene(went: Bool) -> CrewScene {
         let me = CrewRow(
             id: "you",
             name: "You",
@@ -101,7 +101,7 @@ enum CrewStandIn {
                 CrewFundRow(id: "f4", text: "A no-show added $3.", day: "Oct 26", kind: .added),
             ]
         )
-        return CrewView(
+        return CrewScene(
             groupName: "Sunset Crew",
             subtitle: "5 of you · the crew started in September",
             me: me,
@@ -117,7 +117,7 @@ enum CrewStandIn {
         )
     }
 
-    private static func busyCrew() -> CrewView {
+    private static func busyCrew() -> CrewScene {
         var scene = sampleScene(went: false)
         scene.nobodyFree = true
         scene.rows = scene.rows.map { row in

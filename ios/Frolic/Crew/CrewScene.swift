@@ -108,7 +108,7 @@ struct CrewFund: Equatable {
     var isEmpty: Bool { rows.isEmpty && balanceCents == 0 }
 }
 
-struct CrewView: Equatable {
+struct CrewScene: Equatable {
     var groupName: String
     var subtitle: String
     var me: CrewRow
