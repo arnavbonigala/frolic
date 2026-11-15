@@ -297,3 +297,30 @@ The iMessage lane hangs its sending off these, in `convex/keiki/outbound.ts`. Ev
 | `onCollage` | nothing yet | reserved for the collage lane | `{ frolicId, storageId }` |
 
 A hook must not delay the transaction it runs in. Sending belongs in a scheduled action that reads the queued row, not in the hook body.
+
+## E2E routes
+
+Test-only HTTP routes that seed and inspect a demo run from the outside. They are registered in `convex/e2e/routes.ts` and implemented by the internal functions in `convex/e2e/admin.ts`.
+
+Every route is closed unless the deployment sets `E2E_SECRET` to a non-empty value: with no secret the route answers `404` and reveals nothing about itself. With the secret set, `401` unless the `x-e2e-secret` request header equals it exactly. Bad bodies answer `400` with `{ error }`. A run id is 1 to 64 characters of `A-Z`, `a-z`, `0-9`, `_` and `-`.
+
+| route | body | returns |
+| --- | --- | --- |
+| `POST /e2e/reset` | `{ run }` | `{ run, cleared }` where `cleared` counts the deleted documents |
+| `POST /e2e/seed` | `{ run, scenario?: "three-phone" \| "demo" }` | `{ run, groupId, inviteCode, frolicId, deadline, users, reveal_at }` |
+| `POST /e2e/advance` | `{ run }` | `{ run, frolicId }`, or `404` with `{ error }` when the run has no demo seed |
+| `GET /e2e/reveals?run=` | none | `{ reveals: [{ frolicId, userId, name, reveal_at, bloom_at, delivered_at }] }` |
+
+`reset` deletes every group whose `e2eRun` matches the run, plus its memberships, those members' users, invites, availability, plans, frolics, taps, attendees, hopIns, reveals, revealLog, checkins, etas and snaps. It cancels each reveal's scheduled flip before deleting it. Every query is bounded, so a run id shared by more than a few hundred documents leaves the tail for the next reset.
+
+`seed` resets the run first, so seeding twice with the same run id leaves one crew. It creates the crew "Sunset Crew" in `America/Los_Angeles` with Maya, Dev, Jordan and Priya, one flower color each and a group invite. Each person gets a fresh 64 character device token; only its hash is stored. It upserts the place `indian-rock` (Indian Rock Park) and a plan for today titled "Sunset at Indian Rock" starting 4:30pm Pacific when that is at least 20 minutes away, else 30 minutes from now, then opens today's frolic with an 8 hour window and a 3 hour deadline. Priya gets a free window today from 5pm to 8pm. `users.<name>` is `{ userId, deviceToken, link }`, where `link` is `frolic://signin?deviceToken=<token>&groupId=<groupId>`. The tokens are returned by this route and nowhere else.
+
+`reveal_at` in the seed response is always `null`. `revealAt` only exists once a match lands, and a match never writes a readable row before its own flip, so a seed cannot predict it. The three-phone contract used to describe `reveal_at` as a scheduled instant; that field is now the contract's `null` and the `revealLog` row's `reveal_at` is the real one.
+
+The demo scenario also upserts `berkeley-marina-kayaks` (Cal Adventures at the Berkeley Marina, $8 per person paid up front) and a plan for the next day titled "Kayaks at the Marina", and leaves that frolic closed.
+
+Triggering the frolics in the demo scenario:
+
+1. `POST /e2e/seed` with `{ run, scenario: "demo" }` opens frolic one, today's sunset at Indian Rock. Every seeded phone shows it as today's plan.
+2. Taps on frolic one from two of the four people reveal it. The route's `frolicId` is the one to tap, and `GET /e2e/reveals?run=` lists nothing until the scheduled flip at `revealAt` runs.
+3. `POST /e2e/advance` opens frolic two, the kayaks on the next day, at whatever time it is called. Because it is the newest row for the crew, every phone's `frolics.today` returns it. Its taps reveal independently of frolic one, so one run can show two reveals in sequence.
