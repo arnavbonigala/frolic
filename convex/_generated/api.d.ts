@@ -48,8 +48,17 @@ import type * as web_ogImage from "../web/ogImage.js";
 import type * as web_pageTemplate from "../web/pageTemplate.js";
 import type * as web_routes from "../web/routes.js";
 import type * as web_share from "../web/share.js";
+import type * as whop_actions from "../whop/actions.js";
+import type * as whop_client from "../whop/client.js";
+import type * as whop_config from "../whop/config.js";
+import type * as whop_links from "../whop/links.js";
 import type * as whop_money from "../whop/money.js";
+import type * as whop_page from "../whop/page.js";
+import type * as whop_pay from "../whop/pay.js";
 import type * as whop_routes from "../whop/routes.js";
+import type * as whop_signature from "../whop/signature.js";
+import type * as whop_split from "../whop/split.js";
+import type * as whop_webhooks from "../whop/webhooks.js";
 
 import type {
   ApiFromModules,
@@ -98,8 +107,17 @@ declare const fullApi: ApiFromModules<{
   "web/pageTemplate": typeof web_pageTemplate;
   "web/routes": typeof web_routes;
   "web/share": typeof web_share;
+  "whop/actions": typeof whop_actions;
+  "whop/client": typeof whop_client;
+  "whop/config": typeof whop_config;
+  "whop/links": typeof whop_links;
   "whop/money": typeof whop_money;
+  "whop/page": typeof whop_page;
+  "whop/pay": typeof whop_pay;
   "whop/routes": typeof whop_routes;
+  "whop/signature": typeof whop_signature;
+  "whop/split": typeof whop_split;
+  "whop/webhooks": typeof whop_webhooks;
 }>;
 
 /**

@@ -1,6 +1,6 @@
 # Whop in Frolic: "I'm down" becomes a promise
 
-Status: proposal (FROL-5). Nothing here is built yet. Every Whop call below is checked against Whop's current docs and OpenAPI spec (`https://api.whop.com/api/v1/openapi.json`, read Nov 15 2026) and a read-only probe of our company.
+Status: decided (FROL-5), sandbox only. The backend lives in `convex/whop/`, and its public API for the app is section 7. Every Whop call below is checked against Whop's current docs and OpenAPI spec (`https://api.whop.com/api/v1/openapi.json`, read Nov 15 2026) and a read-only probe of our sandbox account.
 
 Frolic fixes plans that die and friends who flake. The matcher fixes the first half. Whop fixes the second: the moment a frolic reveals, each matched friend backs their yes with a small hold on their card. Walk into the spot and the hold disappears. Don't show, and it becomes the crew's Frolic Fund, which pays for the next one. When a plan costs money, the same sheet splits the bill across exactly the people going, with the fund taken off first.
 
@@ -12,21 +12,23 @@ One system, three faces:
 
 Every money state reaches Convex through a signed Whop webhook.
 
-## 1. What our Whop company can do today
+## 1. What our Whop sandbox can do today
 
-Read-only probe with `WHOP_API_KEY`:
+Sandbox only. `WHOP_SANDBOX_API_KEY` is the one key the backend reads, and `WHOP_API_BASE` is `https://sandbox-api.whop.com/api/v1`. `convex/whop/client.ts` refuses any other host, so a stray base URL cannot reach production. The production key is retired: no code reads it, and `convex/tests/noProdKey.test.ts` fails the suite if its name comes back into `convex/`.
+
+Read-only probe of the sandbox account `biz_KRb1JXuRLi8UNe` ("Momentum Labs") with that key (Nov 15 2026):
 
 | Fact | Consequence |
 | - | - |
-| The key is a **production** key for `biz_S7TqTe7uIW8xhO` ("tinkly", created today). It returns 401 on `sandbox-api.whop.com`. | Every call with this key moves real money. Sandbox testing needs a second key from sandbox.whop.com. |
-| `accept_card_payments: active` | Card and Apple Pay charges and holds work now. |
-| `transfer: inactive`, `standard_payout: inactive`, `required_actions: verify_identity` | We cannot move money between Whop balances, send claim links, or pay out until Arnav completes identity verification in the Whop dashboard (Balance, "Verify now"). |
-| No products, variants, or webhooks exist. | Nothing to protect. We create only new hidden "Frolic" products. |
-| Our fee table shows a 2.7% processing rate; Whop's iOS docs quote 2.7% + $0.30. | We credit the fund with the payment's `amount_after_fees`, never the gross, so the ledger can't drift above the real balance. Whether a void or a refund returns the fee is undocumented, so we check it in the sandbox. |
+| `accept_card_payments: active` | Card charges and authorization holds work in sandbox. Sandbox has no Apple Pay, so the demo runs on card entry. |
+| `transfer: inactive`, `standard_payout: inactive`, `required_actions: verify_identity`, `verification.individual: null` | Identity verification stays undone, so no subaccounts, no transfers, no claim links, no payouts. The Frolic Fund is a Convex ledger, not a Whop balance. |
+| Two hidden products exist, "Frolic Commitment" and "Frolic Plans", and no webhooks are registered. | We add a variant and one webhook under our own new products. Nothing that already exists is touched. |
+| The sandbox charges test cards and moves no real money. | The demo is risk-free: `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` declines, `5385 3083 6013 5181` forces 3D Secure with `Checkout1!`. |
+| `payment.amount_after_fees` is the only amount the ledger credits. | A fund credit never drifts above the payment it names. |
 
-What works without the $99 Apple account: everything web-based (Whop Elements on our own page, Whop-hosted checkout links, webhooks, the REST API). What doesn't: the native `WhopCheckout` Apple Pay surfaces (`Checkout.ApplePayButton`, `presentApplePay`). They use PassKit in-app payments, which need an Apple Pay merchant ID and the In-App Payments entitlement, and both need a paid membership. The native SDK also has no sandbox setting and no way to attach metadata such as a frolic id to a purchase. So the app opens our hosted pay page in an in-app Safari sheet (`SFSafariViewController`), where Apple Pay works through Whop Elements once our domain is registered.
+What works without the $99 Apple account: everything web-based (Whop Elements on our own page, Whop-hosted checkout links, webhooks, the REST API). What doesn't: the native `WhopCheckout` Apple Pay surfaces (`Checkout.ApplePayButton`, `presentApplePay`). They use PassKit in-app payments, which need an Apple Pay merchant ID and the In-App Payments entitlement, and both need a paid membership. The native SDK also has no sandbox setting and no way to attach metadata such as a frolic id to a purchase. So the app opens our hosted pay page in an in-app Safari sheet (`SFSafariViewController`), where the card form is the path that always works and Apple Pay joins once our domain is registered.
 
-Sandbox, per Whop's docs: separate accounts and keys at sandbox.whop.com, the same API at `https://sandbox-api.whop.com/api/v1`, and test cards (`4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` declines, `5385 3083 6013 5181` forces 3D Secure with `Checkout1!`). The sandbox has **no Apple Pay and no payouts**.
+Sandbox, per Whop's docs: separate accounts and keys at sandbox.whop.com, the same API at `https://sandbox-api.whop.com/api/v1`, and the test cards above. The sandbox has **no Apple Pay and no payouts**, and the demo needs neither.
 
 ## 2. The Whop primitives we use
 
@@ -41,16 +43,16 @@ Sandbox, per Whop's docs: separate accounts and keys at sandbox.whop.com, the sa
 | Catching what a webhook missed | `GET /payments/{id}` returns `status`, `substatus`, `capture_expires_at`, `amount_after_fees`, and `refunded_amount`. |
 | Knowing what happened | Webhooks follow Standard Webhooks: HMAC-SHA256 over `{webhook-id}.{webhook-timestamp}.{body}` with the `ws_` secret, a 5-minute timestamp tolerance, at-least-once delivery, retries for about 3 days, and no ordering guarantee. Events we handle: `payment.authorized`, `payment.succeeded`, `payment.failed`, `payment.canceled`, `refund.created`, `refund.updated`, `dispute.created`. (`payment.requires_action` fires only for off-session charges, so on-page 3D Secure never emits it; the page runs it with `handleNextAction`.) Later, `transfer.completed` and `transfer.failed`. |
 | A link a friend can pay from outside the app | Our own hosted page at `https://<convex-site>/pay/<token>`, the same page the app opens. Whop-hosted checkout links from `POST /checkout_configurations` carry `metadata` but can't place a hold, so we keep them only as a fallback. |
-| A real per-group balance | **No lightweight primitive exists.** The closest real things are a **subaccount** per group (`POST /accounts` with `external_id: "group:<id>"`) that receives `POST /transfers` (`type: "balance"`, with `idempotence_key`) and whose balance is readable at `GET /ledger_accounts/{biz_id}`, and a **claim link** (`POST /transfers` with `type: "claim_link"`), which pays whoever fronted the bill. Both need `transfer` to be active, which today means Arnav's identity verification. The destination may also need onboarding before it can receive. |
+| A real per-group balance | **No lightweight primitive exists, and we are not using these.** The closest real things are a **subaccount** per group (`POST /accounts` with `external_id: "group:<id>"`) that receives `POST /transfers` (`type: "balance"`, with `idempotence_key`) and whose balance is readable at `GET /ledger_accounts/{biz_id}`, and a **claim link** (`POST /transfers` with `type: "claim_link"`), which pays whoever fronted the bill. Both need `transfer` to be active, which means identity verification, and we are skipping that (section 6, decision 2). The fund stays a Convex ledger. |
 
 ## 3. The design
 
 ### 3.1 Products and variants (created once by an internal action, all hidden)
 
-- Product **"Frolic Commitment"**, `visibility: hidden`, with one variant **"Frolic hold"**: `one_time`, `initial_price` = the hold amount (proposed **$3**), `visibility: hidden`.
+- Product **"Frolic Commitment"**, `visibility: hidden`, with one variant **"Frolic hold"**: `one_time`, `initial_price` = the hold amount (**$3**, `FROLIC_HOLD_CENTS`), `visibility: hidden`.
 - Product **"Frolic Plans"**, `visibility: hidden`. No fixed variants. Each share is charged with an inline `variant` under this `product_id`, `visibility: hidden`, with a title like "Kayaks at the Marina, your share".
 
-IDs go into Convex env vars (`WHOP_ACCOUNT_ID`, `WHOP_HOLD_VARIANT_ID`, `WHOP_PLANS_PRODUCT_ID`, `WHOP_WEBHOOK_SECRET`, `WHOP_ENV=sandbox|production`). The API key stays on the server. No Whop key ships in the app.
+IDs go into Convex env vars (`WHOP_ACCOUNT_ID`, `WHOP_HOLD_VARIANT_ID`, `WHOP_PLANS_PRODUCT_ID`, `WHOP_WEBHOOK_SECRET`, `WHOP_ENV=sandbox`). The sandbox key and the base URL stay on the server (`WHOP_SANDBOX_API_KEY`, `WHOP_API_BASE`). No Whop key ships in the app.
 
 ### 3.2 One pay page for the app, the web page, and iMessage
 
@@ -129,8 +131,8 @@ Rules:
 - **A reconciler catches lost webhooks.** A scheduled sweep every 2 minutes re-reads every row in `authorizing`, `held`, or `refunding` older than 2 minutes and applies the same transition the webhook would have. It also releases holds whose `capture_expires_at` has passed, retries a stuck refund three times, and then marks it `needs_attention`. Webhook loss can delay a state by minutes, but it can't wedge one.
 - **Void and capture can't cross.** The no-show sweep re-reads each payment and captures only if it is still `authorized`/`requires_capture` and the friend has no check-in. A void that returned "still authorized" leaves a `releasing` mark on the row that the sweep skips.
 - **Failures land on the friend's side.** If our backend dies, an uncaptured hold lapses on its own, so nobody is charged by mistake. We never set `auto_capture_after_minutes`.
-- **Friends who don't confirm.** A matched friend who hasn't placed the hold stays in the frolic, and their card shows "Hold $3 to lock it in" until `startsAt`. Whether to drop them to the hop-in pool after 10 minutes is decision 4.
-- **Bail.** "Can't make it" 60 or more minutes before `startsAt` voids the hold. Under 60 minutes it counts as a no-show (decision 3).
+- **Friends who don't confirm.** A matched friend who hasn't placed the hold stays in the frolic, and their card shows "Hold $3 to lock it in" until `startsAt`. Ten minutes after the reveal without a hold they drop to the hop-in pool, so a friend who is slow to pay does not hold a seat in a plan they haven't backed (decision 4).
+- **Bail.** "Can't make it" 60 or more minutes before `startsAt` voids the hold. Under 60 minutes it counts as a no-show and the hold is kept (decision 3).
 - **Hop-ins** get a row the moment they join. Their join already happened in the open, after the reveal.
 
 ### 3.6 Paid plans (shares) and the fund
@@ -150,7 +152,7 @@ Copy follows the mock: "Chip in for kayaks", "Your share", "Already paid", "If i
 
 `POST /whop/webhook`, registered by `convex/whop/routes.ts`:
 
-1. Read the raw body. Verify `webhook-signature` with Web Crypto HMAC-SHA256, keyed with the full `ws_…` secret string exactly as Whop gives it (Whop's guide: don't strip the prefix and don't base64-decode it). We pin a fixture from a real sandbox delivery in the tests, so a wrong key derivation fails a test before it fails in production. Reject a timestamp more than 5 minutes off. A bad signature returns 401.
+1. Read the raw body. Verify `webhook-signature` with Web Crypto HMAC-SHA256, keyed with the full `ws_…` secret string exactly as Whop gives it (Whop's guide: don't strip the prefix and don't base64-decode it). We pin a fixture from a real sandbox delivery in the tests, so a wrong key derivation fails a test before it reaches a pay page. Reject a timestamp more than 5 minutes off. A bad signature returns 401.
 2. Dedupe on `webhook-id` through `whopEvents` (insert if absent, in one mutation). A duplicate returns 200.
 3. Find the row by `metadata.paymentRowId`, falling back to `by_whop_payment`. An unknown payment is logged and returns 200.
 4. Apply the transition only if it's legal from the current state (for example, `payment.authorized` after `released` is ignored). Return 200 within 5 seconds, and run any follow-up API call in a scheduled action.
@@ -165,40 +167,106 @@ A hold can't leak a secret yes, because nothing about money exists before the re
 - `checkoutLink` and `link` refuse before `revealAt`. The token is random and never derived from ids.
 - `myPayment` returns only the caller's row. The "Already paid" names come from a members-only query after `revealAt`.
 - Whop metadata holds ids only, and receipts go only to the payer.
-- The fund total is visible to the crew. A credit names the no-show ("Jordan's hold from the Marina") only once `frolic.status` is `done`, and decision 5 can make it anonymous.
+- The fund total is visible to the crew, and a credit is anonymous: "A no-show added $3." No name, no frolic title, no amount that points at one person (decision 5).
 
 ### 3.9 Testing without moving real money
 
 1. **Unit:** convex-test with signed fixture webhooks that the test signs with a fixed `ws_` secret.
 2. **Sandbox end to end:** Arnav creates a sandbox company and key. We set `WHOP_ENV=sandbox`, the sandbox key, and the account id on a local backend exposed as a preview URL, and register a sandbox webhook to it. Then we pay on the pay page with `4242`, decline with `0002`, run 3D Secure with `5385…`, and check hold, void, capture, refund, and dedupe. Apple Pay can't be tested there.
-3. **Production demo:** $1 to $3 holds on real cards, voided at check-in, so no money moves for anyone who shows up. The one captured no-show is a real $3 that Arnav can refund after the demo.
+3. **Sandbox demo:** the same run against the sandbox account, on a cloud phone pointed at the branch's local backend, with the pay page in the in-app Safari sheet and `4242 4242 4242 4242`. Nothing moves real money, so the no-show capture and the fund credit are free to rehearse twice.
 
 ## 4. What the judges see
 
-The one moment: **Dev walks into the geofence. His phone says "You made it. Your $3 is back.", and on the projected Whop dashboard his payment flips from Authorized to Voided in the same beat. Jordan never shows, so his hold is captured and the Crew tab's Frolic Fund ticks from $0 to $3, "toward the next one".** Money that commits a friend and is released by walking into a real place is Whop's money logic running on Frolic's physical-world signal. No other sponsor in the stack touches money, and a generic pay button can't express it.
+The one moment: **Dev walks into the geofence. His phone says "You made it. Your $3 is back.", and on the projected Whop sandbox dashboard his payment flips from Authorized to Voided in the same beat. Jordan never shows, so his hold is captured and the Crew tab's Frolic Fund ticks from $0 to $3, "toward the next one".** Money that commits a friend and is released by walking into a real place is Whop's money logic running on Frolic's physical-world signal. No other sponsor in the stack touches money, and a generic pay button can't express it.
 
-Script beat for the 90 seconds: reveal, then "Hold $3 to lock it in" with Apple Pay, then arrival releases it, then the no-show feeds the fund, then tomorrow's kayaks show "Frolic Fund covers $3, your share $7".
+Script beat for the 90 seconds: reveal, then "Hold $3 to lock it in" on the card form, then arrival releases it, then the no-show feeds the fund, then tomorrow's kayaks show "Frolic Fund covered $3, your share $7".
 
 ## 5. Beyond the baseline, ranked
 
 | # | Idea | Demo value | Build | Risk | Call |
 | - | - | - | - | - | - |
 | A | **Commitment hold plus fund ledger plus paid-plan split** (sections 3.1 to 3.9) | High: the Tier 1 story | About 6 h for backend and pay page, plus about 1.5 h for the iOS sheet and its states | Medium: holds through Elements are unproven until the sandbox run; Apple Pay domain registration | **Build first** |
-| B | **Real per-group Whop balance:** a subaccount per group, `POST /transfers` on each capture, and the Crew tab reads `GET /ledger_accounts/{id}` | High: the fund is a real Whop balance, beyond our own ledger | About 2 h | High: `transfer` stays inactive until Arnav's identity verification; the destination may need onboarding; the sandbox has no payouts | Only if Arnav verifies by about 1pm |
-| C | **The fund pays whoever fronted the bill:** Maya buys the ice cream, and the fund sends her a Whop **claim link** (`type: "claim_link"`) in the group or iMessage thread | Very high: money visibly moves between friends | About 1.5 h on top of B | High: the same verification gate, and the claimer needs a Whop account | After B |
+| B | **Real per-group Whop balance:** a subaccount per group, `POST /transfers` on each capture, and the Crew tab reads `GET /ledger_accounts/{id}` | High: the fund is a real Whop balance, beyond our own ledger | About 2 h | High: `transfer` stays inactive without identity verification; the destination may need onboarding; the sandbox has no payouts | Out: no identity verification (decision 2) |
+| C | **The fund pays whoever fronted the bill:** Maya buys the ice cream, and the fund sends her a Whop **claim link** (`type: "claim_link"`) in the group or iMessage thread | Very high: money visibly moves between friends | About 1.5 h on top of B | High: the same verification gate, and the claimer needs a Whop account | Out: no transfers or claim links (decision 2) |
 | D | **Saved card, zero-tap holds:** save the card once at onboarding with a setup intent, then each reveal places the hold off-session under consent given once | High polish: the reveal needs no sheet | About 2 h | Medium: off-session holds can hit `payment.requires_action`; consent copy | Stretch |
 | E | **Local spots sell Frolic experiences:** one Berkeley shop as a subaccount, with shares charged as direct charges on it with `application_fee_amount` | Medium-high: the business model on stage | About 2 h | Medium: a subaccount for a real shop, and verification for its payouts | "What's next" slide unless B lands |
 | F | Whop Wallet Elements (Swift) showing the fund in the Crew tab | Low to medium | About 2 h | High: needs OAuth and a subaccount | Skip |
 
-Recommendation for 6pm: **A only, done properly**, and B if Arnav finishes identity verification early. C, D, and E go on the "what's next" slide.
+Decision for 6pm: **A only, done properly**. B and C are out because identity verification stays undone, and D and E go on the "what's next" slide.
 
-## 6. Decisions for Arnav
+## 6. Decisions
 
-1. **Sandbox or production for the demo.** Production gives real Apple Pay and real holds voided at check-in, with one real $3 captured. Sandbox is risk-free but card-only, with no Apple Pay. Either way we need a sandbox key for testing (sandbox.whop.com, about 2 minutes).
-2. **Identity verification on Whop** today (Balance, "Verify now"). It unlocks transfers, which B and C need.
-3. **Hold amount and the no-show rule:** $3 proposed. Is "Can't make it" within 60 minutes of the start a no-show?
-4. **Friends who don't confirm:** stay in, or drop to the hop-in pool after 10 minutes without a hold?
-5. **Fund credit wording:** name the no-show ("Jordan's $3") or keep it anonymous ("A missed hold")?
-6. **Copy and design for surfaces the mock doesn't have:** the hold sheet, the "Your $3 is back" moment, the Crew tab fund, and the Garden's "paid for by the fund" line. Proposed: "Hold $3 to lock it in. You get it back the moment you arrive."
-7. **No separate hold on paid plans:** paying the share is the commitment, and a friend who bails after paying isn't refunded unless the frolic is called off. Agree?
-8. **The brief says native WhopCheckout and budgets chip-in at one hour (4 to 5pm).** This spec swaps the native SDK for a hosted page in an in-app Safari sheet, because the native Apple Pay button needs the paid Apple account, has no sandbox, and can't tag a payment with a frolic. That makes Whop a roughly 7.5 hour Tier 1 build instead of a one-hour add-on. Confirm the swap and the time.
+Decided by Arnav, Nov 15 2026.
+
+1. **Sandbox for testing and the demo.** No production key, no real cards. The demo runs on the sandbox account with test cards, card entry only, since sandbox has no Apple Pay.
+2. **No identity verification.** Subaccounts, transfers, and claim links are out. The Frolic Fund is a Convex ledger, and each credit names the Whop `pay_` id that funded it.
+3. **Hold amount and the no-show rule:** $3. "Can't make it" within 60 minutes of `startsAt` is a no-show and the hold is kept. Earlier than that voids it.
+4. **Friends who don't confirm:** they stay in the frolic and their card asks for the hold. Ten minutes after the reveal with no hold, they drop to the hop-in pool.
+5. **Fund credit wording:** anonymous, "A no-show added $3."
+6. **Copy and design for surfaces the mock doesn't have:** decided in section 7's copy table, starting from "Hold $3 to lock it in. You get it back the moment you arrive."
+7. **No separate hold on paid plans:** paying the share is the commitment, and bailing after paying costs the share with no refund unless the frolic is called off.
+8. **The single system** is the commitment hold, the Fund ledger, and the paid-plan split, built as one. Section 5's B and C wait.
+9. **The pay page** is our hosted page in an in-app Safari sheet (`SFSafariViewController`), with the card form as the fallback everywhere and Apple Pay joining only if the domain registers. The native `WhopCheckout` surfaces stay unused.
+
+## 7. API for the iOS lanes
+
+Read from `convex/whop/pay.ts` and `convex/whop/links.ts`. Every function has an argument validator and a test.
+
+### 7.1 Calls
+
+```ts
+// public mutation, app
+api.whop.pay.link({ deviceToken: string, frolicId: Id<"frolics"> })
+// -> { kind: "hold" | "share", url: string, amountCents: number, expiresAt: number }
+//  | { kind: "none", reason: "not_revealed" | "not_member" | "already_paid" | "covered" | "closed" }
+
+// public query, app, live
+api.whop.pay.myPayment({ deviceToken: string, frolicId: Id<"frolics"> })
+// -> { state: MoneyState, kind: "hold" | "share" | "none", amountCents: number, error: string | null, paidNames: string[] }
+
+// public query, Crew tab, live
+api.whop.pay.fund({ deviceToken: string, groupId: Id<"groups"> })
+// -> { balanceCents: number, entries: Array<{ amountCents: number, line: string, at: number, frolicId: Id<"frolics"> | null }> }
+
+// internal, FROL-9 (iMessage)
+internal.whop.links.checkoutLink({ userId: Id<"users">, frolicId: Id<"frolics"> })
+// -> the same result as api.whop.pay.link
+```
+
+`link` returns a URL to open in an in-app Safari sheet. What the browser comes back with means nothing: `myPayment` is the only truth, and it flips when the signed webhook lands.
+
+`link` refuses with `not_revealed` until the frolic is `on` and `revealAt` has passed, `not_member` if the caller is not a going attendee, `already_paid` once a hold or share is held or paid, `covered` when the Fund covers their whole share, and `closed` when the frolic ended or the link expired. Calling it twice returns the same row and URL.
+
+`myPayment` returns `state: "none"` with zeroed fields when the device token is unknown, the frolic is unknown or still `open`, it has no `revealAt`, or the caller has no share. `error` is non-null only for `failed`, and the string is the user-facing copy below. `paidNames` lists the friends whose hold or share is in, for the "Already paid" row.
+
+`fund` returns `balanceCents: 0` and no entries for an unknown device, and refuses a caller who is not in the group. A credit line is generated on the server: "A no-show added $3." for a kept hold, "The Frolic Fund covered $3." for a spend, and "$3 went back." for a reversal.
+
+### 7.2 States and copy
+
+`MoneyState` is `none | due | paying | held | returning | returned | paid | kept | covered | failed | sorting`.
+
+| state | when | UI | copy |
+| - | - | - | - |
+| `none` | nothing owed, or before the reveal | the card shows the plan only, no money row | none |
+| `due` | a hold or share is owed | hold sheet or "Your share" row with a pay button | hold sheet title "Hold $3 to lock it in", subtitle "You get it back the moment you arrive."; share row "Your share" and "If it gets called off, you get it back automatically.", button "Chip in for kayaks" |
+| `paying` | the pay sheet is open or a payment is authorizing | sheet stays up, button shows a spinner | "One sec." |
+| `held` | a hold is authorized | card shows the hold as in, sheet dismisses | "You're in. $3 held." |
+| `returning` | the void or refund is in flight | card keeps the row, no spinner | "Sending your $3 back." |
+| `returned` | the hold is released | the arrival moment on the card | "You made it. Your $3 is back." |
+| `paid` | a share is captured | the "It's on" card shows paid, others show "Already paid" | "You're in. Paid $8." |
+| `kept` | a no-show hold was captured, shown only to that user | their card, after the frolic is done | "Your $3 went to the Frolic Fund." |
+| `covered` | the Fund paid this share in full | the "It's on" card, no pay button | "The Frolic Fund covered you." |
+| `failed` | the payment failed | the card with a retry button | "That didn't go through. Try again." |
+| `sorting` | a refund or capture needs a human | the card, no retry, a support line | "We're sorting out your $3." |
+
+Surfaces outside `myPayment`:
+
+| where | when | copy |
+| - | - | - |
+| Crew tab | fund balance | "Frolic Fund $X" with "toward the next one" |
+| Crew tab | a no-show credit | "A no-show added $3." |
+| Crew tab | a spent entry | "The Frolic Fund covered $3." |
+| Garden | a plan part-paid by the Fund | "The Frolic Fund chipped in $3." |
+| paid plan, hop-in | a friend joining after the reveal | "Hop in for $8" |
+
+House rules hold for every string: no em dashes, no exclamation marks, no "not X, but Y". The mock's exact words win where it has them.
