@@ -93,15 +93,18 @@ export const forFrolic = query({
     const frolic = await ctx.db.get("frolics", args.frolicId);
     if (!frolic) throw new ConvexError({ code: "NOT_FOUND", message: "This frolic is gone" });
     await requireMember(ctx, frolic.groupId, user._id);
+    const mine = await ctx.db
+      .query("snaps")
+      .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", args.frolicId).eq("userId", user._id))
+      .take(20);
+    if (mine.length === 0) return [];
+    const latest = mine.reduce((best, row) => (row.snapAt > best.snapAt ? row : best));
     const rows = await ctx.db
       .query("snaps")
-      .withIndex("by_frolicId", (q) => q.eq("frolicId", args.frolicId))
+      .withIndex("by_frolicId_and_snapAt", (q) => q.eq("frolicId", args.frolicId).eq("snapAt", latest.snapAt))
       .take(50);
-    const mine = rows.find((row) => row.userId === user._id);
-    if (!mine) return [];
-    const sameWindow = rows.filter((row) => row.snapAt === mine.snapAt);
     const out = [];
-    for (const row of sameWindow) {
+    for (const row of rows) {
       out.push({
         userId: row.userId,
         url: await ctx.storage.getUrl(row.storageId),

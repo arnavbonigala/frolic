@@ -245,6 +245,7 @@ export default defineSchema({
     startedBy: v.optional(v.id("users")),
   })
     .index("by_groupId_and_day", ["groupId", "day"])
+    .index("by_groupId_and_status_and_day", ["groupId", "status", "day"])
     .index("by_status_and_deadline", ["status", "deadline"]),
 
   reveals: defineTable({
@@ -296,6 +297,7 @@ export default defineSchema({
     bloomAt: v.number(),
   })
     .index("by_frolicId", ["frolicId"])
+    .index("by_frolicId_and_status", ["frolicId", "status"])
     .index("by_frolicId_and_userId", ["frolicId", "userId"])
     .index("by_userId", ["userId"]),
 
@@ -346,6 +348,7 @@ export default defineSchema({
   })
     .index("by_frolicId", ["frolicId"])
     .index("by_groupId", ["groupId"])
+    .index("by_frolicId_and_snapAt", ["frolicId", "snapAt"])
     .index("by_frolicId_and_userId", ["frolicId", "userId"]),
 
   collages: defineTable({
@@ -415,7 +418,8 @@ export default defineSchema({
     at: v.number(),
   })
     .index("by_groupId", ["groupId"])
-    .index("by_frolicId", ["frolicId"]),
+    .index("by_frolicId", ["frolicId"])
+    .index("by_frolicId_and_entry", ["frolicId", "entry"]),
 
   webhookEvents: defineTable({
     provider: v.union(v.literal("whop"), v.literal("keiki")),

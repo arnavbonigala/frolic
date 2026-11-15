@@ -200,11 +200,10 @@ export async function goingAttendees(
   ctx: MutationCtx,
   frolicId: Id<"frolics">,
 ): Promise<Doc<"attendees">[]> {
-  const all = await ctx.db
+  return await ctx.db
     .query("attendees")
-    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
+    .withIndex("by_frolicId_and_status", (q) => q.eq("frolicId", frolicId).eq("status", "going"))
     .take(MAX_TAPS);
-  return all.filter((a) => a.status === "going");
 }
 
 export async function putAttendee(
