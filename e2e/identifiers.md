@@ -107,11 +107,12 @@ The step after the name is `#share`: `share.title` reads "Your crew is ready", `
 | `today.on.otw` | I'm on my way |
 | `today.on.directions` | Directions |
 | `today.on.bail` | I can't make it |
+| `today.on.stillIn` | Jordan and Priya can still hop in. |
 | `today.arrived.title` | You made it. |
 | `today.arrived.who` | who is already there |
 | `today.arrived.snap` | Take the group snap |
 | `today.faded.title` | This one drifted off |
-| `today.faded.body` | This one drifted off. Nobody knows you said yes. |
+| `today.faded.body` | Nobody knows you said yes. |
 | `today.done.title` | You went. |
 | `today.done.garden` | See the garden |
 | `today.tomorrowRow` | Tomorrow: Maya and Dev are going to Kayaks at the Marina. There's room for you. |

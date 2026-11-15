@@ -174,8 +174,13 @@ final class OnboardingModel {
             case "offline":
                 invitePhase = .offline
             default:
-                preview = Self.demoPreview
-                invitePhase = .ready
+                if seed.query["invite"] == nil {
+                    isSolo = true
+                    invitePhase = .ready
+                } else {
+                    preview = Self.demoPreview
+                    invitePhase = .ready
+                }
             }
         }
     }

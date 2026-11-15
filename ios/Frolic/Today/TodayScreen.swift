@@ -668,6 +668,12 @@ private struct TodayOnView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 20)
+            if !store.notGoingNames.isEmpty {
+                TodayHush(
+                    text: TodayCopy.names(store.notGoingNames) + " can still hop in.",
+                    identifier: "today.on.stillIn"
+                )
+            }
             if let plan {
                 TodayRowLink(
                     thumb: TodayCopy.heroAsset(plan),
@@ -842,7 +848,7 @@ private struct TodayFadedView: View {
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.faded.title")
-                Text("This one drifted off.")
+                Text("Nobody knows you said yes.")
                     .todayFont(17, relativeTo: .body)
                     .foregroundStyle(FrolicColor.secondaryText)
                     .accessibilityIdentifier("today.faded.body")
