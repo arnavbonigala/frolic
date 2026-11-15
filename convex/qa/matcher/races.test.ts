@@ -5,6 +5,7 @@ import { expectNoMatch } from "./assert";
 import {
   findFunction,
   findOptional,
+  modules,
   mutate,
   readAttendees,
   readFrolic,
@@ -12,9 +13,7 @@ import {
   tapAs,
 } from "./surface";
 
-const modules = (import.meta as unknown as { glob: (p: string) => Record<string, () => Promise<unknown>> }).glob(
-  "../../**/*.ts",
-);
+
 
 const NOW = Date.UTC(2026, 10, 15, 19, 0, 0);
 const MS = 1;
@@ -184,6 +183,16 @@ describe("deadline", () => {
     const f = await seed(t, { deadlineOffset: 2 * 60 * MIN });
     await tapAs(t, f, "Maya");
     vi.setSystemTime(NOW + 2 * 60 * MIN + 1);
+    await tapAs(t, f, "Dev").catch(() => undefined);
+    await settle(t);
+    await expectNoMatch(t, f.frolicId);
+  });
+
+  it("a tap at exactly the deadline does not match", async () => {
+    const t = fresh();
+    const f = await seed(t, { deadlineOffset: 2 * 60 * MIN });
+    await tapAs(t, f, "Maya");
+    vi.setSystemTime(NOW + 2 * 60 * MIN);
     await tapAs(t, f, "Dev").catch(() => undefined);
     await settle(t);
     await expectNoMatch(t, f.frolicId);

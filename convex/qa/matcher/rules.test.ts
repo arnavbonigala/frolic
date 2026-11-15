@@ -2,11 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { expectMatch, expectNoMatch } from "./assert";
-import { mutate, readTaps, seed, tapAs } from "./surface";
+import {
+  modules,
+  mutate,
+  readTaps,
+  seed,
+  tapAs,
+} from "./surface";
 
-const modules = (import.meta as unknown as { glob: (p: string) => Record<string, () => Promise<unknown>> }).glob(
-  "../../**/*.ts",
-);
+
 
 const NOW = Date.UTC(2026, 10, 15, 19, 0, 0);
 const MIN = 60_000;

@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
-import { discoverSurface, readFrolic, seed, tapAs, type Fixture, type SurfaceEntry } from "./surface";
+import {
+  discoverSurface,
+  modules,
+  readFrolic,
+  seed,
+  tapAs,
+  type Fixture,
+  type SurfaceEntry,
+} from "./surface";
 
-const modules = (import.meta as unknown as { glob: (p: string) => Record<string, () => Promise<unknown>> }).glob(
-  "../../**/*.ts",
-);
+
 
 const NOW = Date.UTC(2026, 10, 15, 19, 0, 0);
 const MIN = 60_000;
@@ -68,21 +74,34 @@ async function resolveQueries(
   f: Fixture,
   observer: string,
 ): Promise<Callable[]> {
+  const { resolved, unresolved } = await auditSurface(t, f, observer);
+  expect(
+    unresolved,
+    "every public query matching the audit pattern must be callable, or this audit is blind to it",
+  ).toEqual([]);
+  return resolved;
+}
+
+async function auditSurface(t: any, f: Fixture, observer: string) {
   const entries = (await discoverSurface()).filter((e) => QUERY_PATTERN.test(e.name));
   const shapes = await candidateArgShapes(f, observer);
   const resolved: Callable[] = [];
+  const unresolved: string[] = [];
   for (const entry of entries) {
+    let ok = false;
     for (const args of shapes) {
       try {
         await t.query(entry.ref, args);
         resolved.push({ entry, args });
+        ok = true;
         break;
       } catch {
         continue;
       }
     }
+    if (!ok) unresolved.push(`${entry.module}:${entry.name}`);
   }
-  return resolved;
+  return { resolved, unresolved };
 }
 
 async function snapshot(t: any, callables: Callable[], f: Fixture): Promise<Record<string, unknown>> {
@@ -110,6 +129,10 @@ describe("privacy: a tap is invisible to everyone else before revealAt", () => {
     const callables = await resolveQueries(t, f, "Jordan");
     expect(callables.length, "at least one public query must exist to audit").toBeGreaterThan(0);
     const before = await snapshot(t, callables, f);
+    expect(
+      JSON.stringify(before).length,
+      "the audited queries must return real payloads, or equality here proves nothing",
+    ).toBeGreaterThan(20);
     await tapAs(t, f, "Maya");
     await settle(t);
     const after = await snapshot(t, callables, f);
@@ -181,6 +204,47 @@ describe("privacy: a tap is invisible to everyone else before revealAt", () => {
       JSON.stringify(atReveal).includes("<user:Maya>"),
       "at revealAt the names are visible to the rest of the crew",
     ).toBe(true);
+  });
+});
+
+describe("privacy: the reveal window is not visible to the rest of the crew", () => {
+  it("a member's view does not change between the match and revealAt", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    const callables = await resolveQueries(t, f, "Jordan");
+    const before = await snapshot(t, callables, f);
+    await tapAs(t, f, "Maya");
+    await tapAs(t, f, "Dev");
+    await settle(t);
+    const frolic = await readFrolic(t, f.frolicId);
+    expect(frolic.status, "fixture needs a match").toBe("on");
+    vi.setSystemTime((frolic.revealAt as number) - 1);
+    const during = await snapshot(t, callables, f);
+    expect(
+      during,
+      "between the match and revealAt the crew must see the same thing as before any tap, or the plan leaks one phone early",
+    ).toEqual(before);
+  });
+
+  it("a member tapping during the reveal window cannot join the matched set", async () => {
+    const t = fresh();
+    const f = await seed(t);
+    await tapAs(t, f, "Maya");
+    await tapAs(t, f, "Dev");
+    await settle(t);
+    const frolic = await readFrolic(t, f.frolicId);
+    vi.setSystemTime((frolic.revealAt as number) - 1);
+    await tapAs(t, f, "Jordan").catch(() => undefined);
+    const attendees = await t.run(async (ctx: any) =>
+      await ctx.db
+        .query("attendees")
+        .withIndex("by_frolicId", (q: any) => q.eq("frolicId", f.frolicId))
+        .collect(),
+    );
+    expect(
+      attendees.some((a: any) => a.userId === f.users.Jordan && a.role === "matched"),
+      "a late tap is not a matched attendee, or it joins a plan that already formed without them",
+    ).toBe(false);
   });
 });
 

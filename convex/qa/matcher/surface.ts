@@ -4,14 +4,18 @@ import type { Id } from "../../_generated/dataModel";
 
 type T = any;
 
-const moduleMap = (import.meta as unknown as {
+const rawModules = (import.meta as unknown as {
   glob: (pattern: string) => Record<string, () => Promise<Record<string, unknown>>>;
-}).glob("../../**/*.ts");
+}).glob("/convex/**/*.ts");
+
+export const modules: Record<string, () => Promise<Record<string, unknown>>> = rawModules;
+
+const moduleMap = modules;
 
 const SKIP = ["_generated", "/qa/", "node_modules", "convex.config", "schema.ts", "http.ts", "crons.ts"];
 
 function toModuleName(path: string): string {
-  return path.replace(/^\.\.\/\.\.\//, "").replace(/\.ts$/, "");
+  return path.replace(/^\/convex\//, "").replace(/\.ts$/, "");
 }
 
 export type SurfaceEntry = {
