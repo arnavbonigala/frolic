@@ -37,6 +37,18 @@ Match `design/mock/index.html`. Use the tokens, never raw hex:
 
 Every tab screen holds a `ScreenPhase` and renders through `PhasedContent`; `router.resolve(phase, isOnline:)` turns it into offline when the network drops. Replace the `...ReadyPreview` view and the `.task` in your tab with real subscriptions. The previews use `SampleData` (the mock's Sunset Crew); do not ship sample data as real data.
 
+## Painted assets
+
+Painted art from `design/generated/` lives in the asset catalog under its exact file name, without the extension. Use it by name, because full-resolution versions with the same names replace the files later:
+
+- Plan heroes keyed by taste tag: `plan-sunsets`, `plan-outdoors`, `plan-late-night-food`, `plan-games`, `plan-free-stuff`. Pass the server's `plan.heroKey` straight to `SeedPacket(image:)`. `SeedPacket(hostedBy:)` adds a "Hosted by <name>" footnote under the card content and is nil by default, so nothing shifts when there is no host. An unknown hero key falls back to `plan-free-stuff` instead of rendering blank.
+- State illustrations (transparent): `state-garden-empty`, `state-faded`, `state-its-on`, `state-solo`, `state-waiting`.
+- Whop moments (transparent): `whop-deposit-back`, `whop-fund-jar`, `whop-noshow-coin`.
+- Demo portraits (fictional people), used for previews and the gallery: `portrait-maya`, `portrait-dev`, `portrait-jordan`, `portrait-priya`. At runtime, set `FlowerPerson.avatarURL` from Convex. The flower falls back to the initial.
+- `launch-meadow`: the launch screen (`LaunchScreen.storyboard`) and the backdrop for the onboarding welcome and the Today header.
+
+When a painted asset exists for something, Wave 2 screens use it instead of drawing their own. New art arrives in `design/generated/` with prompts in `design/asset-prompts.md`. Ask FROL-2 through `handoffs/ios-requests/` to add it to the catalog.
+
 The app is light only (`UIUserInterfaceStyle = Light`): Frolic is a daytime app.
 
 ## Convex
@@ -53,6 +65,15 @@ The deployment URL resolves in this order:
 2. The `CONVEX_URL` build setting, written into Info.plist as `ConvexDeploymentURL`. It defaults to `$(SHARED_CONVEX_URL)`, so `SHARED_CONVEX_URL=... xcodebuild ...` or `xcodebuild ... CONVEX_URL=https://...` sets it. Nothing is committed.
 
 With neither set, every tab shows its error state ("Frolic isn't connected to a server yet."). Branch builds point at their own anonymous backend, never at the shared dev deployment.
+
+## Identity
+
+`FrolicIdentity.shared` (in `Shared/Identity/`, so the widget can use it too, and in the environment) holds `deviceToken` and `groupId`. Every Convex call passes `identity.deviceToken`.
+
+- **Token, in this order:** the `FROLIC_DEVICE_TOKEN` launch variable, the Keychain (service `com.frolic.app`, account `deviceToken`), then App Group defaults `frolic.deviceToken`. If none is set, a 48-character hex token is minted on first launch. Tokens are 32 to 256 characters.
+- **Group, in this order:** the `FROLIC_GROUP_ID` launch variable, then App Group defaults `frolic.groupId`. Call `identity.setGroup(id)` after `createGroup` or `joinGroup`.
+- **Debug and E2E builds:** `frolic://signin?deviceToken=..&groupId=..` stores both.
+- **Lane stand-ins:** delete `CrewIdentity`, `YouIdentity`, `CheckInSession` and the Garden stand-in once this lands.
 
 ## Build
 

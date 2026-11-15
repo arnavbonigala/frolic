@@ -5,12 +5,14 @@ struct FlowerPerson: Identifiable, Hashable {
     var name: String
     var color: FlowerColor
     var photo: String?
+    var avatarURL: URL?
 
-    init(id: String? = nil, name: String, color: FlowerColor, photo: String? = nil) {
+    init(id: String? = nil, name: String, color: FlowerColor, photo: String? = nil, avatarURL: URL? = nil, photoUrl: String? = nil) {
         self.id = id ?? name
         self.name = name
         self.color = color
         self.photo = photo
+        self.avatarURL = avatarURL ?? photoUrl.flatMap(URL.init(string:))
     }
 
     var initial: String { String(name.prefix(1)).uppercased() }
@@ -120,13 +122,23 @@ struct FlowerView: View {
             Image(photo)
                 .resizable()
                 .scaledToFill()
-        } else {
-            ZStack {
-                FrolicColor.cream
-                Text(person.initial)
-                    .font(.system(size: radius * 0.5, weight: .heavy, design: .rounded))
-                    .foregroundStyle(person.color.deep)
+        } else if let url = person.avatarURL {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                initial(for: person)
             }
+        } else {
+            initial(for: person)
+        }
+    }
+
+    private func initial(for person: FlowerPerson) -> some View {
+        ZStack {
+            FrolicColor.cream
+            Text(person.initial)
+                .font(.system(size: radius * 0.5, weight: .heavy, design: .rounded))
+                .foregroundStyle(person.color.deep)
         }
     }
 

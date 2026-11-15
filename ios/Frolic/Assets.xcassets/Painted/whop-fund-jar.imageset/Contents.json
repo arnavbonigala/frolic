@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "whop-fund-jar.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

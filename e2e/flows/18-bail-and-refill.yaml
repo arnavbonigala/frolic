@@ -9,7 +9,7 @@ test:
   build:
     name: "frolic-ios"
   device:
-    model: "iPhone 17 Pro"
+    model: "iPhone 17 Pro Max"
     orientation: "portrait"
   blocks:
     - type: "manual"
@@ -18,7 +18,7 @@ test:
     - type: "instructions"
       step_description: "Tap \"I can't make it\""
     - type: "validation"
-      step_description: "A sheet titled \"Can't make it?\" shows \"Maya and Dev will just see one fewer. The others get a chance to hop in.\""
+      step_description: "A sheet titled \"Can't make it?\" shows \"Your crew will see a spot open up.\""
     - type: "instructions"
       step_description: "Tap \"I'll still go\""
     - type: "validation"

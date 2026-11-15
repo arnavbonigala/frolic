@@ -1,11 +1,24 @@
 import SwiftUI
 
+enum PlanHero {
+    static let fallback = "plan-free-stuff"
+
+    static func resolve(_ key: String) -> String {
+        #if canImport(UIKit)
+        return UIImage(named: key) == nil ? fallback : key
+        #else
+        return key
+        #endif
+    }
+}
+
 struct SeedPacket<Content: View>: View {
     var label: String
     var number: String?
     var image: String?
     var imageDescription: String?
     var bandColor: Color = FrolicColor.band
+    var hostedBy: String?
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -27,7 +40,7 @@ struct SeedPacket<Content: View>: View {
             .background(bandColor)
             .accessibilityElement(children: .combine)
             if let image {
-                Image(image)
+                Image(PlanHero.resolve(image))
                     .resizable()
                     .scaledToFill()
                     .frame(height: 118)
@@ -40,6 +53,12 @@ struct SeedPacket<Content: View>: View {
             }
             VStack(alignment: .leading, spacing: 10) {
                 content
+                if let hostedBy {
+                    Text("Hosted by \(hostedBy)")
+                        .frolicFont(.footnote)
+                        .foregroundStyle(FrolicColor.secondaryText)
+                        .accessibilityIdentifier("plan.hostedBy")
+                }
             }
             .padding(.horizontal, 18)
             .padding(.top, 12)
@@ -99,6 +118,7 @@ struct FrolicCell<Leading: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             leading
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .frolicFont(.bodyEmphasis)

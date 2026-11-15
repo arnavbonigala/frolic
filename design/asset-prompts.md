@@ -53,7 +53,7 @@ Ask for each image on its own, 1600 x 1200 landscape unless noted, no text, no f
 - ice-cream: an ice cream window at golden hour, cones with pastel scoops on the counter.
 - karaoke: a small karaoke room with string lights and a glowing screen, mics on a table.
 
-### Time-of-day sky for the Today header (1290 x 900, portrait-friendly, sky only with a soft hill at the bottom edge, no flowers)
+### Time-of-day sky for the Today header (1290 x 900, portrait-friendly, sky with just a soft hill at the bottom edge, no flowers)
 - sky-morning: pale sky, soft peach sunrise glow low on the horizon.
 - sky-afternoon: clear bright blue with two small clouds.
 - sky-golden: warm golden-hour sky, apricot to pink.

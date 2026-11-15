@@ -53,6 +53,7 @@ export function payPage(opts: {
 <script type="module">
 const C = ${cfg.replace(/</g, "\\u003c")};
 const err = document.querySelector("#error"), btn = document.querySelector("#pay");
+const checking = () => { document.querySelector("#form").hidden = true; document.querySelector("#doneText").textContent = "Your bank is still checking this. Frolic shows it the moment it's in."; document.querySelector("#done").hidden = false; };
 const finish = () => { document.querySelector("#form").hidden = true; document.querySelector("#doneText").textContent = C.done; document.querySelector("#done").hidden = false; };
 const params = new URLSearchParams(location.search);
 if (params.get("status") === "succeeded") finish();
@@ -74,10 +75,12 @@ try {
       if (out.clientSecret) {
         const r = await whop.payments.handleNextAction({ clientSecret: out.clientSecret });
         if (r.redirected) return;
-        if (["succeeded", "requires_capture", "processing"].includes(r.status)) return finish();
+        if (["succeeded", "requires_capture"].includes(r.status)) return finish();
+        if (r.status === "processing") return checking();
         throw new Error(r.lastPaymentError?.message || "That didn't go through. Try again.");
       }
-      finish();
+      if (["pending", "processing"].includes(out.status)) return checking();
+      throw new Error("That didn't go through. Try again.");
     } catch (e) {
       if (e && e.code === "payment_request_cancelled") err.textContent = "";
       else err.textContent = (e && e.message) || "That didn't go through. Try again.";

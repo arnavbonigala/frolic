@@ -68,7 +68,7 @@ private struct TodayReadyPreview: View {
                 .multilineTextAlignment(.center)
                 .padding(.top, 8)
                 .accessibilityIdentifier("today.freeRow")
-            SeedPacket(label: "TODAY · SATURDAY", number: "Crew frolic No. 13", image: "hills_sunset", imageDescription: "Sunset at Indian Rock") {
+            SeedPacket(label: "TODAY · SATURDAY", number: "Crew frolic No. 13", image: "plan-sunsets", imageDescription: "Sunset at Indian Rock") {
                 Text("Sunset at Indian Rock")
                     .frolicFont(.title)
                     .foregroundStyle(FrolicColor.ink)
@@ -84,7 +84,7 @@ private struct TodayReadyPreview: View {
                 Button("I'm down") {}
                     .buttonStyle(.frolicPrimary)
                     .accessibilityIdentifier("today.down")
-                Button("Only with…") {}
+                Button("Only if…") {}
                     .buttonStyle(.frolicSecondary)
                     .accessibilityIdentifier("today.onlyIf")
             }

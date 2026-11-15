@@ -11,6 +11,7 @@ export function keikiEnv() {
     apiKey: env.KEIKI_API_KEY,
     signingSecret: env.KEIKI_TOOL_SIGNING_SECRET,
     agentId: env.KEIKI_AGENT_ID,
+    imFree: env.KEIKI_IM_FREE === "1" || env.KEIKI_IM_FREE === "true",
     heroBaseUrl: env.FROLIC_HERO_BASE_URL?.replace(/\/$/, ""),
     dedicatedLine: flag(env.KEIKI_DEDICATED_LINE),
   };

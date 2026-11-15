@@ -11,6 +11,7 @@ type ChargeResult = { ok: true; status: string; clientSecret: string | null } | 
 type BeginResult =
   | { ok: true; shareId: Id<"shares">; frolicId: Id<"frolics">; userId: Id<"users">; kind: "deposit" | "chipIn"; amountCents: number; title: string }
   | { ok: false; message: string };
+type DropTarget = { productId: string; planId: string; priceCents: number; dropId: Id<"drops"> } | null;
 type ShareView = { status: string; kind: "deposit" | "chipIn"; whopPaymentId: string | null; updatedAt: number; capturable: boolean } | null;
 
 function errorText(e: unknown): string {
@@ -33,6 +34,22 @@ export const charge = internalAction({
     if (!begun.ok) return begun;
     const cfg = whopConfig();
     const isHold = begun.kind === "deposit";
+    const target: DropTarget = isHold ? null : await ctx.runQuery(internal.drops.chargeTarget, { frolicId: begun.frolicId });
+    const productId = target?.productId ?? (isHold ? cfg.holdProductId : cfg.plansProductId);
+    const purchase =
+      target && target.priceCents === begun.amountCents
+        ? { variant_id: target.planId }
+        : {
+            variant: {
+              currency: "usd",
+              initial_price: begun.amountCents / 100,
+              billing_type: "one_time",
+              visibility: "hidden",
+              product_id: productId,
+              title: isHold ? "Frolic hold" : `${begun.title}, your share`,
+            },
+          };
+    const startedAt = Date.now();
     try {
       const payment = await whop.createPayment(
         {
@@ -40,26 +57,64 @@ export const charge = internalAction({
           confirmation_token: confirmationToken,
           capture: !isHold,
           return_url: payUrl(token),
-          metadata: { shareId: begun.shareId, frolicId: begun.frolicId, userId: begun.userId, kind: begun.kind },
-          variant: {
-            currency: "usd",
-            initial_price: begun.amountCents / 100,
-            billing_type: "one_time",
-            visibility: "hidden",
-            product_id: isHold ? cfg.holdProductId : cfg.plansProductId,
-            title: isHold ? "Frolic hold" : `${begun.title}, your share`,
-          },
+          metadata: { shareId: begun.shareId, frolicId: begun.frolicId, userId: begun.userId, kind: begun.kind, ...(target ? { dropId: target.dropId } : {}) },
+          ...purchase,
         },
         `${begun.shareId}:charge:${confirmationToken}`,
       );
       const { signal } = await readSignal(payment);
       await ctx.runMutation(internal.whop.money.recordCharge, { shareId: begun.shareId, whopPaymentId: payment.id, signal });
       await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId: begun.shareId });
+      if (signal === "failed" || signal === "canceled") return { ok: false as const, message: "That didn't go through. Try again." };
       return { ok: true as const, status: payment.substatus ?? payment.status ?? "pending", clientSecret: payment.client_secret ?? null };
     } catch (e) {
+      const unknown = !(e instanceof WhopError) || !e.status;
+      const lost = unknown ? await findLost(begun.shareId, productId, startedAt) : null;
+      if (lost) {
+        const { signal } = await readSignal(lost);
+        await ctx.runMutation(internal.whop.money.recordCharge, { shareId: begun.shareId, whopPaymentId: lost.id, signal });
+        await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId: begun.shareId });
+        return { ok: true as const, status: lost.substatus ?? lost.status ?? "pending", clientSecret: lost.client_secret ?? null };
+      }
       await ctx.runMutation(internal.whop.money.chargeFailed, { shareId: begun.shareId, message: errorText(e) });
+      if (unknown) {
+        await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.adoptLost, {
+          shareId: begun.shareId,
+          productId,
+          since: startedAt,
+        });
+      }
       return { ok: false as const, message: "That didn't go through. Try again." };
     }
+  },
+});
+
+const LIVE = new Set(["authorized", "succeeded"]);
+
+async function findLost(shareId: Id<"shares">, productId: string, since: number): Promise<WhopPayment | null> {
+  try {
+    const found = await whop.listPayments({
+      account_id: whopConfig().accountId,
+      product_id: productId,
+      created_after: new Date(since - 60 * 1000).toISOString(),
+      first: "50",
+    });
+    return found.find((p) => p.metadata?.shareId === shareId && LIVE.has(signalFrom(p.status, p.substatus))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export const adoptLost = internalAction({
+  args: { shareId: v.id("shares"), productId: v.string(), since: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { shareId, productId, since }): Promise<null> => {
+    const lost = await findLost(shareId, productId, since);
+    if (!lost) return null;
+    const { signal } = await readSignal(lost);
+    await ctx.runMutation(internal.whop.money.recordCharge, { shareId, whopPaymentId: lost.id, signal });
+    await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId });
+    return null;
   },
 });
 

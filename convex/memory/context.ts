@@ -47,9 +47,7 @@ const text = (r: SearchResult) => r.memory ?? r.chunk ?? "";
 
 export async function buildContext(client: MemoryClient, namespace: string, stats: TagStat[]): Promise<MemoryContext> {
   const suppressed = suppressedTags(stats);
-  const results = await client
-    .search(namespace, { query: "best night the group had together", filter: nightFilter, limit: 5, searchMode: "hybrid" })
-    .catch(() => [] as SearchResult[]);
+  const results = await client.search(namespace, { query: "best night the group had together", filter: nightFilter, limit: 5, searchMode: "hybrid" });
   return {
     likedTags: stats.filter((s) => s.liked > 0 && !suppressed.includes(s.tag)).sort((a, b) => b.liked - a.liked).map((s) => s.tag),
     skipped: stats.filter((s) => s.skipped > 0).sort((a, b) => b.skipped - a.skipped).map((s) => ({ tag: s.tag, count: s.skipped })),
@@ -82,7 +80,11 @@ export async function findWhyThis(client: MemoryClient, namespace: string, tags:
     searchMode: "hybrid",
   });
   const lower = tags.map((t) => t.toLowerCase());
-  const hit = results.find((r) => lower.some((t) => text(r).toLowerCase().includes(t))) ?? null;
+  const dayOf = (r: SearchResult) => (typeof r.metadata?.day === "string" ? r.metadata.day : "");
+  const hit =
+    results
+      .filter((r) => lower.some((t) => text(r).toLowerCase().includes(t)))
+      .sort((a, b) => dayOf(b).localeCompare(dayOf(a)))[0] ?? null;
   if (!hit) return null;
   const related = [...(hit.included?.related?.parents ?? []), ...(hit.included?.related?.siblings ?? [])].map((m) => m.memory ?? "").filter(Boolean);
   return { memoryId: hit.id, text: text(hit), because: related.slice(0, 2) };

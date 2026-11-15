@@ -14,7 +14,7 @@ struct CrewScreen: View {
                 if shown == .ready {
                     ScreenTitle(title: "Sunset Crew", subtitle: "5 of you · the crew started in September", identifier: "crew")
                 } else {
-                    ScreenTitle(title: "Crew", identifier: "crew")
+                    ScreenTitle(title: "Crew")
                 }
                 PhasedContent(
                     phase: shown,
