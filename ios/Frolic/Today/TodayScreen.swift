@@ -242,7 +242,7 @@ private struct TodayPhaseView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Group {
+        ZStack {
             switch store.scene {
             case .none:
                 TodayNoPlanStart(store: store)

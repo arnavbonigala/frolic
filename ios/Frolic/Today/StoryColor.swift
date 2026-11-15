@@ -27,31 +27,89 @@ enum StoryColor {
 
 struct NightStars: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    fileprivate struct Star {
+        var point: CGPoint
+        var radius: Double
+        var alpha: Double
+    }
+
+    private static let twinklers: Set<Int> = [3, 10, 17]
 
     var body: some View {
-        Canvas { context, size in
-            guard scheme == .dark else { return }
-            var seed: UInt64 = 0xC0FFEE1234
-            func next() -> Double {
-                seed = seed &* 6364136223846793005 &+ 1442695040888963407
-                return Double(seed >> 33) / Double(1 << 31)
+        GeometryReader { proxy in
+            let stars = Self.stars(in: proxy.size)
+            ZStack(alignment: .topLeading) {
+                Canvas { context, _ in
+                    for (index, star) in stars.enumerated() where reduceMotion || !Self.twinklers.contains(index) {
+                        context.fill(Self.path(star), with: .color(Color(hex: 0xFFE7A8).opacity(star.alpha)))
+                    }
+                }
+                if !reduceMotion {
+                    ForEach(Array(Self.twinklers.sorted().enumerated()), id: \.element) { order, index in
+                        if index < stars.count {
+                            Twinkle(star: stars[index], period: 4.6 + Double(order) * 1.3, delay: Double(order) * 1.7)
+                        }
+                    }
+                }
             }
-            let band: CGFloat = 26
-            for index in 0..<22 {
-                let side = next()
-                let x = index.isMultiple(of: 2) ? 4 + side * band : size.width - 4 - side * band
-                let y = next() * size.height
-                let r = 0.8 + next() * 1.8
-                var star = Path()
-                star.move(to: CGPoint(x: x, y: y - r * 2))
-                star.addQuadCurve(to: CGPoint(x: x + r * 2, y: y), control: CGPoint(x: x, y: y))
-                star.addQuadCurve(to: CGPoint(x: x, y: y + r * 2), control: CGPoint(x: x, y: y))
-                star.addQuadCurve(to: CGPoint(x: x - r * 2, y: y), control: CGPoint(x: x, y: y))
-                star.addQuadCurve(to: CGPoint(x: x, y: y - r * 2), control: CGPoint(x: x, y: y))
-                context.fill(star, with: .color(Color(hex: 0xFFE7A8).opacity(0.18 + next() * 0.35)))
-            }
+            .opacity(scheme == .dark ? 1 : 0)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private static func stars(in size: CGSize) -> [Star] {
+        var seed: UInt64 = 0xC0FFEE1234
+        func next() -> Double {
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return Double(seed >> 33) / Double(1 << 31)
+        }
+        let band: CGFloat = 26
+        return (0..<22).map { index in
+            let side = next()
+            let x = index.isMultiple(of: 2) ? 4 + side * band : size.width - 4 - side * band
+            let y = next() * size.height
+            let r = 0.8 + next() * 1.8
+            return Star(point: CGPoint(x: x, y: y), radius: r, alpha: 0.18 + next() * 0.35)
+        }
+    }
+
+    fileprivate static func path(_ star: Star) -> Path {
+        let x = star.point.x, y = star.point.y, r = star.radius
+        var path = Path()
+        path.move(to: CGPoint(x: x, y: y - r * 2))
+        path.addQuadCurve(to: CGPoint(x: x + r * 2, y: y), control: CGPoint(x: x, y: y))
+        path.addQuadCurve(to: CGPoint(x: x, y: y + r * 2), control: CGPoint(x: x, y: y))
+        path.addQuadCurve(to: CGPoint(x: x - r * 2, y: y), control: CGPoint(x: x, y: y))
+        path.addQuadCurve(to: CGPoint(x: x, y: y - r * 2), control: CGPoint(x: x, y: y))
+        return path
+    }
+
+    private struct Twinkle: View {
+        var star: Star
+        var period: Double
+        var delay: Double
+        @State private var lit = false
+
+        var body: some View {
+            Self.shape(star)
+                .fill(Color(hex: 0xFFE7A8))
+                .frame(width: star.radius * 4, height: star.radius * 4)
+                .scaleEffect(lit ? 1.35 : 0.8)
+                .opacity(lit ? min(1, star.alpha + 0.45) : star.alpha * 0.5)
+                .position(star.point)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: period / 2).repeatForever(autoreverses: true).delay(delay)) {
+                        lit = true
+                    }
+                }
+        }
+
+        private static func shape(_ star: Star) -> some Shape {
+            let r = star.radius
+            return NightStars.path(Star(point: CGPoint(x: r * 2, y: r * 2), radius: r, alpha: 1))
+        }
     }
 }

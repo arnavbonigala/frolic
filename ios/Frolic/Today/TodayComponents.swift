@@ -22,6 +22,8 @@ struct TodayPacket<Content: View>: View {
     @ViewBuilder var content: Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var landed = 0
+    @State private var declined = 0
+    @State private var planted = 0
 
     private let stems: [CGFloat] = [30, 12, 38, 20, 26]
     private let heroHeight: CGFloat = 352
@@ -49,6 +51,11 @@ struct TodayPacket<Content: View>: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.plan.card")
+        .task(id: buds.count) {
+            guard !buds.isEmpty else { return }
+            try? await Task.sleep(for: .seconds(0.75))
+            planted += 1
+        }
     }
 
     private var flickable: Bool { onFlickUp != nil }
@@ -72,6 +79,7 @@ struct TodayPacket<Content: View>: View {
                 }
             }
             .sensoryFeedback(.success, trigger: landed)
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.5), trigger: declined)
         } else {
             body
                 .padding(.horizontal, 16)
@@ -87,20 +95,21 @@ struct TodayPacket<Content: View>: View {
                     .font(.system(size: size * 0.36, weight: .bold, design: .rounded))
                     .foregroundStyle(glyph)
                     .frame(width: size, height: size)
-                    .glassEffect(filled ? .regular.tint(fill).interactive() : .regular.interactive(), in: .circle)
+                    .glassEffect(filled ? .regular.tint(fill) : .regular.interactive(), in: .circle)
                     .shadow(color: filled ? fill.opacity(0.45) : .clear, radius: 18, y: 6)
+                    .overlay { if filled { PetalBurst(trigger: landed) } }
                     .frame(width: 86, height: 76)
                 Text(title)
                     .todayFont(14, .bold, rounded: true, relativeTo: .footnote)
                     .foregroundStyle(StoryColor.ink)
             }
         }
-        .buttonStyle(PressScale())
+        .buttonStyle(PressScale(squish: filled))
         .accessibilityLabel(title)
     }
 
     private func answer(down: Bool) {
-        landed += 1
+        if down { landed += 1 } else { declined += 1 }
         (down ? onFlickUp : onFlickDown)?()
     }
 
@@ -171,7 +180,7 @@ struct TodayPacket<Content: View>: View {
                 VStack(spacing: 8) {
                     HStack(alignment: .bottom, spacing: 0) {
                         ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { index, person in
-                            TodayFlower(person: person, radius: 26, stem: stems[index % stems.count] + 10, swayDelay: Double(index) * 0.6)
+                            TodayFlower(person: person, radius: 26, stem: stems[index % stems.count] + 10, swayDelay: Double(index) * 0.6, animatesIn: buds.isEmpty, appearDelay: 0.15 + Double(index) * 0.09)
                                 .frame(maxWidth: .infinity)
                         }
                         if flickable, buds.isEmpty, me != nil {
@@ -192,8 +201,9 @@ struct TodayPacket<Content: View>: View {
                             .accessibilityHidden(true)
                         }
                         ForEach(buds) { person in
-                            TodayFlower(person: person, state: .bud, radius: 22, stem: 26, animatesIn: true)
+                            TodayFlower(person: person, state: .bud, radius: 22, stem: 26, animatesIn: true, appearDelay: 0.2)
                                 .frame(maxWidth: .infinity)
+                                .overlay(alignment: .top) { PetalBurst(trigger: planted).padding(.top, 16) }
                                 .transition(.scale(scale: 0.2, anchor: .bottom).combined(with: .opacity))
                                 .accessibilityIdentifier("today.bud")
                         }
@@ -506,9 +516,44 @@ struct TodayNotice: View {
 }
 
 private struct PressScale: ButtonStyle {
+    var squish = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
+        let pressed = configuration.isPressed && !reduceMotion
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+            .scaleEffect(x: pressed ? (squish ? 0.9 : 0.93) : 1, y: pressed ? (squish ? 0.84 : 0.93) : 1, anchor: .bottom)
+            .opacity(configuration.isPressed && reduceMotion ? 0.7 : 1)
+            .animation(pressed ? .spring(response: 0.2, dampingFraction: 0.8) : .spring(response: 0.42, dampingFraction: 0.5), value: configuration.isPressed)
+    }
+}
+
+private struct PetalBurst: View {
+    var trigger: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let colors = FlowerColor.allCases.map(\.petal)
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<9, id: \.self) { index in
+                Capsule()
+                    .fill(Self.colors[index % Self.colors.count])
+                    .frame(width: 9, height: 16)
+                    .keyframeAnimator(initialValue: 0.0, trigger: trigger) { petal, t in
+                        let angle = Double(index) / 9 * 2 * .pi + 0.3
+                        let reach = 52 + Double(index % 3) * 9
+                        petal
+                            .rotationEffect(.radians(angle + t * 1.6))
+                            .scaleEffect(t > 0 ? 0.5 + 0.6 * (1 - t) : 0)
+                            .offset(x: cos(angle) * reach * t, y: sin(angle) * reach * t + 18 * t * t)
+                            .opacity(t > 0 && !reduceMotion ? 1 - t * t : 0)
+                    } keyframes: { _ in
+                        CubicKeyframe(1, duration: 0.6)
+                        MoveKeyframe(0)
+                    }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
