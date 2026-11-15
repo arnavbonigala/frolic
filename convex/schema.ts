@@ -141,7 +141,7 @@ export default defineSchema({
   plans: defineTable({
     groupId: v.id("groups"),
     day: v.string(),
-    kind: v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo")),
+    kind: v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo"), v.literal("free")),
     placeId: v.id("places"),
     backupPlaceId: v.optional(v.id("places")),
     title: v.string(),
@@ -212,7 +212,7 @@ export default defineSchema({
   planRuns: defineTable({
     groupId: v.id("groups"),
     day: v.string(),
-    kind: v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo")),
+    kind: v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo"), v.literal("free")),
     workflowId: v.string(),
     status: v.union(v.literal("running"), v.literal("done"), v.literal("fallback")),
     candidates: v.array(v.string()),
@@ -241,6 +241,8 @@ export default defineSchema({
     endsAt: v.optional(v.number()),
     snapAt: v.optional(v.number()),
     workflowId: v.optional(v.string()),
+    origin: v.optional(v.union(v.literal("daily"), v.literal("free"))),
+    startedBy: v.optional(v.id("users")),
   })
     .index("by_groupId_and_day", ["groupId", "day"])
     .index("by_status_and_deadline", ["status", "deadline"]),
