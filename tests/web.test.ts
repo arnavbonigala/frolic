@@ -11,7 +11,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function planned(t: ReturnType<typeof makeT>, crew: Crew): Promise<Crew> {
+async function planned(t: ReturnType<typeof makeT>, crew: Crew, tags: string[] = ["sunset"]): Promise<Crew> {
   const now = Date.now();
   const planId = await t.run(async (ctx) => {
     const placeId = await ctx.db.insert("places", {
@@ -21,7 +21,7 @@ async function planned(t: ReturnType<typeof makeT>, crew: Crew): Promise<Crew> {
       lat: 37.8925,
       lng: -122.2727,
       cost: 0,
-      tags: ["sunset"],
+      tags,
       hours: [],
       indoor: false,
       sober: true,
@@ -130,7 +130,7 @@ describe("what the page can see", () => {
     const crew = await planned(t, await setupCrew(t, ["Maya", "Dev"]));
     const link = await shareLink(t, crew);
     const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Guest") });
-    expect(["https://images.example/hills_sunset.jpg", "/p/hero/plan-sunsets.png"]).toContain(view.card?.imageUrl);
+    expect(view.card?.imageUrl).toBe("/p/hero/plan-sunsets.jpg");
     expect(heroKey(["Sunsets"])).toBe("plan-sunsets");
     expect(heroKey(["Late-night food"])).toBe("plan-late-night-food");
     expect(heroKey(["Games"])).toBe("plan-games");
@@ -244,11 +244,28 @@ describe("secrecy until revealAt", () => {
 
     const revealed = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Priya") });
     expect(revealed.phase).toBe("on");
-    expect(revealed.mates).toEqual(["Dev"]);
+    expect(revealed.mates).toEqual([{ name: "Dev", avatarUrl: null }]);
     expect(revealed.me).toBe("Priya");
     expect(revealed.meet).toBe("Top of Indian Rock");
     expect(revealed.revealAt).toBeGreaterThanOrEqual(NOON + 1500);
     expect(revealed.revealAt).toBeLessThanOrEqual(NOON + 1600);
+  });
+
+  test("a mate's flower carries their avatar when they have one", async () => {
+    const t = makeT();
+    const crew = await planned(t, await setupCrew(t, ["Maya", "Dev", "Jordan"]));
+    const link = await shareLink(t, crew);
+    const storageId = await t.run(
+      async (ctx) => await ctx.storage.store(new Blob([new Uint8Array([137, 80, 78, 71])])),
+    );
+    await t.run(async (ctx) => await ctx.db.patch(crew.ids.Dev, { photoId: storageId }));
+    await t.mutation(api.web.share.join, { code: link.code, deviceToken: token("Priya"), name: "Priya" });
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Priya") });
+    expect(view.mates).toHaveLength(1);
+    expect(view.mates[0].name).toBe("Dev");
+    expect(view.mates[0].avatarUrl).toContain("http");
   });
 
   test("nothing in the page's own facts exposes another guest's yes", async () => {
@@ -261,7 +278,7 @@ describe("secrecy until revealAt", () => {
     expect(JSON.stringify(before)).not.toContain("Sam");
     await flipDue(t);
     const after = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Priya") });
-    expect(after.mates).toEqual(["Sam"]);
+    expect(after.mates).toEqual([{ name: "Sam", avatarUrl: null }]);
   });
 });
 
@@ -327,16 +344,26 @@ describe("http routes", () => {
     expect(html.length).toBeLessThan(120000);
   });
 
-  test("a plan hero is served with a year of cache, or a clean 404 before the art lands", async () => {
+  test("a painted plan hero is served with a year of cache and never leaks a path", async () => {
     const t = makeT();
-    const hero = await t.fetch("/p/hero/plan-sunsets.png");
-    if (hero.status === 200) {
-      expect(hero.headers.get("content-type")).toBe("image/png");
-      expect(hero.headers.get("cache-control")).toContain("immutable");
-    } else {
-      expect(hero.status).toBe(404);
-    }
+    const hero = await t.fetch("/p/hero/plan-sunsets.jpg");
+    expect(hero.status).toBe(200);
+    expect(hero.headers.get("content-type")).toBe("image/jpeg");
+    expect(hero.headers.get("cache-control")).toContain("immutable");
+    const bytes = new Uint8Array(await hero.arrayBuffer());
+    expect(bytes[0]).toBe(0xff);
+    expect(bytes[1]).toBe(0xd8);
+    expect(bytes.length).toBeGreaterThan(20000);
+    expect((await t.fetch("/p/hero/nosuchhero.jpg")).status).toBe(404);
     expect((await t.fetch("/p/hero/../../etc/passwd")).status).toBe(404);
+  });
+
+  test("a place no painted hero covers falls back to its own photo", async () => {
+    const t = makeT();
+    const crew = await planned(t, await setupCrew(t, ["Maya"]), ["darts"]);
+    const link = await shareLink(t, crew);
+    const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Guest") });
+    expect(view.card?.imageUrl).toBe("https://images.example/hills_sunset.jpg");
   });
 
   test("the preview image is a real png", async () => {

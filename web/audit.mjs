@@ -2,6 +2,7 @@ import puppeteer from "puppeteer-core";
 import { ConvexClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { execFileSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 
 const SITE = process.env.SITE ?? "http://127.0.0.1:3213";
 const CLOUD = process.env.CLOUD ?? "http://127.0.0.1:3212";
@@ -51,6 +52,7 @@ const audit = async (name, page) => {
       pageOverflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       buttons,
       inputHeight: input ? Math.round(input.getBoundingClientRect().height) : null,
+      hasError: !!document.querySelector(".err"),
       bg: getComputedStyle(document.body).backgroundColor,
       appWidth: app ? Math.round(app.getBoundingClientRect().width) : null,
     };
@@ -60,11 +62,26 @@ const audit = async (name, page) => {
   for (const b of result.buttons) if (b.height < 44) problems.push(`${name}: tap target ${b.height}px "${b.text}"`);
   if (result.inputHeight !== null && result.inputHeight < 44) problems.push(`${name}: input under 44px`);
   if (/—|!/.test(result.text)) problems.push(`${name}: copy has an em dash or exclamation`);
+  const img = await page.evaluate(() => {
+    const el = document.querySelector(".win img");
+    return el ? { src: el.getAttribute("src"), loaded: el.complete && el.naturalWidth > 0 } : null;
+  });
+  audited[audited.length - 1].image = img;
+  if (img && !img.loaded) problems.push(`${name}: the card image did not load (${img.src})`);
+  if (name === "planted") {
+    const count = (result.text.match(/Maya/g) || []).length;
+    if (count !== 1) problems.push(`${name}: the guest's name appears ${count} times, expected once`);
+  }
+  if (name === "on" && !result.text.includes("You and Dev")) {
+    problems.push("on: the reveal does not read You and Dev");
+  }
   return result;
 };
 
 const fresh = async () => {
   const page = await browser.newPage();
+  await page.goto(`${SITE}/p/x`);
+  await page.evaluate(() => localStorage.clear());
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -119,6 +136,23 @@ for (const mode of ["drifted", "done"]) {
   await page.goto(`${SITE}/p/nosuchcod`, { waitUntil: "networkidle0" });
   await sleep(400);
   await audit("invalid", page);
+  await page.close();
+}
+
+{
+  const { code } = newLink("open");
+  const html = await (await fetch(`${SITE}/p/${code}`)).text();
+  writeFileSync("/tmp/frolic-audit-error.html", html.replace(/"cloudUrl":"[^"]*"/, '"cloudUrl":"http://127.0.0.1:9/"'));
+  const { page } = await fresh();
+  await page.goto("file:///tmp/frolic-audit-error.html", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#f");
+  await page.type("#wn", "Maya");
+  await page.click(".btn");
+  await page.waitForFunction(() => document.body.innerText.includes("Try again"), { timeout: 20000 });
+  await sleep(300);
+  const errored = await audit("error", page);
+  if (!errored.hasError) problems.push("error: the page does not say the yes failed");
+  if (!errored.text.includes("Try again")) problems.push("error: no visible retry");
   await page.close();
 }
 

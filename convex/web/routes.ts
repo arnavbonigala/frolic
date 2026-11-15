@@ -60,12 +60,12 @@ export function registerWebRoutes(http: ReturnType<typeof httpRouter>): void {
     pathPrefix: "/p/hero/",
     method: "GET",
     handler: httpAction(async (_ctx, req) => {
-      const key = new URL(req.url).pathname.slice("/p/hero/".length).replace(/\.png$/, "");
+      const key = new URL(req.url).pathname.slice("/p/hero/".length).replace(/\.(png|jpg)$/, "");
       const bytes = heroBytes(key);
       if (!bytes) return new Response("Not found", { status: 404 });
       return new Response(bytes.buffer as ArrayBuffer, {
         headers: {
-          "Content-Type": "image/png",
+          "Content-Type": "image/jpeg",
           "Cache-Control": "public, max-age=31536000, immutable",
         },
       });
