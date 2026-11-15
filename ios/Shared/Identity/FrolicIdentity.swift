@@ -28,6 +28,18 @@ final class FrolicIdentity {
     private var pinnedGroup: String?
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment, defaults: UserDefaults = AppGroup.defaults) {
+        #if DEBUG
+        if environment["FROLIC_RESET"] == "1" {
+            SecItemDelete(Self.baseQuery as CFDictionary)
+            for key in [Self.tokenDefaultsKey, Self.groupDefaultsKey, Self.crewsDefaultsKey, "session.groupId", "session.deviceToken", "session.userId", "session.name"] {
+                defaults.removeObject(forKey: key)
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+            for key in ["frolic.onboarding.complete", "frolic.onboarding.groupId", "frolic.onboarding.firstName", "frolic.onboarding.inviteCode", "frolic.onboarding.freeState"] {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        #endif
         if let token = Self.validToken(environment[Self.tokenEnvironmentKey]) {
             deviceToken = token
         } else if let token = Self.validToken(Self.readKeychain()) ?? Self.validToken(defaults.string(forKey: Self.tokenDefaultsKey)) {
