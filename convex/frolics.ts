@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
-import { findAttendee, getFrolic, goingAttendees, putAttendee, sitOutAndRefill } from "./lib/core";
+import { findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOutAndRefill } from "./lib/core";
 import { requireMember, userFromToken } from "./lib/identity";
 import { rateLimiter } from "./lib/rateLimits";
 import { timeWindow } from "./schema";
@@ -303,6 +303,7 @@ export const sitOut = mutation({
     const user = await userFromToken(ctx, args.deviceToken);
     const frolic = await getFrolic(ctx, args.frolicId);
     await requireMember(ctx, frolic.groupId, user._id);
+    if (frolic.status === "open") return await removeTap(ctx, user._id, frolic._id, false);
     if (frolic.status !== "on") return null;
     const hop = await ctx.db
       .query("hopIns")

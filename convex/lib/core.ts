@@ -279,10 +279,11 @@ export async function removeTap(
   ctx: MutationCtx,
   userId: Id<"users">,
   frolicId: Id<"frolics">,
+  limited = true,
 ): Promise<null> {
   const frolic = await getFrolic(ctx, frolicId);
   await requireMember(ctx, frolic.groupId, userId);
-  await rateLimiter.limit(ctx, "tap", { key: userId, throws: true });
+  if (limited) await rateLimiter.limit(ctx, "tap", { key: userId, throws: true });
   const existing = await ctx.db
     .query("taps")
     .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))

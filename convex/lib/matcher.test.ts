@@ -115,6 +115,15 @@ describe("matcher", () => {
     expect(m?.startsAt).toBe(NOW + 2 * H + 5 * 60 * 1000);
   });
 
+  test("a tap window that opens before the frolic window starts at the frolic window", () => {
+    const m = run([win("maya", NOW, NOW + 3 * H), win("dev", NOW, NOW + 3 * H)]);
+    expect(m?.startsAt).toBe(W.start);
+  });
+
+  test("a tap window past the frolic window cannot stretch it", () => {
+    expect(run([win("maya", NOW + 5.5 * H, NOW + 8 * H), win("dev", NOW + 5.5 * H, NOW + 8 * H)])).toBeNull();
+  });
+
   test("a window that already closed cannot match", () => {
     expect(run([win("maya", NOW - 3 * H, NOW - H), win("dev", NOW - 3 * H, NOW - H)])).toBeNull();
   });
