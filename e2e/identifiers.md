@@ -197,6 +197,7 @@ The empty garden reads "Nothing planted yet" and "Your first flower grows the fi
 | Identifier | Visible label |
 | - | - |
 | `you.title` | your name |
+| `you.count.error` | Couldn't load your frolics. Tap to try again. The header line while the count is unknown, tap it to resubscribe |
 | `you.privateHeader` | Your limits |
 | `you.budget`, `you.budget.free`, `.ten`, `.twentyFive`, `.any` | Spend up to: Free, $10, $25, Any |
 | `you.energy`, `you.energy.chill`, `.anything` | Energy: Chill, Down for anything |

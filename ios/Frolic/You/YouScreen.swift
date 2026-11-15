@@ -151,11 +151,32 @@ private struct YouContent: View {
         }
     }
 
+    @ViewBuilder
+    private var identity: some View {
+        if let line = identityLine {
+            Text(line)
+                .frolicFont(.subheadline)
+                .foregroundStyle(FrolicColor.secondaryText)
+        } else if model.countPhase == .failed, model.crewName != nil {
+            Button {
+                model.retryCount(backend: backend)
+            } label: {
+                Text("Couldn't load your frolics. Tap to try again.")
+                    .frolicFont(.subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("you.count.error")
+        }
+    }
+
     private var identityLine: String? {
         if totals.crews > 1 {
             return "\(totals.frolics) \(totals.frolics == 1 ? "frolic" : "frolics") across \(totals.crews) crews"
         }
         guard let crew = model.crewName else { return nil }
+        if model.countPhase == .failed { return nil }
         guard let count = model.wentCount else { return crew }
         if count == 0 { return "Your first frolic is one tap away." }
         return "\(count) \(count == 1 ? "frolic" : "frolics") with \(crew)"
@@ -170,11 +191,7 @@ private struct YouContent: View {
                 .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("you.title")
-            if let line = identityLine {
-                Text(line)
-                    .frolicFont(.subheadline)
-                    .foregroundStyle(FrolicColor.secondaryText)
-            }
+            identity
         }
         .frame(maxWidth: .infinity)
     }
