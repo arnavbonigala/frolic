@@ -1,0 +1,27 @@
+test:
+  metadata:
+    name: "frolic-share-code"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "join"
+      - "feature-8"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro Max"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/share"
+    - type: "validation"
+      step_description: "The screen reads \"Your crew is ready\" with \"Anyone with this code can join.\""
+    - type: "validation"
+      step_description: "A row at the identifier share.link shows the crew's code"
+    - type: "validation"
+      step_description: "A \"Share invite link\" button and a \"Go to Today\" button are visible"
+    - type: "instructions"
+      step_description: "Tap \"Go to Today\""
+    - type: "validation"
+      step_description: "The bottom tab bar shows Today, Crew, Garden and You with Today selected"
