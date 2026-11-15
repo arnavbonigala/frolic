@@ -5,7 +5,7 @@ import { internal } from "../_generated/api";
 import { authenticate, identify, sha256Hex } from "./auth";
 import type { Identity } from "./auth";
 import { parseSharedLocation } from "./lib";
-import { checkoutLinkAction, checkoutLinkMutation } from "./refs";
+import { checkoutLink } from "./refs";
 import { keikiEnv } from "./env";
 
 export const TOOL_NAMES = [
@@ -180,23 +180,12 @@ async function run(ctx: ActionCtx, tool: ToolName, call: Call): Promise<unknown>
     case "pay_deposit": {
       const target = await ctx.runQuery(internal.keiki.tools.depositTarget, { phone: phoneOf(call), now });
       if (!target.ok) return target.body;
-      const preflightAmount = target.amountCents === null ? null : "$" + (target.amountCents / 100).toFixed(target.amountCents % 100 ? 2 : 0);
-      if (call.context.preflight === true) {
-        if (target.amountCents === null) return { ok: false, error: "no_deposit", say: "This plan has no deposit." };
-        return { ok: true, preflight: true, amount: preflightAmount };
-      }
-      const args = { userId: target.userId, frolicId: target.frolicId };
-      let link: string | { url?: string; amountCents?: number } | null;
-      try {
-        link = await ctx.runMutation(checkoutLinkMutation, args);
-      } catch {
-        link = await ctx.runAction(checkoutLinkAction, args);
-      }
-      const url = typeof link === "string" ? link : link?.url;
-      if (!url) return { ok: false, error: "no_deposit", say: "This plan has no deposit to pay." };
-      const cents = typeof link === "object" && link?.amountCents !== undefined ? link.amountCents : target.amountCents;
-      const amount = cents === null ? null : "$" + (cents / 100).toFixed(cents % 100 ? 2 : 0);
-      return { ok: true, amount, url, approvedWithFaceId: !!call.context.approval, say: "Send the link once. It comes back when they arrive." };
+      const link = await ctx.runMutation(checkoutLink, { userId: target.userId, frolicId: target.frolicId });
+      if (link.kind === "none") return { ok: false, error: "no_deposit", say: "This plan has nothing to pay." };
+      const amount = "$" + (link.amountCents / 100).toFixed(link.amountCents % 100 ? 2 : 0);
+      const what = link.kind === "hold" ? "a hold that comes back when they arrive" : "their share of the plan";
+      if (call.context.preflight === true) return { ok: true, preflight: true, amount, what };
+      return { ok: true, amount, what, url: link.url, approvedWithFaceId: !!call.context.approval, say: "Send the link once. Say plainly what it is." };
     }
     case "remember":
       return await ctx.runMutation(internal.keiki.tools.remember, { phone: phoneOf(call), text: str(input, "text", 500)!, now });

@@ -30,7 +30,11 @@ function zoneOffset(ms: number, timeZone: string): number {
   return asUtc - Math.floor(ms / 1000) * 1000;
 }
 
-export function parseClock(text: string): { hour: number; minute: number } | null {
+export function localHour(ms: number, timeZone: string): number {
+  return Number(new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", hour: "2-digit" }).format(new Date(ms)));
+}
+
+export function parseClock(text: string, referenceHour = 12): { hour: number; minute: number } | null {
   const match = text.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
   if (!match) return null;
   let hour = Number(match[1]);
@@ -39,7 +43,7 @@ export function parseClock(text: string): { hour: number; minute: number } | nul
   if (minute > 59 || hour > 23) return null;
   if (meridiem === "pm" && hour < 12) hour += 12;
   if (meridiem === "am" && hour === 12) hour = 0;
-  if (!meridiem && hour >= 1 && hour <= 11) hour += 12;
+  if (!meridiem && hour >= 1 && hour <= 11 && hour < referenceHour) hour += 12;
   return { hour, minute };
 }
 

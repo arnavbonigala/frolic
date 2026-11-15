@@ -50,7 +50,7 @@ describe("onDrop", () => {
     expect(rows.every((row) => row.kind === "drop" && row.status === "queued")).toBe(true);
     expect(rows.every((row) => row.text.includes("Sunset at Indian Rock"))).toBe(true);
     const chatRow = rows.find((row) => row.target === CHAT)!;
-    expect(chatRow.text).toContain("It stays secret");
+    expect(chatRow.text).toContain("It stays secret unless someone else is too.");
     expect(rows.find((row) => row.target === SAM_PHONE)!.text).not.toContain("It stays secret");
 
     await advance(t, 0);
@@ -124,6 +124,105 @@ describe("onSnapWindow", () => {
     expect(fetchMock.notices).toHaveLength(1);
     expect(fetchMock.notices[0].text).toContain("Group snap. Send me one photo right now.");
     expect(fetchMock.notices[0].phone).toBe(SAM_PHONE);
+  });
+});
+
+describe("onMoney", () => {
+  it("texts a linked person when their hold comes back", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch();
+
+    await t.mutation(internal.keiki.outbound.onMoney, {
+      frolicId: seed.frolicId,
+      userId: seed.samId,
+      event: "released",
+      amountCents: 300,
+    });
+    const rows = await outboxOf(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ userId: seed.samId, target: SAM_PHONE, status: "queued" });
+
+    await advance(t, 0);
+    expect(fetchMock.notices).toHaveLength(1);
+    expect(fetchMock.notices[0].phone).toBe(SAM_PHONE);
+    expect(fetchMock.notices[0].text.endsWith("Your $3 is back.")).toBe(true);
+  });
+
+  it("texts the fund credit without naming the no-show", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch();
+
+    await t.mutation(internal.keiki.outbound.onMoney, {
+      frolicId: seed.frolicId,
+      userId: seed.samId,
+      event: "noShowCredit",
+      amountCents: 1250,
+    });
+    await advance(t, 0);
+
+    expect(fetchMock.notices).toHaveLength(1);
+    expect(fetchMock.notices[0].phone).toBe(SAM_PHONE);
+    expect(fetchMock.notices[0].text.endsWith("A no-show added $12.50 to the Frolic Fund.")).toBe(true);
+    expect(fetchMock.notices[0].text).not.toContain("Sam");
+    expect(fetchMock.notices[0].text).not.toContain("Rivera");
+  });
+
+  it("sends one text when the same event fires twice", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch();
+    const args = { frolicId: seed.frolicId, userId: seed.samId, event: "released" as const, amountCents: 300 };
+
+    await t.mutation(internal.keiki.outbound.onMoney, args);
+    await t.mutation(internal.keiki.outbound.onMoney, args);
+    expect(await outboxOf(t)).toHaveLength(1);
+
+    await advance(t, 0);
+    expect(fetchMock.notices).toHaveLength(1);
+  });
+
+  it("skips a paused person", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch();
+    await t.run(async (ctx) => {
+      const link = await ctx.db
+        .query("keikiLinks")
+        .withIndex("by_userId", (q) => q.eq("userId", seed.samId))
+        .first();
+      await ctx.db.patch("keikiLinks", link!._id, { paused: true });
+    });
+
+    await t.mutation(internal.keiki.outbound.onMoney, {
+      frolicId: seed.frolicId,
+      userId: seed.samId,
+      event: "noShowCredit",
+      amountCents: 300,
+    });
+    const rows = await outboxOf(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe("skipped");
+
+    await advance(t, 0);
+    expect(fetchMock.notices).toHaveLength(0);
+  });
+});
+
+describe("due", () => {
+  it("holds a queued notice once the person pauses", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch();
+
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    await t.run(async (ctx) => {
+      const link = await ctx.db
+        .query("keikiLinks")
+        .withIndex("by_userId", (q) => q.eq("userId", seed.samId))
+        .first();
+      await ctx.db.patch("keikiLinks", link!._id, { paused: true });
+    });
+    await advance(t, 0);
+
+    expect(fetchMock.notices.map((notice) => notice.phone)).toEqual([ANA_PHONE]);
+    expect((await outboxOf(t)).find((row) => row.userId === seed.samId)?.status).toBe("queued");
   });
 });
 

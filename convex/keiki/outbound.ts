@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "../_generated/server";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import {
@@ -20,7 +20,7 @@ const MAX_ATTEMPTS = 3;
 type Kind = Doc<"keikiOutbox">["kind"];
 type Draft = { key: string; kind: Kind; userId?: Id<"users">; target: string; text: string; notBefore: number };
 
-async function linkOf(ctx: MutationCtx, userId: Id<"users">) {
+async function linkOf(ctx: QueryCtx, userId: Id<"users">) {
   return await ctx.db
     .query("keikiLinks")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -91,7 +91,7 @@ export function dropText(view: { title: string; place: string | null; startsAt: 
   if (view.why) lines.push(view.why);
   const hero = heroLine(view.heroKey);
   if (hero) lines.push(hero);
-  lines.push(inGroup ? "DM me \"down\", \"only if…\", or \"pass\". It stays secret unless someone else is down too." : "Reply \"down\", \"only if…\", or \"pass\".");
+  lines.push(inGroup ? "DM me \"down\", \"only if…\", or \"pass\". It stays secret unless someone else is too." : "Reply \"down\", \"only if…\", or \"pass\".");
   return lines.join("\n");
 }
 
@@ -255,6 +255,29 @@ export const onCollage = internalMutation({
   },
 });
 
+export const onMoney = internalMutation({
+  args: {
+    frolicId: v.id("frolics"),
+    userId: v.id("users"),
+    event: v.union(v.literal("released"), v.literal("noShowCredit")),
+    amountCents: v.number(),
+  },
+  handler: async (ctx, { frolicId, userId, event, amountCents }) => {
+    const amount = "$" + (amountCents / 100).toFixed(amountCents % 100 ? 2 : 0);
+    const base = keikiEnv().heroBaseUrl;
+    const image = base ? base + "/" + (event === "released" ? "whop-deposit-back" : "whop-noshow-coin") + ".png" : null;
+    const text = (event === "released" ? "Your " + amount + " is back." : "A no-show added " + amount + " to the Frolic Fund.") + (image ? "\n" + image : "");
+    const drafts = await personal(ctx, [userId], (user) => ({
+      key: "money:" + event + ":" + frolicId + ":" + user._id,
+      kind: "collage",
+      text,
+      notBefore: Date.now(),
+    }));
+    await enqueue(ctx, frolicId, drafts);
+    return null;
+  },
+});
+
 export const due = internalQuery({
   args: { frolicId: v.id("frolics"), now: v.number() },
   handler: async (ctx, { frolicId, now }) => {
@@ -263,10 +286,17 @@ export const due = internalQuery({
       .query("keikiOutbox")
       .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
       .take(256);
-    return rows
-      .filter((row) => row.status === "queued" && row.notBefore <= now)
-      .filter((row) => (row.kind === "reveal" || row.kind === "hopIn" ? frolic?.revealAt !== undefined && now >= frolic.revealAt : true))
-      .map((row) => ({ id: row._id, kind: row.kind, target: row.target, text: row.text, attempts: row.attempts }));
+    const open = rows.filter((row) => row.status === "queued" && row.notBefore <= now);
+    const sendable: { id: Id<"keikiOutbox">; kind: Kind; target: string; text: string; attempts: number }[] = [];
+    for (const row of open) {
+      if (row.userId) {
+        const link = await linkOf(ctx, row.userId);
+        if (!link || link.paused) continue;
+      }
+      if ((row.kind === "reveal" || row.kind === "hopIn") && !(frolic?.revealAt !== undefined && now >= frolic.revealAt)) continue;
+      sendable.push({ id: row._id, kind: row.kind, target: row.target, text: row.text, attempts: row.attempts });
+    }
+    return sendable;
   },
 });
 

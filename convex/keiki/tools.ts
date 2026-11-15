@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, internalQuery } from "../_generated/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -13,12 +13,14 @@ import {
   isRevealed,
   joinNames,
   linkForPhone,
+  localHour,
   localTimeOnSameDay,
   meetingCoords,
   metersBetween,
   parseClock,
   planDetails,
 } from "./lib";
+import { SNAP_WINDOW_MS } from "../snaps";
 import {
   addSnapAs,
   checkInAs,
@@ -167,6 +169,31 @@ function resolveNames(members: Doc<"users">[], selfId: Id<"users">, names: strin
   return { ids, unknown, ambiguous, crew: others.map((m) => firstName(m.name)) };
 }
 
+const closedAnswer = { ok: false, error: "closed", say: "Today's plan has closed. Tomorrow's drop is the next chance." };
+const slowDownAnswer = { ok: false, error: "slow_down", say: "That was a lot of answers in a row. Try again in a minute." };
+
+type TapWrite = {
+  userId: Id<"users">;
+  frolicId: Id<"frolics">;
+  kind: "down" | "notToday";
+  onlyIf: Id<"users">[];
+  window?: { start: number; end: number };
+};
+
+async function writeTap(ctx: MutationCtx, input: TapWrite) {
+  try {
+    await ctx.runMutation(tapAs, { ...input, source: "imessage" });
+    return null;
+  } catch (error) {
+    if (error instanceof ConvexError) {
+      const data = error.data as { code?: string; kind?: string } | undefined;
+      if (data?.code === "CLOSED") return closedAnswer;
+      if (data?.kind === "RateLimited") return slowDownAnswer;
+    }
+    throw error;
+  }
+}
+
 export const tap = internalMutation({
   args: {
     phone: v.string(),
@@ -183,7 +210,8 @@ export const tap = internalMutation({
     const frolic = open.frolic;
     const wasGoing = open.revealed && (await goingAttendees(ctx, frolic._id)).some((a) => a.userId === me.user._id);
     if (args.kind === "pass") {
-      await ctx.runMutation(tapAs, { userId: me.user._id, frolicId: frolic._id, kind: "notToday", onlyIf: [], source: "imessage" });
+      const failed = await writeTap(ctx, { userId: me.user._id, frolicId: frolic._id, kind: "notToday", onlyIf: [] });
+      if (failed) return failed;
       if (open.revealed) return await afterReveal(ctx, me, frolic._id, "pass", wasGoing);
       return { ok: true, answer: "pass", say: "Confirm in one line. Never ask why." };
     }
@@ -195,20 +223,14 @@ export const tap = internalMutation({
     }
     let window: { start: number; end: number } | undefined;
     if (args.after) {
-      const clock = parseClock(args.after);
+      const clock = parseClock(args.after, localHour(frolic.window.start, me.group.timezone));
       if (!clock) return { ok: false, error: "time_unclear", say: "Ask for a time like 7 or 7:30. Nothing was saved." };
       const start = localTimeOnSameDay(frolic.window.start, clock.hour, clock.minute, me.group.timezone);
       if (start >= frolic.window.end) return { ok: false, error: "too_late", say: "That's after the plan wraps up. Nothing was saved." };
       window = { start: Math.max(start, frolic.window.start), end: frolic.window.end };
     }
-    await ctx.runMutation(tapAs, {
-      userId: me.user._id,
-      frolicId: frolic._id,
-      kind: "down",
-      onlyIf: resolved.ids,
-      ...(window ? { window } : {}),
-      source: "imessage",
-    });
+    const failed = await writeTap(ctx, { userId: me.user._id, frolicId: frolic._id, kind: "down", onlyIf: resolved.ids, ...(window ? { window } : {}) });
+    if (failed) return failed;
     if (open.revealed) return await afterReveal(ctx, me, frolic._id, "down", wasGoing);
     const onlyWithNames = await namesOf(ctx, resolved.ids);
     return {
@@ -260,7 +282,7 @@ export const getReveal = internalQuery({
 
 async function revealedAttendee(ctx: QueryCtx, me: Who, now: number) {
   const frolic = await currentFrolic(ctx, me.group._id);
-  if (!frolic || !isRevealed(frolic, now)) return null;
+  if (!frolic || frolic.status === "done" || !isRevealed(frolic, now)) return null;
   const going = await goingAttendees(ctx, frolic._id);
   if (!going.some((a) => a.userId === me.user._id)) return null;
   return frolic;
@@ -314,7 +336,7 @@ export const snapTarget = internalQuery({
     if (!me) return { ok: false as const, body: notMember };
     const frolic = await revealedAttendee(ctx, me, now);
     if (!frolic) return { ok: false as const, body: notGoing };
-    if (frolic.snapAt === undefined || now < frolic.snapAt) {
+    if (frolic.snapAt === undefined || now < frolic.snapAt - 1000 || now > frolic.snapAt + SNAP_WINDOW_MS) {
       return { ok: false as const, body: { ok: false, error: "snap_not_open", say: "The group snap hasn't started. You'll get a text when it does." } };
     }
     const checkin = await ctx.db
@@ -354,7 +376,7 @@ export const depositTarget = internalQuery({
       .query("shares")
       .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolic._id).eq("userId", me.user._id))
       .first();
-    if (share && (share.status === "paid" || share.status === "refunded")) {
+    if (share && (share.status === "held" || share.status === "released" || share.status === "paid")) {
       return { ok: false as const, body: { ok: false, error: "already_paid", say: "Their deposit is already in." } };
     }
     return { ok: true as const, userId: me.user._id, frolicId: frolic._id, amountCents: plan?.amountCents ?? null };
@@ -447,6 +469,9 @@ export const linkGroupChat = internalMutation({
       .query("keikiGroupChats")
       .withIndex("by_chatId", (q) => q.eq("chatId", chatId))
       .unique();
+    if (existing && existing.groupId !== invite.groupId) {
+      return { ok: false, error: "already_linked", say: "This chat is already connected to another crew." };
+    }
     if (existing) await ctx.db.patch("keikiGroupChats", existing._id, { groupId: invite.groupId });
     else await ctx.db.insert("keikiGroupChats", { chatId, groupId: invite.groupId, linkedAt: now });
     const group = await ctx.db.get("groups", invite.groupId);

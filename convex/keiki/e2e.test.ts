@@ -106,8 +106,13 @@ describe("the demo beat, start to finish", () => {
     expect([...reveal.body.going].sort()).toEqual(["Dev", "Maya"]);
 
     const deposit = await toolResult(t, "pay_deposit", { phone: SAM_PHONE });
-    expect(deposit.body).toMatchObject({ ok: true, amount: "$5", approvedWithFaceId: false });
-    expect(deposit.body.url).toContain("https://whop.com/checkout/");
+    expect(deposit.body).toMatchObject({
+      ok: true,
+      amount: "$25",
+      what: "their share of the plan",
+      approvedWithFaceId: false,
+    });
+    expect(deposit.body.url).toMatch(/\/pay\/[0-9a-f]{32}$/);
 
     const way = await toolResult(t, "on_my_way", { phone: SAM_PHONE, input: { minutes: 12 } });
     expect(way.body).toMatchObject({ ok: true, minutes: 12 });

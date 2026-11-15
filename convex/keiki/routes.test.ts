@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
-import { ANA_PHONE, SAM_PHONE, linkPhone, nowFor, seedCrew } from "../../keiki/test/seed";
+import type { Id } from "../_generated/dataModel";
+import { ANA_PHONE, SAM_PHONE, linkChat, linkPhone, nowFor, seedCrew } from "../../keiki/test/seed";
 import type { Seed, SeedOptions, T } from "../../keiki/test/seed";
 import {
   API_KEY,
@@ -448,11 +449,41 @@ describe("tap_only_if", () => {
     expect(today.body.yourAnswer).toBe("only_if");
   });
 
+  it("reads a bare morning hour as morning on a morning plan", async () => {
+    const { t, seed } = await seeded({ variant: "kayaks" });
+    const result = await toolResult(t, "tap_only_if", { phone: SAM_PHONE, input: { after: "10" } });
+    expect(result.body.answer).toBe("only_if");
+    const taps = await tapsOf(t, seed.frolicId);
+    expect(taps[0].window).toEqual({
+      start: Date.parse("2026-11-16T18:00:00.000Z"),
+      end: Date.parse("2026-11-16T20:00:00.000Z"),
+    });
+  });
+
   it("refuses a time after the plan wraps up", async () => {
     const { t, seed } = await seeded();
     const result = await toolResult(t, "tap_only_if", { phone: SAM_PHONE, input: { after: "9pm" } });
     expect(result.body).toMatchObject({ ok: false, error: "too_late" });
     expect(await tapsOf(t, seed.frolicId)).toHaveLength(0);
+  });
+});
+
+describe("an answer that cannot land", () => {
+  it("says the plan closed when the tap arrives after the start", async () => {
+    const { t, seed } = await onNow({ variant: "kayaks" });
+    await advance(t, 5 * 60_000);
+    const result = await toolResult(t, "tap_down", { phone: SAM_PHONE });
+    expect(result.body).toEqual({ ok: false, error: "closed", say: "Today's plan has closed. Tomorrow's drop is the next chance." });
+    expect(await tapsOf(t, seed.frolicId)).toHaveLength(2);
+  });
+
+  it("asks them to slow down when the rate limiter trips", async () => {
+    const { t } = await seeded();
+    installFetch();
+    const answers: { ok: boolean; error?: string }[] = [];
+    for (let i = 0; i < 9; i += 1) answers.push((await toolResult(t, "tap_down", { phone: SAM_PHONE })).body);
+    expect(answers.filter((answer) => answer.ok)).toHaveLength(6);
+    expect(answers.slice(6).every((answer) => answer.ok === false && answer.error === "slow_down")).toBe(true);
   });
 });
 
@@ -518,6 +549,14 @@ describe("on_my_way", () => {
     expect(etas[0]).toMatchObject({ userId: seed.samId, minutes: 12, onTheWay: true });
   });
 
+  it("stops taking an eta once the plan is done", async () => {
+    const { t, seed } = await onNow();
+    await patchFrolic(t, seed.frolicId, { status: "done" });
+    const result = await toolResult(t, "on_my_way", { phone: SAM_PHONE, input: { minutes: 5 } });
+    expect(result.body).toMatchObject({ ok: false, error: "not_on" });
+    expect(await etasOf(t, seed.frolicId)).toHaveLength(0);
+  });
+
   it("refuses before the reveal", async () => {
     const { t, seed } = await seeded();
     const result = await toolResult(t, "on_my_way", { phone: SAM_PHONE, input: { minutes: 5 } });
@@ -580,6 +619,19 @@ describe("submit_snap", () => {
     expect(result.body).toMatchObject({ ok: false, error: "snap_not_open" });
   });
 
+  it("refuses once the snap window has closed", async () => {
+    const { t, seed } = await onNow();
+    await patchFrolic(t, seed.frolicId, { snapAt: seed.now - 3 * 60_000 });
+    await toolResult(t, "check_in", { phone: SAM_PHONE, input: { lat: 37.8925, lng: -122.2717 } });
+    const result = await toolResult(t, "submit_snap", {
+      phone: SAM_PHONE,
+      input: { attachment_id: "p1" },
+      context: { attachments: { p1: SNAP } },
+    });
+    expect(result.body).toMatchObject({ ok: false, error: "snap_not_open" });
+    expect(await snapsOf(t, seed.frolicId)).toHaveLength(0);
+  });
+
   it("refuses before a check in", async () => {
     const { t, seed } = await onNow();
     await patchFrolic(t, seed.frolicId, { snapAt: seed.now - 60_000 });
@@ -625,24 +677,46 @@ describe("submit_snap", () => {
   });
 });
 
+async function shareOf(t: T, frolicId: Id<"frolics">, userId: Id<"users">) {
+  return await t.run(
+    async (ctx) =>
+      await ctx.db
+        .query("shares")
+        .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
+        .unique(),
+  );
+}
+
 describe("pay_deposit", () => {
-  it("pay_deposit preflight states the amount before asking for approval (blocked by convex/keiki/routes.ts:173 dropping the amount)", async () => {
+  it("states the amount before asking for approval", async () => {
     const { t } = await onNow({ variant: "kayaks" });
     const preflight = await toolResult(t, "pay_deposit", { phone: SAM_PHONE, context: { preflight: true } });
-    expect(preflight.body).toEqual({ ok: true, amount: "$5", preflight: true });
-    expect(preflight.text).not.toContain("whop.com");
+    expect(preflight.body).toEqual({ ok: true, preflight: true, amount: "$25", what: "their share of the plan" });
+    expect(preflight.text).not.toContain("/pay/");
   });
 
-  it("returns the link on the approved call", async () => {
+  it("returns the pay link on the approved call", async () => {
     const { t, seed } = await onNow({ variant: "kayaks" });
     const link = await toolResult(t, "pay_deposit", { phone: SAM_PHONE });
     expect(link.body).toMatchObject({
       ok: true,
-      amount: "$5",
+      amount: "$25",
+      what: "their share of the plan",
       approvedWithFaceId: false,
-      say: "Send the link once. It comes back when they arrive.",
+      say: "Send the link once. Say plainly what it is.",
     });
-    expect(link.body.url).toBe("https://whop.com/checkout/test_" + seed.frolicId + "_" + seed.samId);
+    const share = await shareOf(t, seed.frolicId, seed.samId);
+    expect(share).toMatchObject({ kind: "chipIn", status: "due", amountCents: 2500 });
+    expect(link.body.url.endsWith("/pay/" + share!.token)).toBe(true);
+  });
+
+  it("asks for the $3 hold on a free plan", async () => {
+    const { t, seed } = await onNow();
+    const result = await toolResult(t, "pay_deposit", { phone: SAM_PHONE });
+    expect(result.body).toMatchObject({ ok: true, amount: "$3", what: "a hold that comes back when they arrive" });
+    const share = await shareOf(t, seed.frolicId, seed.samId);
+    expect(share).toMatchObject({ kind: "deposit", status: "due", amountCents: 300 });
+    expect(result.body.url.endsWith("/pay/" + share!.token)).toBe(true);
   });
 
   it("shows the deposit to a member who is going", async () => {
@@ -652,10 +726,34 @@ describe("pay_deposit", () => {
     expect(reveal.body.deposit).toEqual({ amount: "$5" });
   });
 
-  it("says there is no deposit on a free plan", async () => {
-    const { t } = await onNow();
+  it("says there is nothing to pay when the fund covers the plan", async () => {
+    const { t, seed } = await seeded({ variant: "kayaks" });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("fundLedger", { groupId: seed.groupId, entry: "forfeit", amountCents: 10_000, at: seed.now });
+    });
+    installFetch();
+    await tapAs(t, seed.samId, seed.frolicId, "down", "imessage");
+    await tapAs(t, seed.mayaId, seed.frolicId, "down", "app");
+    await advance(t, REVEAL_DELAY_MS);
+
     const result = await toolResult(t, "pay_deposit", { phone: SAM_PHONE });
-    expect(result.body).toMatchObject({ ok: false, error: "no_deposit" });
+    expect(result.body).toEqual({ ok: false, error: "no_deposit", say: "This plan has nothing to pay." });
+    expect(await shareOf(t, seed.frolicId, seed.samId)).toMatchObject({ status: "waived", amountCents: 0 });
+  });
+
+  it("says the deposit is already in once the share is held, back or paid", async () => {
+    const { t, seed } = await onNow({ variant: "kayaks" });
+    for (const status of ["held", "released", "paid"] as const) {
+      await t.run(async (ctx) => {
+        const share = await ctx.db
+          .query("shares")
+          .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", seed.frolicId).eq("userId", seed.samId))
+          .unique();
+        await ctx.db.patch("shares", share!._id, { status });
+      });
+      const result = await toolResult(t, "pay_deposit", { phone: SAM_PHONE });
+      expect(result.body).toMatchObject({ ok: false, error: "already_paid" });
+    }
   });
 });
 
@@ -733,6 +831,19 @@ describe("link_group_chat", () => {
     const { t } = await seeded();
     const result = await toolResult(t, "link_group_chat", { phone: SAM_PHONE, input: { invite_code: "SUNSET" } });
     expect(result.body).toEqual({ ok: false, error: "group_only", say: "Add Frolic to the crew's group chat and ask there." });
+  });
+
+  it("refuses a chat that belongs to another crew", async () => {
+    const { t, seed } = await seeded();
+    const other = await t.run(
+      async (ctx) => await ctx.db.insert("groups", { name: "Other Crew", createdBy: seed.mayaId, timezone: "America/Los_Angeles" }),
+    );
+    await linkChat(t, other, CHAT);
+    const result = await toolResult(t, "link_group_chat", { phone: CHAT, input: { invite_code: "SUNSET" } });
+    expect(result.body).toEqual({ ok: false, error: "already_linked", say: "This chat is already connected to another crew." });
+    const chats = await t.run(async (ctx) => await ctx.db.query("keikiGroupChats").withIndex("by_chatId", (q) => q.eq("chatId", CHAT)).take(4));
+    expect(chats).toHaveLength(1);
+    expect(chats[0].groupId).toBe(other);
   });
 });
 
