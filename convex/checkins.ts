@@ -16,6 +16,9 @@ async function checkIn(
 ): Promise<Id<"checkins">> {
   const frolic = await getFrolic(ctx, frolicId);
   const attendee = await findAttendee(ctx, frolicId, userId);
+  if (frolic.status === "done" && attendee?.status === "going") {
+    throw new ConvexError({ code: "NOT_GOING", message: "This one already wrapped" });
+  }
   if (frolic.status !== "on" || attendee?.status !== "going") {
     throw new ConvexError({ code: "NOT_GOING", message: "Check in is for people going" });
   }

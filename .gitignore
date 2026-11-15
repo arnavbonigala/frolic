@@ -4,3 +4,5 @@ node_modules/
 xcuserdata/
 DerivedData/
 ios/build/
+.claude/worktrees/
+ios/Frolic.xcodeproj/project.xcworkspace/

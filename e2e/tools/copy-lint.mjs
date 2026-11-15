@@ -26,6 +26,7 @@ const FADED_BODY = constant("FADED_BODY");
 const BAIL_BODY = constant("BAIL_BODY");
 const ONLY_IF_BUTTON = constant("ONLY_IF_BUTTON");
 const ONLY_IF_TITLE = constant("ONLY_IF_TITLE");
+const PROMISE = constant("PROMISE");
 
 const BINARY = /\.(png|jpe?g|gif|webp|avif|heic|ico|icns|ttf|otf|woff2?|mp4|mov|pdf|zip|gz|jar|mp3|wav)$/i;
 const SKIP = new Set(["package-lock.json", "e2e/tools/copy-lint.mjs"]);
@@ -107,7 +108,7 @@ for (const file of files.filter((name) => name.startsWith("e2e/flows/") && name.
 
 const REQUIRED = [
   ["design/mock/index.html", [FADED_TITLE, FADED_BODY, BAIL_BODY, ONLY_IF_BUTTON, ONLY_IF_TITLE]],
-  ["convex/web/pageTemplate.ts", [FADED_TITLE, FADED_BODY]],
+  ["convex/web/pageTemplate.ts", [FADED_TITLE, FADED_BODY, PROMISE]],
   ["e2e/identifiers.md", [FADED_TITLE, FADED_BODY, BAIL_BODY, ONLY_IF_BUTTON, ONLY_IF_TITLE]],
   ["e2e/flows/09-today-faded.yaml", [FADED_TITLE, FADED_BODY]],
   ["e2e/flows/18-bail-and-refill.yaml", [BAIL_BODY]],
@@ -123,7 +124,20 @@ for (const [file, needed] of REQUIRED) {
 const PAGE_SHAPE = [
   "' + esc(FADED_TITLE) + '</h1>",
   "' + esc(FADED_BODY) + '</p>",
+  "' + esc(PROMISE) + \"</p>\"",
 ];
+
+const PROMISE_SHAPE = [
+  ["web/src/client.js", "+ promise(v) + packet("],
+  ["convex/keiki/tools.ts", "welcome: PROMISE,"],
+  ["convex/keiki/tools.ts", "say: 'Open with \"' + PROMISE"],
+];
+
+for (const [file, piece] of PROMISE_SHAPE) {
+  if (!read(file).includes(piece)) {
+    errors.push(file + ": the promise line must come from PROMISE, missing " + JSON.stringify(piece));
+  }
+}
 
 for (const piece of PAGE_SHAPE) {
   if (!read("web/src/client.js").includes(piece)) {
