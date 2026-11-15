@@ -419,7 +419,7 @@ final class YouModel {
     }
 
     private func fail(_ error: Error) {
-        guard !hasLoaded else { return }
+        guard !hasLoaded, loadPhase != .ready else { return }
         if String(describing: error).contains("UNKNOWN_DEVICE") {
             loadPhase = .empty
             return
