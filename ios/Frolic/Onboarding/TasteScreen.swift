@@ -121,7 +121,7 @@ struct TasteScreen: View {
         VStack(spacing: 12) {
             OnboardingStateCard(
                 title: "Frolic can't see your photos",
-                body: "You can still pick from a few sample nights, or allow photos in Settings and come back.",
+                detail: "You can still pick from a few sample nights, or allow photos in Settings and come back.",
                 actionTitle: "Pick from samples",
                 secondaryTitle: "Open Settings",
                 onAction: { Task { await model.useDemoPhotos() } },
@@ -135,7 +135,7 @@ struct TasteScreen: View {
     private var empty: some View {
         OnboardingStateCard(
             title: "No photos yet",
-            body: "Your camera roll is empty, so pick from a few sample nights instead.",
+            detail: "Your camera roll is empty, so pick from a few sample nights instead.",
             actionTitle: "Pick from samples",
             onAction: { Task { await model.useDemoPhotos() } },
             identifier: "state.empty"

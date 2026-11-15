@@ -49,7 +49,7 @@ struct OnboardingTitle: View {
 
 struct OnboardingStateCard: View {
     var title: String
-    var body: String
+    var detail: String
     var actionTitle: String?
     var secondaryTitle: String?
     var onAction: (() -> Void)?
@@ -68,7 +68,7 @@ struct OnboardingStateCard: View {
                     .accessibilityAddTraits(.isHeader)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text(body)
+            Text(detail)
                 .frolicFont(.subheadline)
                 .foregroundStyle(FrolicColor.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)

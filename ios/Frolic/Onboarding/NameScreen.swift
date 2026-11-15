@@ -25,7 +25,7 @@ struct NameScreen: View {
             if let failure = model.failure {
                 OnboardingStateCard(
                     title: failure.title,
-                    body: failure.detail,
+                    detail: failure.detail,
                     actionTitle: failure.canRetry ? "Try again" : nil,
                     onAction: { Task { await model.submitName() } },
                     identifier: "state.error"

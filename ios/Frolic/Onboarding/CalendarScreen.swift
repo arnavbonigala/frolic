@@ -18,7 +18,7 @@ struct CalendarScreen: View {
             case .denied:
                 OnboardingStateCard(
                     title: "Frolic can't see your calendar",
-                    body: "That's fine. Tell it each day when you're free, or allow the calendar in Settings.",
+                    detail: "That's fine. Tell it each day when you're free, or allow the calendar in Settings.",
                     actionTitle: "I'll tell it each day",
                     secondaryTitle: "Open Settings",
                     onAction: { model.tellItEachDay() },
@@ -29,7 +29,7 @@ struct CalendarScreen: View {
             case .empty:
                 OnboardingStateCard(
                     title: "Nothing to show yet",
-                    body: "Your calendar has no days Frolic can read. Tell it each day when you're free.",
+                    detail: "Your calendar has no days Frolic can read. Tell it each day when you're free.",
                     actionTitle: "I'll tell it each day",
                     onAction: { model.tellItEachDay() },
                     identifier: "state.empty"
