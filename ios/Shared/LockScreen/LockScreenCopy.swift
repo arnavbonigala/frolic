@@ -3,7 +3,7 @@ import Foundation
 enum LockScreenCopy {
     static let dropTitle = "Today's frolic"
     static let down = "I'm down"
-    static let onlyIf = "Only if"
+    static let onlyIf = "Only with…"
     static let notToday = "Not today"
     static let hopIn = "Hop in"
     static let onMyWay = "I'm on my way"
