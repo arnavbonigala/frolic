@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
+    "typecheck:tests": "tsc --noEmit -p tests",
     "dev": "convex dev"
   },
   "repository": {
