@@ -78,16 +78,23 @@ const dayNumber = (day: string) => Date.UTC(Number(day.slice(0, 4)), Number(day.
 
 export const NO_REPEAT_DAYS = 30;
 
-export function chooseQuestion(groupId: string, day: string, history: { day: string; key: string; category: string }[]): PickQuestion {
+const MIN_BANK = NO_REPEAT_DAYS + 1;
+
+export type PickHistory = { day: string; key: string; category: string };
+
+export function chooseQuestion(groupId: string, day: string, history: PickHistory[], passed: string[] = []): PickQuestion {
   const recent = history.filter((h) => h.day < day && dayNumber(day) - dayNumber(h.day) < NO_REPEAT_DAYS);
   const used = new Set(recent.map((h) => h.key));
-  const fresh = QUESTION_BANK.filter((question) => !used.has(question.key));
-  const pool = fresh.length > 0 ? fresh : QUESTION_BANK;
-  const lastUsed = new Map<string, string>();
-  for (const h of recent) if ((lastUsed.get(h.category) ?? "") < h.day) lastUsed.set(h.category, h.day);
+  const lastCategory = new Map<string, string>();
+  for (const h of recent) if ((lastCategory.get(h.category) ?? "") < h.day) lastCategory.set(h.category, h.day);
+  const passedTags = new Set(passed);
+  const openBank = QUESTION_BANK.filter((question) => !question.options.some((option) => option.tags.some((tag) => passedTags.has(tag))));
+  const bank = openBank.length >= MIN_BANK ? openBank : QUESTION_BANK;
+  const fresh = bank.filter((question) => !used.has(question.key));
+  const pool = fresh.length > 0 ? fresh : bank;
   const seed = groupId + "|" + day;
   const categories = [...new Set(pool.map((question) => question.category))].sort(
-    (a, b) => (lastUsed.get(a) ?? "").localeCompare(lastUsed.get(b) ?? "") || hash(seed + "|" + a) - hash(seed + "|" + b),
+    (a, b) => (lastCategory.get(a) ?? "").localeCompare(lastCategory.get(b) ?? "") || hash(seed + "|" + a) - hash(seed + "|" + b),
   );
   const candidates = pool.filter((question) => question.category === categories[0]);
   return candidates.sort((a, b) => hash(seed + "|" + a.key) - hash(seed + "|" + b.key))[0];
