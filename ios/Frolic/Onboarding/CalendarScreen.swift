@@ -38,7 +38,7 @@ struct CalendarScreen: View {
             }
         } bar: {
             if model.calendarPhase == .ready || model.calendarPhase == .reading {
-                Button(model.isSubmitting ? "One moment" : "Use my calendar") {
+                Button("Use my calendar") {
                     Task { await model.useCalendar() }
                 }
                 .buttonStyle(.frolicPrimary)
@@ -110,6 +110,7 @@ struct CalendarScreen: View {
 
 struct FreeSheet: View {
     @Bindable var model: OnboardingModel
+    @State private var pick = "till8"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -122,31 +123,43 @@ struct FreeSheet: View {
                 .frolicFont(.subheadline)
                 .foregroundStyle(FrolicColor.secondaryText)
             FrolicGroup {
-                option("Free now till 8 PM", sub: "From your calendar", id: "free.sheet.till8", divider: false) {
-                    Task { await model.chooseFree(.window(Self.window(from: nil))) }
-                }
-                option("Free 5 PM to 8 PM", sub: "Set by you, just for today", id: "free.sheet.after5", divider: true) {
-                    Task { await model.chooseFree(.window(Self.window(from: 17))) }
-                }
-                option("Not today", sub: "No plan for you today. Nobody gets told.", id: "free.sheet.notToday", divider: true) {
-                    Task { await model.chooseFree(.notToday) }
+                option("Free now till 8 PM", sub: "From your calendar", key: "till8", id: "free.sheet.till8", divider: false)
+                option("Free 5 PM to 8 PM", sub: "Set by you, just for today", key: "after5", id: "free.sheet.after5", divider: true)
+                option("Not today", sub: "No plan for you today. Nobody gets told.", key: "no", id: "free.sheet.notToday", divider: true)
+            }
+            Button("Done") {
+                Task {
+                    switch pick {
+                    case "after5": await model.chooseFree(.window(Self.window(from: 17)))
+                    case "no": await model.chooseFree(.notToday)
+                    default: await model.chooseFree(.window(Self.window(from: nil)))
+                    }
                 }
             }
+            .buttonStyle(.frolicPrimary)
+            .padding(.top, 6)
+            .accessibilityIdentifier("free.sheet.done")
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 20)
         .padding(.top, 22)
-        .presentationDetents([.height(400)])
+        .presentationDetents([.medium, .large])
         .presentationBackground(FrolicColor.cream)
     }
 
-    private func option(_ title: String, sub: String, id: String, divider: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(FrolicColor.ink)
-                Text(sub).font(.system(size: 14)).foregroundStyle(FrolicColor.secondaryText)
+    private func option(_ title: String, sub: String, key: String, id: String, divider: Bool) -> some View {
+        Button { pick = key } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(FrolicColor.ink)
+                    Text(sub).font(.system(size: 14)).foregroundStyle(FrolicColor.secondaryText)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: pick == key ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(pick == key ? FrolicColor.ink : FrolicColor.disabled)
+                    .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .frame(minHeight: 60)
@@ -157,6 +170,7 @@ struct FreeSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(pick == key ? .isSelected : [])
         .accessibilityIdentifier(id)
     }
 

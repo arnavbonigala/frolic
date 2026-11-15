@@ -24,7 +24,7 @@ struct ReadingScreen: View {
                 .padding(.horizontal, 4)
                 .fixedSize(horizontal: false, vertical: true)
         } bar: {
-            Button(model.isSubmitting ? "One moment" : "Sounds like me") {
+            Button("Sounds like me") {
                 Task { await model.confirmTaste() }
             }
             .buttonStyle(.frolicPrimary)

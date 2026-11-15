@@ -60,31 +60,13 @@ struct JoinScreen: View {
                     onRetry: { model.retryInvite() }
                 )
             case .expired:
-                PhasePlaceholder(
-                    phase: .error("Ask whoever invited you for a fresh link, or start your own crew."),
-                    copy: PlaceholderCopy(
-                        loading: "Looking for your crew",
-                        emptyTitle: "No crew yet",
-                        emptyMessage: "Start on your own and invite friends later.",
-                        emptyAction: "Start on your own",
-                        errorTitle: "This invite link expired"
-                    ),
-                    color: .pink,
-                    onRetry: { model.retryInvite() }
-                )
+                OnboardingStateCard(title: OnboardingFailure.inviteExpired.title, detail: OnboardingFailure.inviteExpired.detail, identifier: "state.error")
+                    .padding(.horizontal, 18)
+                    .padding(.top, 24)
             case .invalid:
-                PhasePlaceholder(
-                    phase: .error("Check the link, or start your own crew."),
-                    copy: PlaceholderCopy(
-                        loading: "Looking for your crew",
-                        emptyTitle: "No crew yet",
-                        emptyMessage: "Start on your own and invite friends later.",
-                        emptyAction: "Start on your own",
-                        errorTitle: "That invite link isn't one we know"
-                    ),
-                    color: .pink,
-                    onRetry: { model.retryInvite() }
-                )
+                OnboardingStateCard(title: OnboardingFailure.inviteUnknown.title, detail: OnboardingFailure.inviteUnknown.detail, identifier: "state.error")
+                    .padding(.horizontal, 18)
+                    .padding(.top, 24)
             case .failed(let message):
                 PhasePlaceholder(
                     phase: .error(message),
@@ -262,7 +244,7 @@ struct JoinScreen: View {
     ) -> some View {
         VStack(spacing: 4) {
             icon()
-                .frame(height: 52, alignment: .bottom)
+                .frame(minHeight: 60, alignment: .bottom)
             Text(text)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(FrolicColor.ink)

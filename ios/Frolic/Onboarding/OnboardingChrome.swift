@@ -30,8 +30,7 @@ struct OnboardingTitle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: titleSize, weight: .heavy, design: .rounded))
-                .tracking(-0.3)
+                .frolicFont(.largeTitle)
                 .foregroundStyle(FrolicColor.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier(identifier ?? "")

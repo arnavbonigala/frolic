@@ -99,7 +99,7 @@ struct TasteScreen: View {
         .buttonStyle(.plain)
         .accessibilityLabel(photo.label)
         .accessibilityAddTraits(index == nil ? [] : .isSelected)
-        .accessibilityIdentifier("taste.photo.\(photo.label)")
+        .accessibilityIdentifier("taste.photo.\(photo.label.lowercased().replacingOccurrences(of: " ", with: "-"))")
     }
 
     private var loading: some View {
