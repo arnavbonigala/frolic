@@ -8,7 +8,7 @@ struct GardenPerson: Codable, Hashable, Identifiable {
 
     var id: String { userId }
 
-    var flower: FlowerPerson { FlowerPerson(id: userId, name: name, color: color) }
+    var flower: FlowerPerson { FlowerPerson(id: userId, name: name, color: color, photoUrl: photoUrl) }
 }
 
 enum GardenNames {
