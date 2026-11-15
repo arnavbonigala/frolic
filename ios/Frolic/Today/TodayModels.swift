@@ -61,6 +61,8 @@ struct TodayFrolic: Codable, Hashable, Identifiable {
     var window: TodayWindow
     var durationMinutes: Double
     var plan: TodayPlan?
+    var origin: String?
+    var notice: String?
 
     var id: String { frolicId }
     var isSolo: Bool { kind == "solo" }
@@ -116,6 +118,17 @@ struct TodayLink: Codable, Hashable {
     var amountCents: Double?
     var expiresAt: Double?
     var reason: String?
+}
+
+struct TodayDrop: Codable, Hashable {
+    var hostedBy: String
+    var priceLabel: String?
+    var seatsLeft: Double?
+}
+
+struct TodayImFreeResult: Codable, Hashable {
+    var frolicId: String
+    var started: Bool
 }
 
 struct TodayShareLink: Codable, Hashable {
@@ -179,8 +192,7 @@ enum TodayCopy {
     }
 
     static func ifIn(_ list: [String]) -> String {
-        if list.count > 2 { return "all \(list.count) are in" }
-        return names(list) + (list.count > 1 ? " are in" : " is in")
+        list.count > 2 ? "all \(list.count)" : names(list)
     }
 
     static func clock(_ milliseconds: Double) -> String {
@@ -232,12 +244,20 @@ enum TodayCopy {
         return text.hasSuffix(":00") ? String(text.dropLast(3)) : text
     }
 
-    static func chips(plan: TodayPlan?, minutesAway: Double?) -> [String] {
+    static func walkMinutes(plan: TodayPlan?, minutesAway: Double?, from: (Double, Double)?) -> Double? {
+        if let minutesAway, minutesAway > 0 { return minutesAway }
+        guard let place = plan?.place, let from else { return nil }
+        let dLat = (place.lat - from.0) * 111_000
+        let dLng = (place.lng - from.1) * 111_000 * cos(from.0 * .pi / 180)
+        return max(1, (sqrt(dLat * dLat + dLng * dLng) * 1.3 / 80).rounded())
+    }
+
+    static func chips(plan: TodayPlan?, walk: Double?) -> [String] {
         guard let plan else { return [] }
         if let chips = plan.chips, !chips.isEmpty { return chips }
         var chips = [plan.costLabel]
-        if let minutesAway, minutesAway > 0 {
-            chips.append("\(Int(minutesAway.rounded())) min walk")
+        if let walk {
+            chips.append("\(Int(walk)) min walk")
         }
         if let sunset = plan.sunsetAt {
             chips.append("Golden hour " + clock(sunset - 30 * 60 * 1000))
@@ -271,15 +291,7 @@ enum TodayCopy {
     }
 
     static func downBody(_ onlyIf: [String], deadline: Double?) -> String {
-        let lead: String
-        switch onlyIf.count {
-        case 0: lead = "If a friend says yes too, you'll both bloom at once."
-        case 1: lead = "If \(onlyIf[0]) says yes too, you'll both bloom at once."
-        case 2: lead = "If \(names(onlyIf)) both say yes, you'll bloom together."
-        default: lead = "If \(names(onlyIf)) all say yes, you'll bloom together. The more people you need, the rarer it blooms."
-        }
-        let at = deadline.map { shortClock($0) } ?? "4"
-        return lead + " If not, it disappears at \(at) and nobody ever knows."
+        "Disappears at \(deadline.map { shortClock($0) } ?? "4") if nobody joins."
     }
 
     static let zone = TimeZone(identifier: "America/Los_Angeles") ?? .current
