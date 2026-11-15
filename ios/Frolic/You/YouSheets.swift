@@ -16,7 +16,7 @@ struct YouDeleteSheet: View {
                         .frolicFont(.sheetTitle)
                         .foregroundStyle(FrolicColor.ink)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Your flower, your limits and everything Frolic remembers about you go with it. Your crew keeps the frolics they went to with you. This can't be undone.")
+                    Text("Your flower, your limits and everything Frolic remembers about you go with it.")
                         .frolicFont(.body)
                         .foregroundStyle(FrolicColor.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -95,10 +95,6 @@ struct YouTasteSheet: View {
                         Spacer(minLength: 12)
                         CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
                     }
-                    Text("Pick what your crew should plan around.")
-                        .frolicFont(.subheadline)
-                        .foregroundStyle(FrolicColor.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
                     FlowLayout(spacing: 6) {
                         ForEach(options, id: \.self) { tag in
                             tagButton(tag)
@@ -111,11 +107,6 @@ struct YouTasteSheet: View {
                         .buttonStyle(.frolicPrimary)
                         .padding(.top, 6)
                         .accessibilityIdentifier("you.taste.done")
-                    Text("Your crew's plans blend everyone's picks.")
-                        .frolicFont(.footnote)
-                        .foregroundStyle(FrolicColor.secondaryText)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)

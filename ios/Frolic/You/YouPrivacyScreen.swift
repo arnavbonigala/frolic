@@ -29,22 +29,20 @@ struct YouPrivacyScreen: View {
                         .foregroundStyle(FrolicColor.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 6)
-                    SectionHeader(title: "What your crew sees")
+                    SectionHeader(title: "Friends see")
                     FrolicGroup {
-                        YouDetailRow(title: "Who's free", detail: "Your free window, like Free till 8.")
-                        YouDetailRow(title: "Your flower", detail: "Your name and your photo.", showsDivider: true)
-                        YouDetailRow(title: "Rough distance", detail: "Minutes away, never a place.", showsDivider: true)
-                        YouDetailRow(title: "Frolics you went to", detail: "The flowers in the Garden.", showsDivider: true)
+                        YouDetailRow(title: "Your name and photo")
+                        YouDetailRow(title: "When you're free", showsDivider: true)
+                        YouDetailRow(title: "How far away, roughly", showsDivider: true)
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("you.privacy.friends")
-                    SectionHeader(title: "What stays yours", systemImage: "lock.fill")
+                    SectionHeader(title: "Only you see", systemImage: "lock.fill")
                     FrolicGroup {
-                        YouDetailRow(title: "Whether you said yes", detail: "Not even after a plan fades.")
-                        YouDetailRow(title: "Only if picks", detail: "Nobody finds out you picked them.", showsDivider: true)
-                        YouDetailRow(title: "A pass", detail: "Not today is silent. Nobody gets told.", showsDivider: true)
-                        YouDetailRow(title: "Your limits", detail: "Budget, energy, travel and home by.", showsDivider: true)
-                        YouDetailRow(title: "Your calendar", detail: "Free or busy, never what's on it.", showsDivider: true)
+                        YouDetailRow(title: "If you said yes")
+                        YouDetailRow(title: "Who you picked in Only with…", showsDivider: true)
+                        YouDetailRow(title: "A pass", showsDivider: true)
+                        YouDetailRow(title: "Your limits", showsDivider: true)
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("you.privacy.private")
@@ -76,7 +74,6 @@ struct YouPrivacyScreen: View {
                         .buttonStyle(.frolicSecondaryWide)
                         .padding(.top, 12)
                         .accessibilityIdentifier("you.permissions.settings")
-                    YouNote(text: "Frolic asks for each one the first time it needs it.")
                     SectionHeader(title: "Your data")
                     FrolicGroup {
                         Button {
@@ -101,7 +98,7 @@ struct YouPrivacyScreen: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("you.account.delete")
                     }
-                    YouNote(text: "Removes your flower, your limits and everything Frolic remembers about you, including its notes on what you like.")
+                    YouNote(text: "Also erases everything Frolic remembers about you.")
                         .padding(.bottom, 24)
                 }
                 .padding(.horizontal, 20)
@@ -164,22 +161,16 @@ private struct YouPermissionRow: View {
 
 struct YouDetailRow: View {
     var title: String
-    var detail: String
     var showsDivider = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .frolicFont(.bodyEmphasis)
-                .foregroundStyle(FrolicColor.ink)
-            Text(detail)
-                .frolicFont(.subheadline)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+        Text(title)
+            .frolicFont(.body)
+            .foregroundStyle(FrolicColor.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         .overlay(alignment: .top) {
             if showsDivider {
                 FrolicColor.line.frame(height: 0.5).padding(.leading, 16)

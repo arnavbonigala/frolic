@@ -96,7 +96,7 @@ private struct YouContent: View {
                 YouBanner(
                     systemImage: "wifi.slash",
                     title: "You're offline",
-                    message: "Your limits are saved on your phone and go back up when you're online."
+                    message: "Changes save when you're back."
                 )
                 .padding(.top, 18)
                 .accessibilityIdentifier("state.offline")
@@ -348,7 +348,7 @@ private struct YouContent: View {
     private var tasteSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             if model.tasteTags.isEmpty {
-                Text("Pick photos and Frolic learns what you like.")
+                Text("Nothing picked yet")
                     .frolicFont(.subheadline)
                     .foregroundStyle(FrolicColor.secondaryText)
                     .padding(.horizontal, 4)
@@ -372,7 +372,7 @@ private struct YouContent: View {
             Button(action: onPrivacy) {
                 YouSetupRow(
                     label: "What friends can see",
-                    value: "Permissions and your data",
+                    value: "",
                     identifier: "you.privacy"
                 )
                 .padding(.horizontal, 16)
