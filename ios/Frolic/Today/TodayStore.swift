@@ -706,7 +706,7 @@ final class TodayStore {
     }
 
     private func warmPortraits() {
-        let people = [mePerson] + allFriends + (today?.reveal?.going ?? []) + (today?.onlyIf ?? [])
+        let people = [mePerson] + allFriends + (today?.reveal?.going ?? []) + (today?.myTap?.onlyIf ?? [])
         let refs = people.compactMap { person in
             TodayMedia.url(person.photoUrl).map { PortraitRef(id: person.id, url: $0) }
         }
