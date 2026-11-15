@@ -7,7 +7,7 @@ import { tripLabel, tripTo, type LatLng, type Trip } from "./travel";
 export type Limits = { budgetCents: number | null; energy: "chill" | "anything"; maxMinutes: number | null; homeBy: number | null };
 export type Attendee = { userId: string; limits: Limits; origin: LatLng | null; window: { start: number; end: number }; taste: string[] };
 export type HistoryEntry = { day: string; placeSlug: string; favoredUserId: string | null };
-export type DropKind = "daily" | "weekend" | "solo";
+export type DropKind = "daily" | "weekend" | "solo" | "free";
 export type DropOffer = {
   dropId: string;
   sellerName: string;

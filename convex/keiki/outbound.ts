@@ -119,6 +119,49 @@ export const onDrop = internalMutation({
   },
 });
 
+export function freeLine(view: { title: string; startsAt: string }) {
+  return "Someone in your crew is free. " + view.title + " at " + view.startsAt + "?";
+}
+
+export function freeText(view: { title: string; startsAt: string; heroKey: string }, inGroup: boolean) {
+  const lines = [freeLine(view)];
+  const hero = heroLine(view.heroKey);
+  if (hero) lines.push(hero);
+  lines.push(inGroup ? "DM me \"down\", \"only if…\", or \"pass\". It stays secret unless someone else is too." : "Reply \"down\", \"only if…\", or \"pass\".");
+  return lines.join("\n");
+}
+
+export const onFree = internalMutation({
+  args: { frolicId: v.id("frolics") },
+  handler: async (ctx, { frolicId }) => {
+    const c = await context(ctx, frolicId);
+    if (!c) return null;
+    const members = await crewMembers(ctx, c.group._id);
+    const rest = members.filter((m) => m._id !== c.frolic.startedBy).map((m) => m._id);
+    const drafts = await personal(ctx, rest, (user) => ({
+      key: "drop:" + frolicId + ":" + user._id,
+      kind: "drop",
+      text: freeText(c.details.view, false),
+      notBefore: Date.now(),
+    }));
+    for (const chat of await chatsOf(ctx, c.group._id)) {
+      drafts.push({ key: "drop:" + frolicId + ":" + chat.chatId, kind: "drop", target: chat.chatId, text: freeText(c.details.view, true), notBefore: Date.now() });
+    }
+    if (c.frolic.startedBy) {
+      drafts.push(
+        ...(await personal(ctx, [c.frolic.startedBy], (user) => ({
+          key: "drop:" + frolicId + ":" + user._id,
+          kind: "drop",
+          text: "You're counted as down. " + c.details.view.title + " at " + c.details.view.startsAt + " just went to your crew. Nobody knows it was you.",
+          notBefore: Date.now(),
+        }))),
+      );
+    }
+    await enqueue(ctx, frolicId, drafts);
+    return null;
+  },
+});
+
 export const onReveal = internalMutation({
   args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")), bloomAt: v.number() },
   handler: async (ctx, args) => {
