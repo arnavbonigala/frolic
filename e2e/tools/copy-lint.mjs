@@ -28,7 +28,7 @@ const ONLY_IF_BUTTON = constant("ONLY_IF_BUTTON");
 const ONLY_IF_TITLE = constant("ONLY_IF_TITLE");
 
 const BINARY = /\.(png|jpe?g|gif|webp|avif|heic|ico|icns|ttf|otf|woff2?|mp4|mov|pdf|zip|gz|jar|mp3|wav)$/i;
-const SKIP = new Set(["package-lock.json"]);
+const SKIP = new Set(["package-lock.json", "e2e/tools/copy-lint.mjs"]);
 
 const files = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
   .split("\n")
