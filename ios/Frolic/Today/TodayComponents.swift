@@ -13,11 +13,20 @@ struct TodayPacket<Content: View>: View {
     var friends: [TodayPerson] = []
     var friendsLine: String?
     var onFriends: (() -> Void)?
+    var buds: [TodayPerson] = []
+    var me: TodayPerson?
+    var onFlickUp: (() -> Void)?
+    var onFlickDown: (() -> Void)?
+    var onOnlyWith: (() -> Void)?
+    var teaches = false
     @ViewBuilder var content: Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var drag: CGSize = .zero
+    @State private var flung = false
+    @State private var landed = 0
 
     private let stems: [CGFloat] = [30, 12, 38, 20, 26]
-    private let heroHeight: CGFloat = 470
+    private let heroHeight: CGFloat = 340
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -33,41 +42,223 @@ struct TodayPacket<Content: View>: View {
                 DeckleEdge()
                     .frame(height: heroHeight + 600)
             }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Text(label)
-                    if let number {
-                        Text("·")
-                        Text(number)
-                    }
-                }
-                .todayFont(14, .bold, rounded: true, relativeTo: .subheadline)
-                .foregroundStyle(FrolicColor.sun)
-                .lineLimit(1)
-                .accessibilityElement(children: .combine)
-                content
-                if showsWhy, let why {
-                    WhyThis(text: why)
-                        .padding(.top, 6)
-                        .accessibilityIdentifier("today.plan.why")
-                }
-            }
-            .padding(.horizontal, 22)
-            .padding(.top, 10)
+            ticket
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.plan.card")
     }
 
+    private var flickable: Bool { onFlickUp != nil }
+
+    @ViewBuilder
+    private var ticket: some View {
+        let body = ticketBody
+        if flickable {
+            VStack(spacing: 30) {
+                body
+                    .background(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .fill(FrolicColor.paper)
+                            .shadow(color: Color(hex: 0x78501E, opacity: 0.12 + Double(min(abs(drag.width), 160)) / 1600), radius: 14 + abs(drag.width) / 14, y: 8)
+                    )
+                    .overlay(alignment: .topLeading) {
+                        stamp("I'm down", color: FrolicColor.sun, angle: -12)
+                            .opacity(Double(min(max(drag.width, 0), 110)) / 110)
+                            .padding(18)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        stamp("Not today", color: FrolicColor.secondaryText, angle: 12)
+                            .opacity(Double(min(max(-drag.width, 0), 110)) / 110)
+                            .padding(18)
+                    }
+                    .rotationEffect(.degrees(Double(drag.width) / 22), anchor: .bottom)
+                    .offset(x: drag.width, y: drag.height * 0.25)
+                    .opacity(flung ? 0 : 1)
+                    .background(alignment: .top) {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .fill(FrolicColor.paper.opacity(0.7))
+                            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 1))
+                            .scaleEffect(x: 0.92, y: 1, anchor: .top)
+                            .offset(y: 10)
+                            .opacity(flung ? 0 : 1)
+                    }
+                    .padding(.horizontal, 16)
+                    .highPriorityGesture(
+                        DragGesture(minimumDistance: 12)
+                            .onChanged { value in drag = value.translation }
+                            .onEnded { value in
+                                let projected = value.predictedEndTranslation.width
+                                if projected > 200 {
+                                    fling(right: true)
+                                } else if projected < -200 {
+                                    fling(right: false)
+                                } else {
+                                    withAnimation(.spring(response: 0.38, dampingFraction: 0.68)) { drag = .zero }
+                                }
+                            }
+                    )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAction(named: "I'm down") { onFlickUp?() }
+                    .accessibilityAction(named: "Not today") { onFlickDown?() }
+                HStack(alignment: .top, spacing: 28) {
+                    choice(icon: "xmark", title: "Not today", size: 58, filled: false) { fling(right: false) }
+                        .accessibilityIdentifier("today.notToday")
+                    choice(icon: "camera.macro", title: "I'm down", size: 72, filled: true) { fling(right: true) }
+                        .accessibilityIdentifier("today.down")
+                    if let onOnlyWith {
+                        choice(icon: "person.2.fill", title: "Only with…", size: 58, filled: false, action: onOnlyWith)
+                            .accessibilityIdentifier("today.onlyIf")
+                    }
+                }
+            }
+            .sensoryFeedback(.success, trigger: landed)
+            .task(id: teaches) {
+                guard teaches, !reduceMotion else { return }
+                try? await Task.sleep(for: .seconds(1.2))
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.5)) { drag = CGSize(width: 46, height: 0) }
+                try? await Task.sleep(for: .seconds(0.4))
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.55)) { drag = .zero }
+            }
+        } else {
+            body
+                .background(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .fill(FrolicColor.paper)
+                        .shadow(color: Color(hex: 0x78501E, opacity: 0.12), radius: 14, y: 8)
+                )
+                .padding(.horizontal, 16)
+        }
+    }
+
+    private func stamp(_ text: String, color: Color, angle: Double) -> some View {
+        Text(text.uppercased())
+            .todayFont(20, .heavy, rounded: true, relativeTo: .title3)
+            .foregroundStyle(color)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(color, lineWidth: 3))
+            .rotationEffect(.degrees(angle))
+            .accessibilityHidden(true)
+    }
+
+    private func choice(icon: String, title: String, size: CGFloat, filled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.36, weight: .bold, design: .rounded))
+                    .foregroundStyle(filled ? FrolicColor.cream : FrolicColor.ink)
+                    .frame(width: size, height: size)
+                    .background(Circle().fill(filled ? FrolicColor.ink : FrolicColor.paper))
+                    .overlay(Circle().stroke(FrolicColor.ink.opacity(filled ? 0 : 0.16), lineWidth: 1.5))
+                    .shadow(color: Color(hex: 0x78501E, opacity: 0.14), radius: 10, y: 5)
+                    .frame(width: 86, height: 72)
+                Text(title)
+                    .todayFont(14, .bold, rounded: true, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.ink)
+            }
+        }
+        .buttonStyle(PressScale())
+        .accessibilityLabel(title)
+    }
+
+    private func fling(right: Bool) {
+        let action = right ? onFlickUp : onFlickDown
+        if reduceMotion {
+            action?()
+            return
+        }
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.9)) {
+            drag = CGSize(width: right ? 640 : -640, height: 40)
+            flung = true
+        }
+        landed += 1
+        action?()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.9))
+            flung = false
+            drag = .zero
+        }
+    }
+
+    private var ticketBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Text(label)
+                if let number {
+                    Text("·")
+                    Text(number)
+                }
+            }
+            .todayFont(14, .bold, rounded: true, relativeTo: .subheadline)
+            .foregroundStyle(FrolicColor.sun)
+            .lineLimit(1)
+            .padding(.trailing, flickable && me != nil ? 40 : 0)
+            .accessibilityElement(children: .combine)
+            VStack(alignment: .leading, spacing: 8) {
+                content
+            }
+            .padding(.top, 10)
+            if (showsWhy && why != nil) || flickable {
+                VStack(alignment: .leading, spacing: 8) {
+                    if showsWhy, let why {
+                        WhyThis(text: why)
+                            .accessibilityIdentifier("today.plan.why")
+                    }
+                    if flickable {
+                        Label("Secret until a friend is down too", systemImage: "lock.fill")
+                            .todayFont(14, .semibold, rounded: true, relativeTo: .footnote)
+                            .foregroundStyle(FrolicColor.chipText)
+                            .accessibilityIdentifier("today.hush")
+                    }
+                }
+                .padding(.top, 16)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(22)
+        .overlay(alignment: .topTrailing) {
+            if flickable, let me {
+                TodayFlower(person: me, state: .bud, radius: 13, stem: 0)
+                    .frame(width: 30, height: 30)
+                    .padding(16)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
     @ViewBuilder
     private var meadow: some View {
-        if !friends.isEmpty || friendsLine != nil {
+        if !friends.isEmpty || friendsLine != nil || !buds.isEmpty {
             Button { onFriends?() } label: {
                 VStack(spacing: 8) {
                     HStack(alignment: .bottom, spacing: 0) {
                         ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { index, person in
                             TodayFlower(person: person, radius: 26, stem: stems[index % stems.count] + 10, swayDelay: Double(index) * 0.6)
                                 .frame(maxWidth: .infinity)
+                        }
+                        if flickable, buds.isEmpty, me != nil {
+                            VStack(spacing: 4) {
+                                Circle()
+                                    .strokeBorder(FrolicColor.cream, style: StrokeStyle(lineWidth: 2.5, dash: [5, 4]))
+                                    .background(Circle().fill(FrolicColor.cream.opacity(0.28)))
+                                    .frame(width: 48, height: 48)
+                                    .scaleEffect(1 + min(max(drag.width, 0), 200) / 900)
+                                Text("You?")
+                                    .todayFont(13, .bold, rounded: true, relativeTo: .caption)
+                                    .foregroundStyle(FrolicColor.ink)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Capsule().fill(FrolicColor.cream.opacity(0.92)))
+                            }
+                            .padding(.bottom, 6)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityHidden(true)
+                        }
+                        ForEach(buds) { person in
+                            TodayFlower(person: person, state: .bud, radius: 22, stem: 26, animatesIn: true)
+                                .frame(maxWidth: .infinity)
+                                .transition(.scale(scale: 0.2, anchor: .bottom).combined(with: .opacity))
+                                .accessibilityIdentifier("today.bud")
                         }
                     }
                     .padding(.horizontal, 28)
@@ -366,5 +557,13 @@ struct TodayNotice: View {
             .background(Capsule().fill(FrolicColor.ink.opacity(0.92)))
             .padding(.horizontal, 24)
             .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+private struct PressScale: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }

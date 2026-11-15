@@ -89,16 +89,20 @@ struct StatusPill: View {
     var isFree = true
 
     var body: some View {
-        HStack(spacing: 7) {
-            StatusDot(isFree: isFree)
+        HStack(spacing: 6) {
+            Image(systemName: "clock")
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
             Text(text)
                 .frolicFont(.pill)
-                .foregroundStyle(FrolicColor.ink)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .opacity(0.6)
         }
+        .foregroundStyle(FrolicColor.ink)
         .padding(.horizontal, 14)
         .frame(minHeight: 44)
-        .background(Capsule().fill(.white.opacity(0.75)))
-        .overlay(Capsule().stroke(FrolicColor.ink.opacity(0.08), lineWidth: 0.5))
+        .background(Capsule().fill(FrolicColor.paper))
+        .overlay(Capsule().stroke(FrolicColor.ink.opacity(0.14), lineWidth: 1))
         .shadow(color: Color(hex: 0x3C5078, opacity: 0.08), radius: 6, y: 4)
     }
 }

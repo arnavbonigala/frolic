@@ -49,6 +49,7 @@ struct TodayScreen: View {
                 }
             }
             .scrollBounceBehavior(.always)
+            .contentMargins(.bottom, 24, for: .scrollContent)
             .ignoresSafeArea(edges: bleeds ? .top : [])
             if !connectivity.isOnline && store.today != nil && router.phaseOverride == nil {
                 TodayOfflineBanner()
@@ -170,7 +171,7 @@ private struct TodayTopBar: View {
                 }
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 16)
         .padding(.top, 8)
     }
 }
@@ -237,6 +238,12 @@ private struct TodayPlanPacket: View {
     var friends: [TodayPerson] = []
     var friendsLine: String?
     var onFriends: (() -> Void)?
+    var buds: [TodayPerson] = []
+    var me: TodayPerson?
+    var onFlickUp: (() -> Void)?
+    var onFlickDown: (() -> Void)?
+    var onOnlyWith: (() -> Void)?
+    var teaches = false
 
     var body: some View {
         let plan = store.plan
@@ -251,10 +258,16 @@ private struct TodayPlanPacket: View {
             why: plan?.why,
             friends: friends,
             friendsLine: friendsLine,
-            onFriends: onFriends
+            onFriends: onFriends,
+            buds: buds,
+            me: me,
+            onFlickUp: onFlickUp,
+            onFlickDown: onFlickDown,
+            onOnlyWith: onOnlyWith,
+            teaches: teaches
         ) {
             Text(title)
-                .storyFont(title.count > 22 ? 32 : 38)
+                .storyFont(title.count > 22 ? 30 : 34)
                 .foregroundStyle(FrolicColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -300,6 +313,7 @@ private struct TodayOpenView: View {
     var store: TodayStore
     var router: AppRouter
     @Environment(\.todayOnline) private var online
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         let free = store.freeFriends
@@ -318,39 +332,25 @@ private struct TodayOpenView: View {
                 store: store,
                 friends: free,
                 friendsLine: store.crew == nil ? nil : free.isEmpty ? "Nobody's free yet. Your yes still counts." : TodayCopy.names(free.map(\.name)) + (free.count == 1 ? " is free" : " are free"),
-                onFriends: { router.tab = .crew }
+                onFriends: { router.tab = .crew },
+                me: store.mePerson,
+                onFlickUp: online ? { store.seeHint(); store.tapDown(onlyIf: []) } : nil,
+                onFlickDown: online ? { store.setFree("busy", window: nil) } : nil,
+                onOnlyWith: online ? { store.picks = []; store.sheet = .onlyIf } : nil,
+                teaches: !store.hintSeen
             )
             VStack(spacing: 2) {
-                Button("I'm down") {
-                    store.seeHint()
-                    store.tapDown(onlyIf: [])
+                if dynamicTypeSize.isAccessibilitySize {
+                    Button("I'm down") {
+                        store.seeHint()
+                        store.tapDown(onlyIf: [])
+                    }
+                    .buttonStyle(.frolicPrimary)
                 }
-                .buttonStyle(.frolicPrimary)
-                .sensoryFeedback(.impact(weight: .light), trigger: store.isDown)
-                .accessibilityIdentifier("today.down")
-                Button("Only if certain friends come") {
-                    store.picks = []
-                    store.sheet = .onlyIf
-                }
-                .buttonStyle(.frolicText)
-                .accessibilityIdentifier("today.onlyIf")
             }
             .disabled(!online)
             .padding(.horizontal, 16)
             .padding(.top, 16)
-            if store.hintSeen {
-                TodayHush(text: "Nobody sees you're down unless they are too", identifier: "today.hush")
-            } else {
-                Text("Only friends who are also down will ever see this.")
-                    .todayFont(13, .semibold, relativeTo: .footnote)
-                    .foregroundStyle(FrolicColor.chipText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(FrolicColor.chip))
-                    .padding(.top, 8)
-                    .accessibilityIdentifier("today.hint")
-            }
             TodayTomorrowRow(store: store)
         }
     }
@@ -395,10 +395,14 @@ private struct TodayWaitingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson]) { router.tab = .crew }
-                .accessibilityIdentifier("today.meadow")
-            TodayCaption(text: onlyIf.isEmpty ? "Waiting for a friend" : "Waiting for " + TodayCopy.names(onlyIf), identifier: "today.caption.waiting", showsDots: true)
-            TodayPlanPacket(store: store, showsWhy: false)
+            TodayPlanPacket(
+                store: store,
+                showsWhy: false,
+                friends: store.freeFriends,
+                friendsLine: onlyIf.isEmpty ? "Your bud is planted. Waiting for a friend." : "Your bud is planted. Waiting for " + TodayCopy.names(onlyIf) + ".",
+                onFriends: { router.tab = .crew },
+                buds: [store.mePerson]
+            )
             TodayStatusCard(
                 title: TodayCopy.downLine(onlyIf),
                 message: TodayCopy.downBody(onlyIf, deadline: store.frolic?.deadline),
