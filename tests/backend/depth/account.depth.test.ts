@@ -1,7 +1,5 @@
-import type { FunctionReference } from "convex/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../../convex/_generated/api";
-import * as users from "../../../convex/users";
 import { NOON, makeT, setupCrew, tap, token } from "../setup.helpers";
 
 beforeEach(() => {
@@ -13,13 +11,12 @@ afterEach(() => {
 });
 
 describe("account deletion", () => {
-  test.skip("BUG-2 two taps delete the account: the person and everything they left behind", async () => {
+  test("two taps delete the account: the person and everything they left behind", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev"]);
     await tap(t, crew, "Maya");
     await tap(t, crew, "Dev");
-    const deleteAccount = (users as unknown as Record<string, unknown>).deleteAccount as FunctionReference<"mutation">;
-    await t.mutation(deleteAccount, { deviceToken: token("Maya") });
+    await t.mutation(api.users.deleteAccount, { deviceToken: token("Maya") });
 
     expect(await t.query(api.users.me, { deviceToken: token("Maya") })).toBeNull();
     const left = await t.run(async (ctx) => ({
@@ -38,5 +35,29 @@ describe("account deletion", () => {
     expect(left.checkins).toHaveLength(0);
 
     expect(await t.query(api.users.me, { deviceToken: token("Dev") })).not.toBeNull();
+  });
+
+  test("the memory purge is scheduled with the account", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    await t.mutation(api.users.deleteAccount, { deviceToken: token("Maya") });
+    const pending = await t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+        (s) => s.name.includes("deleteAccountMemory") && s.state.kind === "pending",
+      ),
+    );
+    expect(pending).toHaveLength(1);
+    expect(pending[0].args).toEqual([{ userId: crew.ids.Maya }]);
+  });
+
+  test("a deleted account cannot delete itself twice and leaves the crew intact", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    await t.mutation(api.users.deleteAccount, { deviceToken: token("Maya") });
+    await expect(t.mutation(api.users.deleteAccount, { deviceToken: token("Maya") })).rejects.toThrow(/not signed in/);
+    const group = await t.run(async (ctx) => await ctx.db.get("groups", crew.groupId));
+    expect(group).not.toBeNull();
+    const dev = await t.query(api.users.me, { deviceToken: token("Dev") });
+    expect(dev?.groups.map((g) => g.groupId)).toEqual([crew.groupId]);
   });
 });

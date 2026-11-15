@@ -84,7 +84,10 @@ Run it before pushing a flow. It installs `yaml` into `~/.capy/work/deps` the fi
 Two ways, both needed:
 
 - **Deep link, `frolic://e2e/<route>`** for states with no path from a fresh install (faded, done, on, hop-in). The route names are the mock's hash routes, so `frolic://e2e/today:on` is `#today:on` and `frolic://e2e/garden` is `#garden`. Query parameters are seeded state the mock also has: `?went=0`, `?deposit=1`, `?deposit=held`, `?deposit=forfeited`, `?split=1`. The app honors this scheme only in a debug or `E2E`-flagged build, and setting a route also sets the fake clock and seeded data that state needs, so a screen is deterministic.
+- **Sign-in, `frolic://e2e/signin?token=<deviceToken>&group=<groupId>`**, which sets the identity and the group before the route runs. The seed's `users.<who>.link` still comes back as `frolic://signin?deviceToken=..&groupId=..`, and both shapes resolve.
 - **Taps and text**, so onboarding and every decision is exercised for real.
+
+The tab bar carries `tab.today`, `tab.crew`, `tab.garden` and `tab.you`, so a flow can move between tabs by identifier rather than coordinate.
 
 Flows never assert on a ui-test id for behavior a person can see: they read the copy and the states in the mock, which is also what makes them catch copy drift.
 
