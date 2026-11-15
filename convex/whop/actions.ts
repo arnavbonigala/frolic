@@ -65,6 +65,7 @@ export const charge = internalAction({
       const { signal } = await readSignal(payment);
       await ctx.runMutation(internal.whop.money.recordCharge, { shareId: begun.shareId, whopPaymentId: payment.id, signal });
       await ctx.scheduler.runAfter(policy.reconcileMs, internal.whop.actions.reconcile, { shareId: begun.shareId });
+      if (signal === "failed" || signal === "canceled") return { ok: false as const, message: "That didn't go through. Try again." };
       return { ok: true as const, status: payment.substatus ?? payment.status ?? "pending", clientSecret: payment.client_secret ?? null };
     } catch (e) {
       const unknown = !(e instanceof WhopError) || !e.status;
