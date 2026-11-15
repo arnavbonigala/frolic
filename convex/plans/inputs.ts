@@ -100,7 +100,7 @@ export const dropInputs = internalQuery({
     for (const plan of past) {
       const place = await ctx.db.get("places", plan.placeId);
       if (!place) continue;
-      history.push({ day: plan.day, placeSlug: place.slug, favoredUserId: null });
+      history.push({ day: plan.day, placeSlug: place.slug, favoredUserId: plan.favoredUserId ?? null });
     }
     const recent = await ctx.db
       .query("frolics")

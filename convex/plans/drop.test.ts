@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import { createFake } from "../memory/fakeSupermemory";
+import { groupNamespace } from "../memory/mapping";
 import { PLACE_BY_SLUG } from "../places/data";
 import { makeT } from "../tests/setup.helpers";
-import { EMPTY_MEMORY } from "./memoryContext";
+import { modelPick } from "./drop";
+import { rankCandidates, type DropInput } from "./engine";
+import { EMPTY_MEMORY, type MemoryContext } from "./memoryContext";
 import { addDays, localTimeToMs, solarTimes } from "./time";
+
+declare const process: { env: Record<string, string | undefined> };
 
 const DAY = "2026-11-15";
 const NOON = localTimeToMs(DAY, 12 * 60);
@@ -12,6 +18,8 @@ const NOON = localTimeToMs(DAY, 12 * 60);
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(NOON);
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.SUPERMEMORY_API_KEY;
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => {
@@ -23,6 +31,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.SUPERMEMORY_API_KEY;
 });
 
 async function crew(names: string[] = ["Maya", "Dev"], days: string[] = [DAY]) {
@@ -49,6 +59,7 @@ const storedPlan = (overrides: Partial<{ placeSlug: string; startsAt: number; so
   line: "Clear and 62 degrees. Sunset at 5:01.",
   why: "it's free and it looks straight at the Golden Gate.",
   whySource: "template" as const,
+  whyMemoryId: null,
   whyInputs: {
     placeName: "Cragmont Rock Park",
     memory: null,
@@ -288,5 +299,161 @@ describe("writeFallback", () => {
     const id = await t.mutation(internal.plans.drop.writeFallback, { groupId, day: DAY, kind: "daily" });
     expect(id).toBeNull();
     expect(await plans(t, groupId)).toHaveLength(0);
+  });
+});
+
+const PICK_WHY = "you're into sunsets, it's free, and the sky's clear until dark.";
+
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+
+const answer = (slug: string, why = PICK_WHY) =>
+  vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({ output_text: JSON.stringify({ slug, why }) }));
+
+async function dropInput(t: ReturnType<typeof makeT>, groupId: Id<"groups">, memory: MemoryContext = EMPTY_MEMORY): Promise<DropInput> {
+  const inputs = await t.query(internal.plans.inputs.dropInputs, { groupId, day: DAY, nowMs: NOON });
+  return {
+    day: DAY,
+    kind: "daily",
+    seed: groupId + ":" + DAY,
+    nowMs: NOON,
+    attendees: inputs.attendees,
+    weather: null,
+    memory,
+    history: inputs.history,
+    lastFrolicDay: inputs.lastFrolicDay,
+  };
+}
+
+describe("modelPick", () => {
+  test("takes a candidate the model chose", async () => {
+    const { t, groupId } = await crew();
+    const input = await dropInput(t, groupId);
+    const candidates = rankCandidates(input).slice(0, 8);
+    expect(candidates.length).toBeGreaterThanOrEqual(2);
+    const chosen = candidates[2].place.slug;
+    process.env.OPENAI_API_KEY = "test-key";
+    const fetcher = answer(chosen);
+    const pick = await modelPick(input, fetcher);
+    expect(pick).toEqual({ preferredSlug: chosen, preferredWhy: PICK_WHY });
+    const [url, init] = fetcher.mock.calls[0];
+    expect(String(url)).toContain("api.openai.com");
+    expect(String(init?.body)).toContain(chosen);
+  });
+
+  test("refuses a slug that is not on the shortlist", async () => {
+    const { t, groupId } = await crew();
+    const input = await dropInput(t, groupId);
+    process.env.OPENAI_API_KEY = "test-key";
+    expect(await modelPick(input, answer("not-a-place"))).toBeNull();
+    expect(await modelPick(input, answer(rankCandidates(input)[0].place.slug, "the best night of the week!"))).toBeNull();
+  });
+
+  test("returns null when the call fails", async () => {
+    const { t, groupId } = await crew();
+    const input = await dropInput(t, groupId);
+    process.env.OPENAI_API_KEY = "test-key";
+    const down = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    expect(await modelPick(input, down)).toBeNull();
+    const broken = vi.fn(async () => new Response("no", { status: 500 }));
+    expect(await modelPick(input, broken)).toBeNull();
+  });
+
+  test("pickStep never calls OpenAI when the key is unset", async () => {
+    const { t, groupId } = await crew();
+    const fetcher = vi.fn(async (_url: string | URL | Request) => {
+      throw new Error("offline");
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const inputs = await t.query(internal.plans.inputs.dropInputs, { groupId, day: DAY, nowMs: NOON });
+    const plan = await t.action(internal.plans.drop.pickStep, {
+      groupId,
+      day: DAY,
+      kind: "daily",
+      inputs,
+      weather: null,
+      memory: EMPTY_MEMORY,
+    });
+    expect(plan).not.toBeNull();
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("api.openai.com"))).toBe(false);
+  });
+});
+
+describe("demo beat", () => {
+  let fake: ReturnType<typeof createFake>;
+
+  beforeEach(() => {
+    fake = createFake();
+    vi.stubGlobal("fetch", fake.handler);
+    process.env.SUPERMEMORY_API_KEY = "test-key";
+  });
+
+  const bobaSkips = async (t: ReturnType<typeof makeT>, groupId: Id<"groups">) =>
+    await t.run(async (ctx) => {
+      await ctx.db.insert("tasteProfiles", { groupId, tags: ["boba"], updatedAt: NOON });
+      await ctx.db.insert("memoryTagStats", { groupId, tag: "boba", liked: 0, skipped: 2, updatedAt: NOON });
+    });
+
+  const memoryOf = (t: ReturnType<typeof makeT>, groupId: Id<"groups">) =>
+    t.action(internal.plans.drop.memoryStep, { groupId, day: DAY });
+
+  test("memoryStep falls back to an empty context when Supermemory is not there", async () => {
+    const { t, groupId } = await crew();
+    delete process.env.SUPERMEMORY_API_KEY;
+    await bobaSkips(t, groupId);
+    const memory = await memoryOf(t, groupId);
+    expect(memory).toEqual(EMPTY_MEMORY);
+  });
+
+  test("a crew that keeps passing on boba never gets a boba place", async () => {
+    const { t, groupId } = await crew();
+    await bobaSkips(t, groupId);
+    const memory = await memoryOf(t, groupId);
+    expect(memory.suppressed).toContain("boba");
+    const open = rankCandidates(await dropInput(t, groupId));
+    expect(open[0].place.tags).toContain("boba");
+    const inputs = await t.query(internal.plans.inputs.dropInputs, { groupId, day: DAY, nowMs: NOON });
+    const plan = await t.action(internal.plans.drop.pickStep, {
+      groupId,
+      day: DAY,
+      kind: "daily",
+      inputs,
+      weather: null,
+      memory,
+    });
+    expect(plan).not.toBeNull();
+    expect(plan!.placeSlug).toBe(open.find((c) => !c.place.tags.includes("boba"))!.place.slug);
+    expect(PLACE_BY_SLUG.get(plan!.placeSlug)!.tags).not.toContain("boba");
+    await t.mutation(internal.plans.drop.writePlan, { groupId, day: DAY, kind: "daily", plan: plan! });
+    const rows = await plans(t, groupId);
+    const place = await t.run(async (ctx) => await ctx.db.get("places", rows[0].placeId));
+    expect(place!.tags).not.toContain("boba");
+  });
+
+  test("a memory about the chosen place becomes the why", async () => {
+    const { t, groupId } = await crew();
+    await bobaSkips(t, groupId);
+    const memory = await memoryOf(t, groupId);
+    const inputs = await t.query(internal.plans.inputs.dropInputs, { groupId, day: DAY, nowMs: NOON });
+    const args = { groupId, day: DAY, kind: "daily" as const, inputs, weather: null, memory };
+    const first = await t.action(internal.plans.drop.pickStep, args);
+    expect(first).not.toBeNull();
+    const place = PLACE_BY_SLUG.get(first!.placeSlug)!;
+    const night = "Went to " + place.name + " and stayed until the sky went orange.";
+    fake.docs.set(groupNamespace(groupId), new Map([["night1", { id: "night1", content: night, metadata: { kind: "night", tags: place.tags }, date: "2026-11-08" }]]));
+    const plan = await t.action(internal.plans.drop.pickStep, args);
+    expect(plan!.placeSlug).toBe(first!.placeSlug);
+    expect(plan!.whySource).toBe("memory");
+    expect(plan!.whyMemoryId).toBe("mem_night1");
+    expect(plan!.why).toContain(place.name);
+    expect(plan!.why).toContain("you remembered it like this");
+    expect(plan!.whyInputs.memory).toBe(night);
+    await t.mutation(internal.plans.drop.writePlan, { groupId, day: DAY, kind: "daily", plan: plan! });
+    const rows = await plans(t, groupId);
+    expect(rows[0].why).toBe(plan!.why);
+    expect(rows[0].whySource).toBe("memory");
+    expect(rows[0].whyMemoryId).toBe("mem_night1");
+    expect(fake.calls.some((c) => c.path.endsWith("/search"))).toBe(true);
   });
 });

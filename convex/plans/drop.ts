@@ -4,9 +4,14 @@ import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalAction, internalMutation, type MutationCtx } from "../_generated/server";
 import { PLACE_BY_SLUG } from "../places/data";
+import { pickPlace } from "../ai/pick";
 import {
   fallbackPlan,
   generatePlan,
+  TAG_LABEL,
+  copyOk,
+  memoryWhy,
+  rankCandidates,
   validatePlan,
   type DropInput,
   type DropKind,
@@ -76,6 +81,7 @@ const vStoredPlan = v.object({
     v.literal("device"),
     v.literal("haiku"),
   ),
+  whyMemoryId: v.union(v.string(), v.null()),
   whyInputs: vWhyInputs,
   chips: v.array(v.string()),
   cost: v.number(),
@@ -97,6 +103,7 @@ type StoredPlan = {
   line: string;
   why: string;
   whySource: "template" | "memory" | "device" | "haiku";
+  whyMemoryId: string | null;
   whyInputs: Plan["whyInputs"];
   chips: string[];
   cost: number;
@@ -118,6 +125,7 @@ const toStored = (plan: Plan): StoredPlan => ({
   line: plan.line,
   why: plan.why,
   whySource: plan.whySource,
+  whyMemoryId: plan.whyMemoryId,
   whyInputs: plan.whyInputs,
   chips: plan.chips,
   cost: plan.costPerPersonCents,
@@ -154,8 +162,16 @@ function buildInput(args: {
   };
 }
 
-async function modelPick(_input: DropInput): Promise<GenerateOptions | null> {
-  return null;
+export async function modelPick(input: DropInput, fetcher?: typeof fetch): Promise<GenerateOptions | null> {
+  const ranked = rankCandidates(input).slice(0, 8);
+  if (ranked.length < 2) return null;
+  const top = generatePlan(input);
+  const result = await pickPlace({
+    candidates: ranked.map((c) => ({ slug: c.place.slug, name: c.place.name, tags: c.place.tags, costLabel: c.place.costLabel, indoor: c.place.indoor, why: c.place.fallbackWhy })),
+    context: { topTags: top?.whyInputs.topTags ?? [], memory: input.memory.pastNights[0]?.text ?? null, weather: top?.weather ?? null },
+    fetcher,
+  });
+  return result ? { preferredSlug: result.slug, preferredWhy: result.why } : null;
 }
 
 async function fetchWeatherOrNull(day: string): Promise<DayWeather | null> {
@@ -175,7 +191,14 @@ export const fetchWeatherStep = internalAction({
 export const memoryStep = internalAction({
   args: { groupId: v.id("groups"), day: v.string() },
   returns: vMemoryContext,
-  handler: async (): Promise<MemoryContext> => EMPTY_MEMORY,
+  handler: async (ctx, args): Promise<MemoryContext> => {
+    try {
+      const m: MemoryContext = await ctx.runAction(internal.memory.read.getMemoryContext, args);
+      return { likedTags: m.likedTags, skipped: m.skipped, suppressed: m.suppressed, pastNights: m.pastNights.map((n) => ({ id: n.id, text: n.text, placeId: n.placeId, date: n.date })) };
+    } catch {
+      return EMPTY_MEMORY;
+    }
+  },
 });
 
 export const pickStep = internalAction({
@@ -188,13 +211,27 @@ export const pickStep = internalAction({
     memory: vMemoryContext,
   },
   returns: v.union(vStoredPlan, v.null()),
-  handler: async (_ctx, args): Promise<StoredPlan | null> => {
+  handler: async (ctx, args): Promise<StoredPlan | null> => {
     const input = buildInput(args);
-    const preferred = process.env.OPENAI_API_KEY ? await modelPick(input) : null;
+    const preferred = process.env.OPENAI_API_KEY ? await modelPick(input).catch(() => null) : null;
     const plan = generatePlan(input, preferred ?? {});
     if (!plan) return null;
     const picked = validatePlan(plan, input) ? plan : fallbackPlan(input);
-    return picked ? toStored(picked) : null;
+    if (!picked) return null;
+    if (picked.whySource !== "memory") {
+      const place = PLACE_BY_SLUG.get(picked.placeSlug);
+      const hit: { memoryId: string; text: string } | null = place
+        ? await ctx.runAction(internal.memory.read.whyThis, { groupId: args.groupId, tags: [place.name.replace(/^the /, ""), ...place.tags.map((t) => TAG_LABEL[t])] }).catch(() => null)
+        : null;
+      const why = hit ? memoryWhy(hit.text) : null;
+      if (hit && why && copyOk(why)) {
+        picked.why = why;
+        picked.whySource = "memory";
+        picked.whyMemoryId = hit.memoryId;
+        picked.whyInputs.memory = hit.text;
+      }
+    }
+    return toStored(picked);
   },
 });
 
@@ -242,6 +279,7 @@ async function storePlan(
     line: args.plan.line,
     why: args.plan.why,
     whySource: args.plan.whySource,
+    whyMemoryId: args.plan.whyMemoryId ?? undefined,
     whyInputs: planWhyInputs(args.plan),
     chips: args.plan.chips,
     cost: args.plan.cost,
@@ -279,6 +317,7 @@ export const patchPlan = internalMutation({
       line: args.plan.line,
       why: args.plan.why,
       whySource: args.plan.whySource,
+      whyMemoryId: args.plan.whyMemoryId ?? undefined,
       whyInputs: planWhyInputs(args.plan),
       chips: args.plan.chips,
       placeId: place._id,

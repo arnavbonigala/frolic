@@ -1,5 +1,10 @@
-import { v } from "convex/values";
-import { query } from "../_generated/server";
+import { ConvexError, v } from "convex/values";
+import { mutation, query } from "../_generated/server";
+import { requireMember, userFromToken } from "../lib/identity";
+import { HERO_KEYS, PLACE_BY_SLUG, heroKeyFor } from "../places/data";
+import { copyOk } from "./engine";
+
+export const DEVICE_WHY_MAX = 120;
 
 const vPlace = v.object({
   name: v.string(),
@@ -17,6 +22,17 @@ const vPlanView = v.object({
   title: v.string(),
   line: v.string(),
   why: v.union(v.string(), v.null()),
+  whySource: v.union(v.literal("template"), v.literal("memory"), v.literal("device"), v.literal("haiku")),
+  whyInputs: v.object({
+    placeName: v.string(),
+    memory: v.optional(v.string()),
+    topTags: v.array(v.string()),
+    weather: v.optional(v.string()),
+    tempF: v.optional(v.number()),
+    sunsetAt: v.optional(v.number()),
+    rainSwap: v.boolean(),
+  }),
+  heroKey: v.union(...HERO_KEYS.map((k) => v.literal(k))),
   chips: v.array(v.string()),
   cost: v.number(),
   costLabel: v.string(),
@@ -32,9 +48,11 @@ const vPlanView = v.object({
 });
 
 export const today = query({
-  args: { groupId: v.id("groups"), day: v.string() },
+  args: { token: v.string(), groupId: v.id("groups"), day: v.string() },
   returns: v.union(vPlanView, v.null()),
   handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.token);
+    await requireMember(ctx, args.groupId, user._id);
     const plans = await ctx.db
       .query("plans")
       .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day))
@@ -52,6 +70,9 @@ export const today = query({
       title: plan.title,
       line: plan.line,
       why: plan.why ?? null,
+      whySource: plan.whySource,
+      whyInputs: plan.whyInputs,
+      heroKey: PLACE_BY_SLUG.has(place.slug) ? heroKeyFor(PLACE_BY_SLUG.get(place.slug)!) : "plan-free-stuff",
       chips: plan.chips,
       cost: plan.cost,
       costLabel: plan.costLabel,
@@ -73,5 +94,21 @@ export const today = query({
         photoUrl: place.photoUrl ?? null,
       },
     };
+  },
+});
+
+export const setDeviceWhy = mutation({
+  args: { token: v.string(), planId: v.id("plans"), text: v.string() },
+  returns: v.object({ accepted: v.boolean(), why: v.string() }),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.token);
+    const plan = await ctx.db.get("plans", args.planId);
+    if (!plan) throw new ConvexError({ code: "NO_PLAN", message: "That plan is gone" });
+    await requireMember(ctx, plan.groupId, user._id);
+    if (plan.whySource === "device") return { accepted: false, why: plan.why ?? "" };
+    const text = args.text.replace(/\s+/g, " ").trim();
+    if (text.length > DEVICE_WHY_MAX || !copyOk(text)) throw new ConvexError({ code: "BAD_COPY", message: "That line does not fit the house rules" });
+    await ctx.db.patch("plans", plan._id, { why: text, whySource: "device" });
+    return { accepted: true, why: text };
   },
 });
