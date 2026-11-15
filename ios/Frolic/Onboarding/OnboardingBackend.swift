@@ -135,12 +135,25 @@ final class OnboardingBackend {
             let outcome: CreateOutcome = try await client.mutation("users:createGroup", with: [
                 "deviceToken": OnboardingIdentity.deviceToken,
                 "firstName": firstName,
-                "groupName": String(firstName.prefix(33)) + "'s crew",
+                "groupName": Self.crewName(for: firstName),
             ])
             return outcome
         } catch {
             throw Self.classify(error)
         }
+    }
+
+    static func crewName(for firstName: String) -> String {
+        let suffix = "'s crew"
+        var base = ""
+        var units = 0
+        for character in firstName {
+            let width = String(character).utf16.count
+            guard units + width + suffix.utf16.count <= OnboardingModel.nameLimit else { break }
+            units += width
+            base.append(character)
+        }
+        return base + suffix
     }
 
     func uploadPhoto(_ data: Data) async throws -> String {
