@@ -61,6 +61,26 @@ describe("matcher", () => {
     expect(run([any("maya"), any("maya")])).toBeNull();
   });
 
+  test("capacity keeps the largest valid subset, not the earliest prefix", () => {
+    const m = run([onlyIf("maya", "sam"), any("dev"), any("jordan"), any("sam")], { capacity: 3 });
+    expect(m?.userIds).toEqual(["dev", "maya", "sam"]);
+  });
+
+  test("capacity breaks ties by tap order", () => {
+    const m = run([any("a"), any("b"), any("c"), any("d")], { capacity: 2 });
+    expect(m?.userIds).toEqual(["a", "b"]);
+  });
+
+  test("capacity never splits a chain to fit", () => {
+    const m = run([onlyIf("a", "b"), onlyIf("b", "c"), any("c"), any("d")], { capacity: 3 });
+    expect(m?.userIds).toEqual(["a", "b", "c"]);
+  });
+
+  test("capacity smaller than every closed set means no match", () => {
+    const m = run([onlyIf("a", "b", "c"), onlyIf("b", "a", "c"), onlyIf("c", "a", "b")], { capacity: 2 });
+    expect(m).toBeNull();
+  });
+
   test("only if naming yourself is ignored", () => {
     expect(run([onlyIf("maya", "maya"), any("dev")])?.userIds).toEqual(["dev", "maya"]);
   });
