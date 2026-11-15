@@ -1028,4 +1028,19 @@ describe("pay views", () => {
     expect(dev.state).toBe("held");
     expect(dev.paidNames).toEqual(["Maya"]);
   });
+
+  test("my payment says nothing before the reveal time", async () => {
+    const t = makeT();
+    const crew = await heldCrew(t);
+    await hold(t, crew, "Maya");
+    await hold(t, crew, "Dev");
+    await t.run(async (ctx) => await ctx.db.patch("frolics", crew.frolicId, { revealAt: Date.now() + 60_000 }));
+
+    const early = await t.query(api.whop.pay.myPayment, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    expect(early).toEqual({ state: "none", kind: "none", amountCents: 0, error: null, paidNames: [], noHold: false });
+
+    vi.setSystemTime(Date.now() + 61_000);
+    const later = await t.query(api.whop.pay.myPayment, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    expect(later.state).toBe("held");
+  });
 });

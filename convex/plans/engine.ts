@@ -235,14 +235,30 @@ type Ctx = {
   favored: string | null;
   blocked: Blocked;
   comebackSlug: string | null;
+  relaxed?: boolean;
 };
+
+export const FREE_LEAD_MIN = 30;
+export const FREE_TRAVEL_PAD_MIN = 10;
+
+export function freeEarliestStart(nowMs: number, maxTripMinutes: number): number {
+  const lead = Math.max(FREE_LEAD_MIN, maxTripMinutes + FREE_TRAVEL_PAD_MIN);
+  return Math.ceil((nowMs + lead * MINUTE) / SLOT) * SLOT;
+}
 
 function bestSlot(place: Place, trips: Record<string, Trip>, ctx: Ctx) {
   const { input } = ctx;
   const dur = place.durationMin * MINUTE;
   const dayEnd = ctx.dayStartMs + 86_400_000;
-  const earliest = Math.max(input.nowMs, ctx.dayStartMs, Math.min(...input.attendees.map((a) => a.window.start)));
-  const latest = Math.min(dayEnd, Math.max(...input.attendees.map((a) => a.window.end)));
+  const free = input.kind === "free";
+  const maxTrip = Math.max(...Object.values(trips).map((t) => t.minutes));
+  const earliest = Math.max(
+    input.nowMs,
+    ctx.dayStartMs,
+    Math.min(...input.attendees.map((a) => a.window.start)),
+    free ? freeEarliestStart(input.nowMs, maxTrip) : 0,
+  );
+  const latest = ctx.relaxed ? dayEnd : Math.min(dayEnd, Math.max(...input.attendees.map((a) => a.window.end)));
   let best: { startMs: number; count: number; fit: number } | null = null;
   for (let s = Math.ceil(earliest / SLOT) * SLOT; s + dur <= latest; s += SLOT) {
     const e = s + dur;
@@ -251,6 +267,7 @@ function bestSlot(place: Place, trips: Record<string, Trip>, ctx: Ctx) {
     const homeOk = input.attendees.every((a) => a.limits.homeBy === null || (e - ctx.dayStartMs) / MINUTE + trips[a.userId].minutes <= a.limits.homeBy);
     if (!homeOk) continue;
     const count = input.attendees.filter((a) => a.window.start <= s && e <= a.window.end).length;
+    if (ctx.relaxed) return { startMs: s, count, fit: 0 };
     if (count < ctx.need) continue;
     const fit = timeFit(place, s, ctx.sunsetMs, isRainy(hourAt(input.weather, s)));
     if (!best || count > best.count || (count === best.count && fit > best.fit)) best = { startMs: s, count, fit };
@@ -344,6 +361,7 @@ export function rankCandidates(
   input: DropInput,
   ctx = buildCtx(input),
   pool = [...(input.places ?? BERKELEY_PLACES), ...dropPlaces(input)],
+  relax = true,
 ): Candidate[] {
   if (input.attendees.length === 0) return [];
   const out: Candidate[] = [];
@@ -381,7 +399,8 @@ export function rankCandidates(
     };
     out.push({ ...base, ...scoreCandidate(base, ctx) });
   }
-  return out.sort((a, b) => b.score - a.score || (a.place.slug < b.place.slug ? -1 : 1));
+  if (out.length === 0 && input.kind === "free" && relax && !ctx.relaxed) return rankCandidates(input, { ...ctx, relaxed: true }, pool);
+  return out.sort((a, b) => (ctx.relaxed ? a.startMs - b.startMs : 0) || b.score - a.score || (a.place.slug < b.place.slug ? -1 : 1));
 }
 
 const p_golden = (p: Place) => p.tags.includes("sunsets") && !p.indoor;
@@ -452,13 +471,34 @@ function writeWhy(c: Candidate, ctx: Ctx, swap: boolean): { why: string; whySour
   return { why: p.fallbackWhy, whySource: "template", whyMemoryId: null, memory: null };
 }
 
+export function sunsetRelevant(c: Candidate, sunsetMs: number): boolean {
+  const p = c.place;
+  if (p.tags.includes("sunsets") || p.tags.includes("views")) return true;
+  return !p.indoor && c.startMs < sunsetMs && c.endMs > sunsetMs - 60 * MINUTE;
+}
+
+function closesAt(c: Candidate): number | null {
+  const { weekday, minutes } = localParts(c.startMs);
+  const span = c.place.hours[weekday].find(([o, cl]) => o <= minutes && minutes < cl);
+  if (!span || span[1] >= 1440) return null;
+  return c.startMs + (span[1] - minutes) * MINUTE;
+}
+
+function placeLine(c: Candidate): string {
+  const close = closesAt(c);
+  const trip = cap(tripLabel(c.maxTrip)) + ".";
+  if (close !== null) return "Open until " + clockLabel(close) + ". " + trip;
+  return trip + " " + (c.place.costPerPersonCents === 0 ? "It's free." : cap(c.place.costLabel) + ".");
+}
+
 function writeLine(c: Candidate, ctx: Ctx, swap: boolean): string {
   const sunset = clockLabel(ctx.sunsetMs);
   const golden = clockLabel(ctx.sunsetMs - 30 * MINUTE);
-  if (swap) return "Rain around " + clockLabel(c.startMs) + ", so it's indoors. Sunset at " + sunset + ".";
+  if (swap) return "Rain around " + clockLabel(c.startMs) + ", so it's indoors. " + placeLine(c);
   const lead = c.hour ? conditionLabel(c.hour) + " and " + c.hour.tempF + "\u00b0. " : "";
   if (c.golden) return lead + "Golden hour starts at " + golden + ".";
-  return lead + "Sunset at " + sunset + ".";
+  if (sunsetRelevant(c, ctx.sunsetMs)) return lead + "Sunset at " + sunset + ".";
+  return lead + placeLine(c);
 }
 
 function writeChips(c: Candidate, ctx: Ctx, swap: boolean): string[] {
@@ -468,7 +508,9 @@ function writeChips(c: Candidate, ctx: Ctx, swap: boolean): string[] {
       ? "Golden hour " + clockLabel(ctx.sunsetMs - 30 * MINUTE)
       : c.hour
         ? conditionLabel(c.hour) + ", " + c.hour.tempF + "\u00b0"
-        : "Sunset " + clockLabel(ctx.sunsetMs);
+        : sunsetRelevant(c, ctx.sunsetMs) || closesAt(c) === null
+          ? "Sunset " + clockLabel(ctx.sunsetMs)
+          : "Open until " + clockLabel(closesAt(c)!);
   return [c.place.costLabel, tripLabel(c.maxTrip), third];
 }
 
@@ -518,9 +560,13 @@ export function fallbackPlan(input: DropInput): Plan | null {
   const safe: DropInput = { ...input, weather: null };
   const ctx = buildCtx(safe);
   const pool = FALLBACK_SLUGS.map((s) => (input.places ?? BERKELEY_PLACES).find((p) => p.slug === s)).filter((p): p is Place => !!p);
-  const ranked = rankCandidates(safe, ctx, pool);
+  const strict = rankCandidates(safe, ctx, pool, false);
+  const ranked = strict.length > 0 || input.kind !== "free" ? strict : rankCandidates(safe, ctx, input.places ?? BERKELEY_PLACES);
   if (ranked.length === 0) return null;
-  const order = (c: Candidate) => FALLBACK_SLUGS.indexOf(c.place.slug);
+  const order = (c: Candidate) => {
+    const i = FALLBACK_SLUGS.indexOf(c.place.slug);
+    return i < 0 ? FALLBACK_SLUGS.length : i;
+  };
   const pick = [...ranked].sort((a, b) => order(a) - order(b))[0];
   return toPlan(pick, ctx, ranked, "fallback", false);
 }
