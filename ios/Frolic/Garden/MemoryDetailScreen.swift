@@ -173,8 +173,9 @@ struct MemoryDetailScreen: View {
     }
 
     private func people(_ going: [GardenPerson]) -> some View {
-        HStack(alignment: .bottom, spacing: 4) {
-            ForEach(Array(going.sorted { $0.userId == store.myUserId && $1.userId != store.myUserId }.enumerated()), id: \.element.id) { index, person in
+        let ordered = going.sorted { $0.userId == store.myUserId && $1.userId != store.myUserId }
+        return HStack(alignment: .bottom, spacing: 4) {
+            ForEach(Array(ordered.enumerated()), id: \.element.id) { index, person in
                 GardenFlower(
                     person: displayed(person),
                     color: person.color,
@@ -188,8 +189,8 @@ struct MemoryDetailScreen: View {
         }
         .frame(height: 96)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(GardenNames.line(going.map(\.name))) went.")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Went: \(GardenNames.line(ordered.map { displayed($0).name }))")
     }
 
     @ViewBuilder
