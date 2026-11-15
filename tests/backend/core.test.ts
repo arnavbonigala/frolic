@@ -19,6 +19,25 @@ async function scheduled(t: ReturnType<typeof makeT>, name: string) {
 }
 
 describe("tap and synced reveal", () => {
+  test("the reveal memory is written after the flip, once per frolic", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    await flipDue(t, 10);
+    const reveals = async () =>
+      (await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect())).filter((e) => e.kind === "reveal");
+    expect(await reveals()).toHaveLength(1);
+    const frolic = await t.run(async (ctx) => await ctx.db.get("frolics", crew.frolicId));
+    await t.mutation(internal.reveal.remember, {
+      frolicId: crew.frolicId,
+      userIds: [crew.ids.Maya, crew.ids.Dev],
+      revealAt: frolic!.revealAt!,
+    });
+    expect(await reveals()).toHaveLength(1);
+  });
+
   test("two taps match, and nothing about the match is readable before revealAt", async () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);

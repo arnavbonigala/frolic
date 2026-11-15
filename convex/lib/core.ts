@@ -124,15 +124,13 @@ async function rematch(
     now,
     capacity: frolic.capacity,
   });
-  const pending = await ctx.db
-    .query("reveals")
-    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
-    .unique();
+  const pending = await pendingReveal(ctx, frolic._id);
 
   if (!match) {
     if (pending) {
       await ctx.scheduler.cancel(pending.scheduledId);
       await ctx.db.delete("reveals", pending._id);
+      if (now >= frolic.deadline) await fadeFrolic(ctx, frolic._id);
     }
     return;
   }
@@ -266,6 +264,25 @@ export async function deleteTaps(
   for (const tap of taps) await ctx.db.delete("taps", tap._id);
 }
 
+async function pendingReveal(
+  ctx: MutationCtx,
+  frolicId: Id<"frolics">,
+): Promise<Doc<"reveals"> | null> {
+  return await ctx.db
+    .query("reveals")
+    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
+    .unique();
+}
+
+export async function fadeFrolic(
+  ctx: MutationCtx,
+  frolicId: Id<"frolics">,
+): Promise<void> {
+  await deleteTaps(ctx, frolicId);
+  await ctx.db.patch("frolics", frolicId, { status: "faded" });
+  await ctx.scheduler.runAfter(0, internal.keiki.outbound.onFaded, { frolicId });
+}
+
 export async function removeTap(
   ctx: MutationCtx,
   userId: Id<"users">,
@@ -275,11 +292,15 @@ export async function removeTap(
   const frolic = await getFrolic(ctx, frolicId);
   await requireMember(ctx, frolic.groupId, userId);
   if (limited) await rateLimiter.limit(ctx, "tap", { key: userId, throws: true });
+  const now = Date.now();
+  if (frolic.status === "open" && now >= frolic.deadline && !(await pendingReveal(ctx, frolicId))) {
+    throw closed("This one is over");
+  }
   const existing = await ctx.db
     .query("taps")
     .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
     .unique();
   if (existing) await ctx.db.delete("taps", existing._id);
-  if (frolic.status === "open") await rematch(ctx, frolic, Date.now());
+  if (frolic.status === "open") await rematch(ctx, frolic, now);
   return null;
 }
