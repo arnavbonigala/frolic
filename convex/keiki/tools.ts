@@ -402,12 +402,15 @@ export const imFree = internalMutation({
     const me = await who(ctx, phone);
     if (!me) return notMember;
     if (!keikiEnv().imFree) return { ok: false, error: "not_ready", say: "Starting a plan from a text is not on yet. Offer today's plan instead." };
-    const minutes = Math.max(30, Math.min(480, Math.round(forMinutes)));
+    const minutes = Math.max(60, Math.min(240, Math.round(forMinutes)));
     let result: { planTitle?: string; startsAt?: number; error?: string } | null;
     try {
       result = await ctx.runMutation(imFreeAs, { userId: me.user._id, groupId: me.group._id, forMinutes: minutes });
     } catch {
       return { ok: false, error: "not_ready", say: "Starting a plan from a text did not go through. Offer today's plan instead." };
+    }
+    if (result?.error === "planning") {
+      return { ok: true, plan: null, startsAt: null, say: "Say a plan is being made now and goes to the crew in a minute without naming who started it. Tell them they are counted as down and will get the plan by text." };
     }
     if (!result || result.error || result.planTitle === undefined || result.startsAt === undefined) {
       return { ok: false, error: result?.error ?? "not_ready", say: "That did not start. Offer today's plan instead." };

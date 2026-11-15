@@ -147,6 +147,16 @@ export const onFree = internalMutation({
     for (const chat of await chatsOf(ctx, c.group._id)) {
       drafts.push({ key: "drop:" + frolicId + ":" + chat.chatId, kind: "drop", target: chat.chatId, text: freeText(c.details.view, true), notBefore: Date.now() });
     }
+    if (c.frolic.startedBy) {
+      drafts.push(
+        ...(await personal(ctx, [c.frolic.startedBy], (user) => ({
+          key: "drop:" + frolicId + ":" + user._id,
+          kind: "drop",
+          text: "You're counted as down. " + c.details.view.title + " at " + c.details.view.startsAt + " just went to your crew. Nobody knows it was you.",
+          notBefore: Date.now(),
+        }))),
+      );
+    }
     await enqueue(ctx, frolicId, drafts);
     return null;
   },

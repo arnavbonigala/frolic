@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { applyTap, findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOutAndRefill } from "./lib/core";
 import { FREE_ANSWER_MS, openStartedFrolic, startFreeDrop } from "./plans/drop";
 import { localParts } from "./plans/time";
@@ -344,36 +344,53 @@ export const sitOut = mutation({
   },
 });
 
+async function startFree(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  args: { groupId: Id<"groups">; forMinutes: number; source: "app" | "imessage" },
+): Promise<{ frolicId: Id<"frolics">; started: boolean }> {
+  await requireMember(ctx, args.groupId, userId);
+  if (!Number.isInteger(args.forMinutes) || args.forMinutes < 60 || args.forMinutes > 240) {
+    throw new ConvexError({ code: "BAD_MINUTES", message: "Free for is 60 to 240 minutes" });
+  }
+  const now = Date.now();
+  const open = await openStartedFrolic(ctx, args.groupId);
+  if (open && now < open.deadline) return { frolicId: open._id, started: false };
+  await rateLimiter.limit(ctx, "imFree", { key: userId, throws: true });
+  const day = localParts(now).day;
+  const window = { start: now, end: now + args.forMinutes * 60 * 1000 };
+  const deadline = Math.min(now + FREE_ANSWER_MS, window.end);
+  const frolicId = await ctx.db.insert("frolics", {
+    groupId: args.groupId,
+    day,
+    kind: "daily",
+    status: "open",
+    window,
+    durationMinutes: 60,
+    deadline,
+    origin: "free",
+    startedBy: userId,
+  });
+  await ctx.scheduler.runAt(deadline, internal.reveal.fade, { frolicId });
+  await applyTap(ctx, userId, { frolicId, kind: "down", source: args.source });
+  await startFreeDrop(ctx, { groupId: args.groupId, day, nowMs: now, free: { frolicId, userId, window } });
+  return { frolicId, started: true };
+}
+
 export const imFree = mutation({
   args: { deviceToken: v.string(), groupId: v.id("groups"), forMinutes: v.number() },
   returns: v.object({ frolicId: v.id("frolics"), started: v.boolean() }),
   handler: async (ctx, args) => {
     const user = await userFromToken(ctx, args.deviceToken);
-    await requireMember(ctx, args.groupId, user._id);
-    if (!Number.isInteger(args.forMinutes) || args.forMinutes < 60 || args.forMinutes > 240) {
-      throw new ConvexError({ code: "BAD_MINUTES", message: "Free for is 60 to 240 minutes" });
-    }
-    const now = Date.now();
-    const open = await openStartedFrolic(ctx, args.groupId);
-    if (open && now < open.deadline) return { frolicId: open._id, started: false };
-    await rateLimiter.limit(ctx, "imFree", { key: user._id, throws: true });
-    const day = localParts(now).day;
-    const window = { start: now, end: now + args.forMinutes * 60 * 1000 };
-    const deadline = Math.min(now + FREE_ANSWER_MS, window.end);
-    const frolicId = await ctx.db.insert("frolics", {
-      groupId: args.groupId,
-      day,
-      kind: "daily",
-      status: "open",
-      window,
-      durationMinutes: 60,
-      deadline,
-      origin: "free",
-      startedBy: user._id,
-    });
-    await ctx.scheduler.runAt(deadline, internal.reveal.fade, { frolicId });
-    await applyTap(ctx, user._id, { frolicId, kind: "down", source: "app" });
-    await startFreeDrop(ctx, { groupId: args.groupId, day, nowMs: now, free: { frolicId, userId: user._id, window } });
-    return { frolicId, started: true };
+    return await startFree(ctx, user._id, { groupId: args.groupId, forMinutes: args.forMinutes, source: "app" });
+  },
+});
+
+export const imFreeAs = internalMutation({
+  args: { userId: v.id("users"), groupId: v.id("groups"), forMinutes: v.number() },
+  returns: v.object({ error: v.string() }),
+  handler: async (ctx, args) => {
+    const result = await startFree(ctx, args.userId, { groupId: args.groupId, forMinutes: args.forMinutes, source: "imessage" });
+    return { error: result.started ? "planning" : "already_open" };
   },
 });

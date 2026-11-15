@@ -162,8 +162,10 @@ describe("I'm free", () => {
     const rows = await c.t.run(async (ctx) =>
       await ctx.db.query("keikiOutbox").withIndex("by_frolicId", (q) => q.eq("frolicId", s.frolicId)).collect(),
     );
-    expect(rows.map((r) => r.userId).sort()).toEqual([c.ids.Dev, c.ids.Priya].sort());
-    for (const r of rows) {
+    expect(rows.map((r) => r.userId).sort()).toEqual([c.ids.Dev, c.ids.Maya, c.ids.Priya].sort());
+    const mine = rows.find((r) => r.userId === c.ids.Maya)!;
+    expect(mine.text).toMatch(/^You're counted as down\. .+ at \d{1,2}:\d{2} just went to your crew\. Nobody knows it was you\.$/);
+    for (const r of rows.filter((x) => x.userId !== c.ids.Maya)) {
       expect(r.kind).toBe("drop");
       expect(r.text.split("\n")[0]).toMatch(/^Someone in your crew is free\. .+ at \d{1,2}:\d{2}\?$/);
       expect(r.text).not.toContain("Maya");
@@ -208,5 +210,19 @@ describe("I'm free", () => {
     const plans = await c.t.run(async (ctx) => await ctx.db.query("plans").collect());
     expect(plans).toHaveLength(1);
     await c.t.mutation(internal.keiki.outbound.onFree, { frolicId: s.frolicId });
+  });
+
+  test("imFreeAs starts the same frolic for a texter and refuses a second while one is open", async () => {
+    const c = await freeCrew(["Maya", "Dev"]);
+    expect(await c.t.mutation(internal.frolics.imFreeAs, { userId: c.ids.Dev, groupId: c.groupId, forMinutes: 90 })).toEqual({ error: "planning" });
+    await settle(c.t);
+    const rows = await c.t.run(async (ctx) => await ctx.db.query("frolics").collect());
+    expect(rows).toHaveLength(1);
+    expect(rows[0].startedBy).toBe(c.ids.Dev);
+    expect(rows[0].planId).toBeDefined();
+    const taps = await c.t.run(async (ctx) => await ctx.db.query("taps").collect());
+    expect(taps.map((x) => [x.userId, x.kind, x.source])).toEqual([[c.ids.Dev, "down", "imessage"]]);
+    expect(await c.t.mutation(internal.frolics.imFreeAs, { userId: c.ids.Maya, groupId: c.groupId, forMinutes: 90 })).toEqual({ error: "already_open" });
+    expect((await errorOf(c.t.mutation(internal.frolics.imFreeAs, { userId: c.ids.Maya, groupId: c.groupId, forMinutes: 30 })))?.code).toBe("BAD_MINUTES");
   });
 });

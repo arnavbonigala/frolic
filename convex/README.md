@@ -303,6 +303,7 @@ Not callable from a client. These exist so the web, iMessage and plans lanes act
 | `snaps.addSnapAs` | `{ userId, frolicId, storageId, takenAt }` | `null` |
 | `limits.forUsers` | `{ userIds }` | `{ userId, budgetCap, energy, maxMinutes, homeBy }[]`, nulls for anyone with none |
 | `frolics.open` | `{ groupId, day, kind: "daily" \| "weekend" \| "solo", planId?, window, durationMinutes, deadline, capacity? }` | `frolicId` |
+| `frolics.imFreeAs` | `{ userId, groupId, forMinutes }` | `{ error: "planning" }` for a new start (the plan lands by text), `{ error: "already_open" }` when the crew has one open |
 | `reveal.flip` | `{ frolicId }` | `null` |
 | `reveal.fade` | `{ frolicId }` | `null` |
 | `reveal.complete` | `{ frolicId }` | `null` |

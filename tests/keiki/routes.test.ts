@@ -1002,6 +1002,19 @@ describe("im_free", () => {
     delete testEnv().KEIKI_IM_FREE;
   });
 
+  it("starts a real plan and tells the starter it is on its way", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT();
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
+    expect(result.body).toMatchObject({ ok: true, plan: null, startsAt: null });
+    expect(JSON.stringify(result.body)).not.toContain("Sam");
+    const again = await toolResult(t, "im_free", { phone: ANA_PHONE, input: { for_minutes: 90 } });
+    expect(again.body.ok).toBe(false);
+    delete testEnv().KEIKI_IM_FREE;
+  });
+
   it("answers in words when the crew already has a plan open", async () => {
     testEnv().KEIKI_IM_FREE = "1";
     vi.setSystemTime(new Date(nowFor()));
