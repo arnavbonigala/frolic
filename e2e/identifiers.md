@@ -220,7 +220,7 @@ Notification actions are registered on the notification category, not on a view,
 | `web.sharedBy` | Ari shared a plan with Roommates |
 | `web.name` | Your first name |
 | `web.down` | I'm down |
-| `web.hush` | Nobody sees you're down unless someone else is too. No app needed. |
+| `web.hush` | Nobody sees you're down unless someone else is too. |
 | `web.downState` | You're down, Maya |
 | `web.on` | It's on. |
 | `web.getApp` | Get Frolic for the next one |
