@@ -166,7 +166,7 @@ export function blockedBySkips(memory: MemoryContext): Blocked {
   return b;
 }
 
-const isBlocked = (p: Place, b: Blocked) => b.slugs.has(p.slug) || p.tags.some((t) => b.tags.has(t));
+const isBlocked = (p: Place, b: Blocked) => b.slugs.has(p.slug) || (p.tags[0] !== undefined && b.tags.has(p.tags[0]));
 
 export function favoredUser(attendees: Attendee[], history: HistoryEntry[], seed: string): string | null {
   if (attendees.length === 0) return null;

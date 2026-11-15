@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../convex/_generated/api";
-import { NOON, flipDue, makeT, setupCrew, tap, token, type Crew } from "../convex/tests/setup.helpers";
+import { NOON, flipDue, makeT, setupCrew, tap, token, type Crew } from "./backend/setup.helpers";
 import { heroKey } from "../convex/web/hero";
 
 beforeEach(() => {
