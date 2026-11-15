@@ -354,10 +354,7 @@ final class OnboardingModel {
     }
 
     func confirmTaste() async {
-        guard !isSubmitting else { return }
-        isSubmitting = true
         failure = nil
-        isSubmitting = false
         step = .calendar
         readCalendar()
     }
