@@ -155,9 +155,10 @@ A paid plan is the Today screen with `?paid=1`; there is no separate Sunday scre
 
 | Identifier | Visible label |
 | - | - |
-| `crew.free` | the free friend row: Free till 8 · 6 min away |
+| `crew.title` | the crew switcher: Sunset Crew, switch crew |
+| `crew.subtitle` | 5 of you · the crew started in September |
+| `crew.free` | your own free time control: Free till 8 |
 | `crew.row.you` | your own row, Free till 8 |
-| `crew.distance.note` | Nobody sees exactly where you are. |
 | `crew.comingUp` | Sunday 11 AM: Kayaks at the Marina. Maya and Dev are going. |
 | `crew.invite` | Invite a friend |
 | `crew.invite.title` | Invite to Sunset Crew |
@@ -165,25 +166,17 @@ A paid plan is the Today screen with `?paid=1`; there is no separate Sunday scre
 | `crew.invite.copy` | Copy link, then Link copied |
 | `crew.invite.text` | Text it |
 | `crew.hold` | the hold row: Hold $3 |
-| `crew.lately` | Lately |
-| `crew.lately.row` | Maya, Dev and Jordan · Nov 8 |
-| `crew.newThisWeek` | New this week |
-| `crew.favorites` | Your crew's favorites |
-| `crew.favorites.row` | Sunset at Indian Rock · 5 times |
 | `crew.fund` | the Frolic Fund section: balance and what it paid for |
 | `crew.fund.row` | the fund change line, which never names who forfeited |
 | `crew.friend.title` | the friend's name |
 | `crew.friend.sheet` | Free till 6, 15 min away, roughly |
 | `crew.friend.together` | 1 frolic together, or No frolics together yet |
-| `crew.friend.noAnswer` | You'll never see whether Jordan said yes or no to a plan. That's the point. |
 
 ## Garden and memory (`#garden`, `#memory/<n>`)
 
 | Identifier | Visible label |
 | - | - |
-| `garden.semester` | This semester, then 3 frolics, 2 places, 4 friends |
-| `garden.count` | 13 frolics |
-| `garden.week` | Golden-hour chasers who keep it under $10, with a soft spot for a sunny lawn. |
+| `garden.title` | Garden |
 | `garden.health` | Your garden is glowing. Two frolics this week. |
 | `garden.milestone` | 7 more frolics to unlock the bench |
 | `garden.fund` | The Frolic Fund covered $8 at Kayaks at the Marina. |
@@ -204,12 +197,11 @@ The empty garden reads "Nothing planted yet" and "Your first flower grows the fi
 | Identifier | Visible label |
 | - | - |
 | `you.title` | your name |
-| `you.privateHeader` | Only you see these |
+| `you.privateHeader` | Your limits |
 | `you.budget`, `you.budget.free`, `.ten`, `.twentyFive`, `.any` | Spend up to: Free, $10, $25, Any |
 | `you.energy`, `you.energy.chill`, `.anything` | Energy: Chill, Down for anything |
 | `you.travel` | Travel up to, with 5 min by foot or BART |
 | `you.homeBy` | Home by: 9 PM, 10 PM, 11 PM, Midnight, Whenever |
-| `you.limitsNote` | Plans quietly fit everyone's limits. Nobody has to say "I can't afford that." |
 | `you.taste` | What you're into |
 | `you.repick` | Pick photos again |
 | `you.taste.sheet` | the taste sheet |

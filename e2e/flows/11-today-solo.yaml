@@ -18,7 +18,7 @@ test:
     - type: "validation"
       step_description: "A plan card tagged \"Just for you\" and the label \"Your first frolic\" is visible"
     - type: "validation"
-      step_description: "The line \"Your crew grows from here. Today's plan is still yours.\" is visible"
+      step_description: "The caption \"Just you today\" is visible above the plan, and the hush line \"Your yes stays secret, even in the group chat\" is below it"
     - type: "validation"
       step_description: "Buttons \"Send to the group chat\" and \"I'm down\" are visible"
     - type: "instructions"

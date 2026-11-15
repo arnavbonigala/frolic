@@ -20,4 +20,4 @@ test:
     - type: "validation"
       step_description: "The \"Spend up to\" control and the \"Energy\" control are still visible under the banner"
     - type: "validation"
-      step_description: "The line \"Plans quietly fit everyone's limits. Nobody has to say \"I can't afford that.\"\" is visible"
+      step_description: "The section header \"Your limits\" is visible under the banner"

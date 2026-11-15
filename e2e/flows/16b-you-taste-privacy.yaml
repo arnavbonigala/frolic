@@ -24,4 +24,4 @@ test:
     - type: "instructions"
       step_description: "Tap \"Done\""
     - type: "validation"
-      step_description: "The line \"Plans quietly fit everyone's limits. Nobody has to say \"I can't afford that.\"\" is visible again"
+      step_description: "After Done, the You screen shows \"What you're into\" with the taste chips again and \"Your limits\" above them"
