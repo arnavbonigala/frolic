@@ -292,6 +292,11 @@ final class CrewStore {
         }
     }
 
+    func inviteURL(code: String) -> String {
+        if let siteURL { return siteURL + "/p/" + code }
+        return "frolic://join/" + code
+    }
+
     func inviteCode() async -> String? {
         guard let client, let groupId, case let token = FrolicIdentity.shared.deviceToken else { return nil }
         do {

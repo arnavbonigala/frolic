@@ -173,7 +173,7 @@ struct CrewInviteSheet: View {
         CrewSheetShell(title: "Invite to Sunset Crew", identifier: "crew.invite.title") {
             Group {
                 if let link {
-                    Text(link)
+                    Text("Code \(link.split(separator: "/").last.map { String($0).uppercased() } ?? "")")
                         .frolicFont(.bodyEmphasis)
                         .foregroundStyle(FrolicColor.ink)
                         .accessibilityIdentifier("crew.invite.link")
@@ -207,7 +207,7 @@ struct CrewInviteSheet: View {
                     .buttonStyle(.frolicSecondary)
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("crew.invite.copy")
-                if let link, let url = URL(string: "https://\(link)") {
+                if let link, let url = URL(string: link) {
                     ShareLink(item: url, subject: Text("Sunset Crew"), message: Text("Come frolic with us")) {
                         Text("Text it")
                             .frolicFont(.button)

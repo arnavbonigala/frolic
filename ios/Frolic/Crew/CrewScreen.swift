@@ -92,7 +92,7 @@ struct CrewScreen: View {
                 error: store.inviteError,
                 onRetry: { Task { await loadInvite() } },
                 onCopy: {
-                    UIPasteboard.general.string = "https://\(inviteLink ?? "frolic.app")"
+                    UIPasteboard.general.string = inviteLink
                     copied = true
                 },
                 copied: copied
@@ -109,9 +109,9 @@ struct CrewScreen: View {
 
     private func loadInvite() async {
         if store.isStandIn {
-            inviteLink = "frolic.app/j/sunset-crew"
+            inviteLink = "https://frolic.app/p/sunset-crew"
         } else if let code = await store.inviteCode() {
-            inviteLink = "frolic.app/j/\(code)"
+            inviteLink = store.inviteURL(code: code)
         }
     }
 
@@ -167,6 +167,7 @@ private struct CrewContent: View {
         CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled, amount: CrewCopy.money(view.holdCents)) { enabled in
             Task { await store.setHold(enabled) }
         }
+        .padding(.top, 14)
         if view.showsFund {
             SectionHeader(title: "Frolic Fund")
             CrewFundSection(fund: view.fund)
