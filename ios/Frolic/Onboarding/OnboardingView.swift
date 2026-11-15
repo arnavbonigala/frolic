@@ -50,7 +50,14 @@ struct OnboardingGate<Content: View>: View {
             finished = false
             model = makeModel(seed: nil, link: link)
         }
-        .task { if model == nil { rebuild() } }
+        .task {
+            if model == nil { rebuild() }
+            guard !finished, router.e2eRoute == nil else { return }
+            if let group = await OnboardingBackend(client: backend.client).existingMembership() {
+                OnboardingIdentity.commit(groupId: group)
+                finished = true
+            }
+        }
     }
 
     private var forcesOnboarding: Bool {

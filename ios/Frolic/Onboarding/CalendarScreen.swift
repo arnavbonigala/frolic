@@ -18,7 +18,7 @@ struct CalendarScreen: View {
             case .denied:
                 OnboardingStateCard(
                     title: "Frolic can't see your calendar",
-                    detail: "That's fine. Tell it each day when you're free, or allow the calendar in Settings.",
+                    detail: "Tell it each day, or allow it in Settings.",
                     actionTitle: "I'll tell it each day",
                     secondaryTitle: "Open Settings",
                     onAction: { model.tellItEachDay() },
@@ -29,7 +29,7 @@ struct CalendarScreen: View {
             case .empty:
                 OnboardingStateCard(
                     title: "Nothing to show yet",
-                    detail: "Your calendar has no days Frolic can read. Tell it each day when you're free.",
+                    detail: "Your calendar has no free days to read.",
                     actionTitle: "I'll tell it each day",
                     onAction: { model.tellItEachDay() },
                     identifier: "state.empty"
@@ -78,6 +78,11 @@ struct CalendarScreen: View {
                 }
             }
             .padding(.top, 20)
+            Text("This is what your crew would see this week.")
+                .frolicFont(.footnote)
+                .foregroundStyle(FrolicColor.secondaryText)
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
         }
     }
 
@@ -114,6 +119,9 @@ struct FreeSheet: View {
                 .foregroundStyle(FrolicColor.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("free.sheet.title")
+            Text("Your crew sees this. What you're doing stays private.")
+                .frolicFont(.subheadline)
+                .foregroundStyle(FrolicColor.secondaryText)
             FrolicGroup {
                 option("Free now till 8 PM", sub: "From your calendar", key: "till8", id: "free.sheet.till8", divider: false)
                 option("Free 5 PM to 8 PM", sub: "Set by you, just for today", key: "after5", id: "free.sheet.after5", divider: true)

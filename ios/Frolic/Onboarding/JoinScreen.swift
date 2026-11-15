@@ -104,7 +104,7 @@ struct JoinScreen: View {
                 .fontWeight(.semibold)
                 .foregroundStyle(FrolicColor.ink)
                 .accessibilityIdentifier("join.invitedBy")
-            Text(model.preview?.groupName ?? "Sunset Crew")
+            Text(model.preview?.groupName ?? "Your crew")
                 .font(.system(size: 46, weight: .heavy, design: .rounded))
                 .tracking(-1)
                 .foregroundStyle(FrolicColor.ink)
@@ -140,7 +140,7 @@ struct JoinScreen: View {
     }
 
     private var invitedByLine: String {
-        "\(model.preview?.invitedBy ?? "Maya") invited you to"
+        "\(model.preview?.invitedBy ?? "A friend") invited you to"
     }
 
     @ViewBuilder

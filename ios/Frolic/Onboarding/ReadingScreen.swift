@@ -52,7 +52,7 @@ struct ReadingScreen: View {
                 Text("Nothing stood out in those photos.")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(FrolicColor.ink)
-                Text("Pick different ones, or continue and Frolic will learn from what you say yes to.")
+                Text("Pick different ones.")
                     .font(.system(size: 15))
                     .foregroundStyle(FrolicColor.secondaryText)
             }

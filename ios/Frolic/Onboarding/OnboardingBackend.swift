@@ -51,10 +51,10 @@ enum OnboardingFailure: Error, Equatable {
         switch self {
         case .notConnected: "Frolic will try again as soon as it has one."
         case .offline: "Frolic will catch up as soon as you're back online."
-        case .inviteExpired: "Ask whoever invited you for a fresh link, or start your own crew."
+        case .inviteExpired: "Ask for a fresh link."
         case .inviteUnknown: "Check the link, or start your own crew."
         case .name: "First names top out at 40 characters."
-        case .rateLimited: "Too many tries just now. Give it a minute and tap again."
+        case .rateLimited: "Give it a minute."
         case .message: "Tap again in a moment."
         }
     }
@@ -81,11 +81,21 @@ final class OnboardingBackend {
         guard let client else { throw OnboardingFailure.notConnected }
         do {
             let publisher = client.subscribe(to: "users:invitePreview", with: ["inviteCode": code], yielding: InvitePreview?.self)
-            for try await value in publisher.values {
-                guard let value else { throw OnboardingFailure.inviteUnknown }
-                return value
+            return try await withThrowingTaskGroup(of: InvitePreview?.self) { group in
+                group.addTask {
+                    for try await value in publisher.values {
+                        return value
+                    }
+                    return nil
+                }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: 8_000_000_000)
+                    throw OnboardingFailure.offline
+                }
+                defer { group.cancelAll() }
+                guard let first = try await group.next(), let preview = first else { throw OnboardingFailure.inviteUnknown }
+                return preview
             }
-            throw OnboardingFailure.inviteUnknown
         } catch let failure as OnboardingFailure {
             throw failure
         } catch {
@@ -164,6 +174,33 @@ final class OnboardingBackend {
             return []
         }
         return []
+    }
+
+    func existingMembership() async -> String? {
+        guard let client else { return nil }
+        struct Me: Decodable {
+            struct Group: Decodable { var groupId: String }
+            var groups: [Group]
+        }
+        do {
+            let publisher = client.subscribe(to: "users:me", with: ["deviceToken": OnboardingIdentity.deviceToken], yielding: Me?.self)
+            return try await withThrowingTaskGroup(of: String?.self) { group in
+                group.addTask {
+                    for try await value in publisher.values {
+                        return value?.groups.first?.groupId
+                    }
+                    return nil
+                }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: 4_000_000_000)
+                    return nil
+                }
+                defer { group.cancelAll() }
+                return try await group.next() ?? nil
+            }
+        } catch {
+            return nil
+        }
     }
 
     func storeTasteHeadline(groupId: String, headline: String, why: String) async throws {
