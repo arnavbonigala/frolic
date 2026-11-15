@@ -26,7 +26,7 @@ All three are iPhone 17 Pro on the newest iOS runtime the model supports (`revyl
 2. One backend deployment all three phones use, with the e2e seed routes enabled and the e2e flag on:
    - `POST /e2e/reset` body `{run}`, header `x-e2e-secret`. Deletes everything the e2e group owns for that run id and returns `{run, cleared}`.
    - `POST /e2e/seed` body `{run}`, same header. Creates the Sunset Crew with Maya, Dev, Jordan and Priya, the open Today plan for Indian Rock at 4:30, Priya's free window, and returns `{run, users: {maya: {link}, dev: {link}, jordan: {link}}, reveal_at: null}` where each link is that person's sign-in deep link. `reveal_at` is null at seed time because a reveal instant only exists once a match lands.
-   - `GET /e2e/reveals?run=` returns `{reveals: [{userId, reveal_at, delivered_at}]}` from the reveal log, so the race test can prove one reveal.
+   - `GET /e2e/reveals?run=` returns `{reveals: [{userId, reveal_at, bloom_at, flipped_at}]}` from the reveal log, mirroring the `revealLog` table: `reveal_at` is the instant scheduled for the group (the same value for everyone in a match), `bloom_at` when the matcher wrote the match, and `flipped_at` that phone's observed flip. The race test reads the row count; the demo comparison reads `flipped_at`.
    These routes are test-only and refuse unless `E2E_SECRET` is set on the deployment. They are the backend lane's to add; the contract above is what these flows call.
 3. The barrier server reachable from the phones' scripts, and `FROLIC_E2E_BARRIER_URL`, `FROLIC_E2E_URL`, `FROLIC_E2E_SECRET`, `FROLIC_E2E_RUN` set as launch environment variables for all three sessions.
 4. Revyl scripts registered once from `e2e/scripts/`:
@@ -48,7 +48,7 @@ Every run starts clean, and the run id is unique so nothing leaks between rehear
     curl -s -X POST "$FROLIC_E2E_URL/e2e/reset" -H "x-e2e-secret: $FROLIC_E2E_SECRET" -H 'content-type: application/json' -d "{\"run\":\"$FROLIC_E2E_RUN\"}"
     curl -s -X POST "$FROLIC_E2E_URL/e2e/seed"  -H "x-e2e-secret: $FROLIC_E2E_SECRET" -H 'content-type: application/json' -d "{\"run\":\"$FROLIC_E2E_RUN\"}"
 
-The seed response's `users.maya.link`, `.dev.link` and `.jordan.link` go into the run as test variables `maya_link`, `dev_link`, `jordan_link`. Do not wait on `reveal_at` from the seed: it comes back null, because `revealAt` is only written when the matcher finds a match. Read it from `GET /e2e/reveals?run=` after the flip instead, which is where the run's timing evidence comes from anyway.
+The seed response's `users.maya.link`, `.dev.link` and `.jordan.link` go into the run as test variables `maya_link`, `dev_link`, `jordan_link`. Do not wait on `reveal_at` from the seed: it comes back null, because `revealAt` is only written when the matcher finds a match. The clock the run works to comes from the barrier below, and the reveal log is read afterwards to prove exactly one reveal.
 
 Reset after a run too, so the next rehearsal never inherits a tap.
 
