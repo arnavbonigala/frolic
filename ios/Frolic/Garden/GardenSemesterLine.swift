@@ -1,16 +1,27 @@
 import SwiftUI
 
+enum GardenCounts {
+    static func parts(frolics: Int, places: Int, friends: Int) -> [String] {
+        [
+            frolics > 0 ? Plural.of(frolics, "frolic", "frolics") : nil,
+            places > 0 ? Plural.of(places, "place", "places") : nil,
+            friends > 0 ? Plural.of(friends, "friend", "friends") : nil,
+        ].compactMap { $0 }
+    }
+
+    static func heroCaption(frolics: Int, places: Int, friends: Int) -> String? {
+        let parts = parts(frolics: frolics, places: places, friends: friends)
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
 struct GardenSemesterLine: View {
     var frolics: Int
     var places: Int
     var friends: Int
 
     private var parts: [String] {
-        [
-            frolics > 0 ? (frolics == 1 ? "1 frolic" : "\(frolics) frolics") : nil,
-            places > 0 ? (places == 1 ? "1 place" : "\(places) places") : nil,
-            friends > 0 ? (friends == 1 ? "1 friend" : "\(friends) friends") : nil,
-        ].compactMap { $0 }
+        GardenCounts.parts(frolics: frolics, places: places, friends: friends)
     }
 
     var body: some View {
