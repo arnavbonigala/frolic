@@ -208,16 +208,15 @@ struct CrewInviteSheet: View {
             .padding(.top, 14)
             HStack(spacing: 12) {
                 Button(copied ? "Link copied" : "Copy link", action: onCopy)
-                    .buttonStyle(.frolicSecondary)
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.frolicSecondaryWide)
                     .accessibilityIdentifier("crew.invite.copy")
                 if let link, let url = URL(string: link) {
                     ShareLink(item: url, subject: Text("Sunset Crew"), message: Text("Come frolic with us")) {
                         Text("Text it")
                             .frolicFont(.button)
                             .frame(maxWidth: .infinity, minHeight: 54)
-                            .foregroundStyle(FrolicColor.cream)
-                            .background(Capsule().fill(FrolicColor.ink))
+                            .foregroundStyle(.white)
+                            .background(Capsule().fill(Color(hex: 0x34A160)))
                     }
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("crew.invite.text")

@@ -330,7 +330,7 @@ private struct GardenStorySheet: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .background(Color(hex: 0xFFFCF7))
+        .background(FrolicColor.cream)
         .gardenToast($shownToast)
         .presentationDetents([.height(600), .large])
         .presentationDragIndicator(.visible)

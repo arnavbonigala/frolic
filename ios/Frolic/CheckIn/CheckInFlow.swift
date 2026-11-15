@@ -86,7 +86,7 @@ struct CheckInFlowScreen: View {
             )
             .presentationDetents([.fraction(0.34), .large])
             .presentationCornerRadius(38)
-            .presentationBackground(Color(hex: 0xFFFCF7, opacity: 0.96))
+            .presentationBackground(FrolicColor.cream)
         }
         .onChange(of: store.place) { _, place in
             watcher.begin(place: place, simulation: router.simulatedLocation)

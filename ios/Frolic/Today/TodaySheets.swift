@@ -23,7 +23,7 @@ struct TodaySheetHost: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(38)
-        .presentationBackground(Color(hex: 0xFFFCF7, opacity: 0.97))
+        .presentationBackground(FrolicColor.cream)
     }
 }
 
@@ -316,7 +316,7 @@ private struct TodayFreeSheet: View {
                 }
                 .padding(.top, 14)
                 Button("Done") { store.sheet = nil }
-                    .buttonStyle(.frolicSecondaryWide)
+                    .buttonStyle(.frolicPrimary)
                     .padding(.top, 14)
                     .accessibilityIdentifier("free.sheet.done")
             }

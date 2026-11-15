@@ -1,12 +1,7 @@
 {
   "images" : [
-    {
-      "filename" : "launch-meadow.jpg",
-      "idiom" : "universal"
-    }
+    { "filename" : "launch-meadow.jpg", "idiom" : "universal" },
+    { "appearances" : [ { "appearance" : "luminosity", "value" : "dark" } ], "filename" : "launch-meadow-dark.jpg", "idiom" : "universal" }
   ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
+  "info" : { "author" : "xcode", "version" : 1 }
 }
