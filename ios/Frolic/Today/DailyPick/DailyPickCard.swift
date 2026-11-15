@@ -56,6 +56,7 @@ struct DailyPickCard: View {
             }
         }
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: store.answered)
+        .onDisappear { store.stop() }
         .task(id: identity.deviceToken + "|" + (identity.groupId ?? "") + "|" + (route?.query["pick"] ?? "")) {
             store.start(backend: backend, route: route)
         }
@@ -150,20 +151,13 @@ private struct DailyPickResultsView: View {
     var body: some View {
         let tallies = store.tallies(me: me)
         let total = max(1, tallies?.reduce(0) { $0 + $1.people.count } ?? 1)
-        let others = store.others(me: me)
+        let answers = tallies?.reduce(0) { $0 + $1.people.count } ?? 0
         VStack(alignment: .leading, spacing: 10) {
             ForEach(options, id: \.self) { option in
                 row(option: option, people: tallies?.first { $0.option == option }?.people, total: total)
             }
             if tallies != nil {
-                if others == 0 {
-                    Text(DailyPickCopy.first)
-                        .todayFont(15, relativeTo: .subheadline)
-                        .foregroundStyle(FrolicColor.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("dailyPick.first")
-                }
-                DailyPickWaterLine(text: others > 0 ? DailyPickCopy.watered : DailyPickCopy.oneMore, done: others > 0)
+                DailyPickWaterLine(text: answers > 1 ? DailyPickCopy.watered : DailyPickCopy.first, done: answers > 1)
             }
         }
         .onChange(of: store.revealID) { _, _ in reveal() }
@@ -228,9 +222,9 @@ private struct DailyPickResultsView: View {
     }
 
     private func faces(_ people: [TodayPerson]) -> some View {
-        HStack(spacing: -10) {
+        HStack(spacing: -6) {
             ForEach(Array(people.prefix(4).enumerated()), id: \.element.id) { index, person in
-                TodayFlower(person: shown(person), radius: 15, stem: 0)
+                TodayFlower(person: shown(person), radius: 14, stem: 0)
                     .scaleEffect(grown || reduceMotion ? 1 : 0.2)
                     .opacity(grown ? 1 : 0)
                     .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.6).delay(0.15 + Double(index) * 0.08), value: grown)

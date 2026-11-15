@@ -1,6 +1,7 @@
 import ConvexMobile
 import Foundation
 import Observation
+import SwiftUI
 import UIKit
 
 @MainActor
@@ -37,11 +38,6 @@ final class DailyPickStore {
         }
     }
 
-    func others(me: TodayPerson?) -> Int {
-        guard let tallies = tallies(me: me) else { return 0 }
-        return tallies.flatMap(\.people).filter { $0.userId != me?.userId }.count
-    }
-
     func start(backend: FrolicBackend, route: E2ERoute?) {
         let newKey = identity.deviceToken + "|" + (identity.groupId ?? "") + "|" + (route?.query["pick"] ?? "")
         guard newKey != key else { return }
@@ -73,6 +69,12 @@ final class DailyPickStore {
                 if self.view == nil { self.phase = .error(TodayStore.message(for: error)) }
             }
         }
+    }
+
+    func stop() {
+        task?.cancel()
+        task = nil
+        key = nil
     }
 
     func retry(backend: FrolicBackend, route: E2ERoute?) {
@@ -115,6 +117,7 @@ final class DailyPickStore {
         if wasHidden && next.results != nil && next.myAnswer != nil {
             revealID += 1
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            AccessibilityNotification.Announcement(DailyPickCopy.revealed).post()
         }
     }
 
