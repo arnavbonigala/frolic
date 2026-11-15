@@ -8,6 +8,7 @@ import { makeT, token, type T } from "../setup.helpers";
 
 export const FIRST_DAY = "2026-11-15";
 export const WHOP_BASE = "https://sandbox-api.whop.com/api/v1";
+const MEMORY_BASE = "https://api.supermemory.ai/";
 
 export const dayOf = (n: number) => addDays(FIRST_DAY, n - 1);
 export const minuteOf = (n: number, minutes: number) => localTimeToMs(dayOf(n), minutes);
@@ -65,14 +66,18 @@ export function makeLedger(): Ledger {
   });
   const fake = async (input: unknown, init?: { method?: string; body?: string }) => {
     const url = String(input);
+    const method = (init?.method ?? "GET").toUpperCase();
     if (url.startsWith("https://api.open-meteo.com/")) {
       if (!ledger.rain) return reply({ error: "no weather in this run" }, 503);
       const day = new URL(url).searchParams.get("start_date") ?? FIRST_DAY;
       return reply(rainyBody(day));
     }
+    if (url.startsWith(MEMORY_BASE)) {
+      if (method === "DELETE") return reply({ deletedDocumentsCount: 0 });
+      return reply({ error: "memory stays offline in this run" }, 404);
+    }
     if (!url.startsWith(WHOP_BASE)) return reply({ error: "offline" }, 503);
     const path = url.slice(WHOP_BASE.length);
-    const method = (init?.method ?? "GET").toUpperCase();
     if (method === "POST" && path === "/payments") {
       const body = JSON.parse(init?.body ?? "{}") as {
         capture?: boolean;
@@ -126,6 +131,7 @@ export async function openCrew(ledger: Ledger): Promise<Sim> {
   process.env.WHOP_HOLD_PRODUCT_ID = "prod_hold_sim";
   process.env.WHOP_PLANS_PRODUCT_ID = "prod_plans_sim";
   process.env.CONVEX_SITE_URL = "https://frolic.convex.site";
+  process.env.SUPERMEMORY_API_KEY = "sim";
   const t = makeT();
   await t.mutation(internal.places.seed.seedPlaces, {});
   const created = await t.mutation(api.users.createGroup, {
@@ -148,8 +154,13 @@ export async function openCrew(ledger: Ledger): Promise<Sim> {
   return { t, groupId: created.groupId, ids, tokens, ledger, n: 0, inviteCode: created.inviteCode };
 }
 
+const DRAIN_ROUNDS = 4;
+
 export async function settle(t: T): Promise<void> {
-  await t.finishInProgressScheduledFunctions();
+  for (let round = 0; round < DRAIN_ROUNDS; round++) {
+    vi.advanceTimersByTime(0);
+    await t.finishInProgressScheduledFunctions();
+  }
 }
 
 export async function advance(t: T, ms: number): Promise<void> {

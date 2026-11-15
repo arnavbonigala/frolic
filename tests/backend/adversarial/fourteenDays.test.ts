@@ -204,7 +204,7 @@ async function waitForPlan(sim: Sim, day: string): Promise<Doc<"plans"> | null> 
   return await planOn(sim, day);
 }
 
-test("four chaotic people hold every invariant for fourteen days", async () => {
+test("four chaotic people hold every invariant for fourteen days", { timeout: 60_000 }, async () => {
   const ledger = makeLedger();
   const sim = await openCrew(ledger);
   const nudges: { day: number; anchor: string | null }[] = [];
