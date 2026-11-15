@@ -253,6 +253,7 @@ describe("stats and context", () => {
     const taste = await t.action(internal.memory.read.tasteProfile, { groupId });
     expect(taste).toMatchObject({ headline: "Sunset Crew", why: "Golden-hour chasers, under 10 dollars.", source: "device" });
     expect(taste.storedAt).toBeGreaterThan(0);
+    expect(await t.run((ctx) => ctx.db.query("tasteProfiles").collect())).toHaveLength(1);
   });
 
   test("setTasteHeadline rejects copy that breaks the rules and overwrites on update", async () => {

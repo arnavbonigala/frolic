@@ -42,6 +42,26 @@ export const whyThis = internalAction({
     findWhyThis(getClient(), groupNamespace(groupId), tags).catch(() => null),
 });
 
+const TASTE_SOURCES = ["device", "template", "haiku"] as const;
+type TasteSource = (typeof TASTE_SOURCES)[number];
+
+export const encodeTasteLine = (line: TasteLine, at: number) => JSON.stringify({ headline: line.headline.trim(), why: line.why.trim(), source: line.source, at });
+
+export function decodeTasteLine(card: string | undefined): (TasteLine & { at: number }) | null {
+  if (!card) return null;
+  try {
+    const raw = JSON.parse(card) as Record<string, unknown>;
+    const headline = typeof raw.headline === "string" ? raw.headline : null;
+    const why = typeof raw.why === "string" ? raw.why : null;
+    const source = TASTE_SOURCES.includes(raw.source as TasteSource) ? (raw.source as TasteSource) : null;
+    const at = typeof raw.at === "number" ? raw.at : 0;
+    if (!headline || !why || !source || validateTasteLine({ headline, why })) return null;
+    return { headline, why, source, at };
+  } catch {
+    return null;
+  }
+}
+
 export const setTasteHeadline = internalMutation({
   args: {
     groupId: v.id("groups"),
@@ -49,13 +69,14 @@ export const setTasteHeadline = internalMutation({
     why: v.string(),
     source: v.union(v.literal("device"), v.literal("template"), v.literal("haiku")),
   },
-  handler: async (ctx, { groupId, headline, why, source }) => {
+  handler: async (ctx, { groupId, headline, why, source }): Promise<null> => {
     const problem = validateTasteLine({ headline, why });
     if (problem) throw new Error(problem);
+    const now = Date.now();
+    const card = encodeTasteLine({ headline, why, source }, now);
     const row = await ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", groupId)).unique();
-    const fields = { headline: headline.trim(), why: why.trim(), source, headlineAt: Date.now(), updatedAt: Date.now() };
-    if (row) await ctx.db.patch("tasteProfiles", row._id, fields);
-    else await ctx.db.insert("tasteProfiles", { groupId, tags: [], ...fields });
+    if (row) await ctx.db.patch("tasteProfiles", row._id, { card, updatedAt: now });
+    else await ctx.db.insert("tasteProfiles", { groupId, tags: [], card, updatedAt: now });
     return null;
   },
 });
@@ -64,11 +85,9 @@ export const storedTasteLine = internalQuery({
   args: { groupId: v.id("groups") },
   handler: async (ctx, { groupId }) => {
     const row = await ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", groupId)).unique();
-    if (!row?.headline || !row.why || !row.source) return null;
-    return { headline: row.headline, why: row.why, source: row.source, at: row.headlineAt ?? row.updatedAt };
+    return decodeTasteLine(row?.card);
   },
 });
-
 export const recentFrolics = internalQuery({
   args: { groupId: v.id("groups") },
   handler: async (ctx, { groupId }) => {
