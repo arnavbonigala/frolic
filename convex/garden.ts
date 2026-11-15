@@ -11,6 +11,7 @@ import { photoUrlOf } from "./lib/photo";
 import { decodeTasteLine } from "./memory/read";
 import { templateTaste } from "./memory/taste";
 import { flowerColor } from "./schema";
+import { FLOWER_COLORS } from "./lib/core";
 import { lastWateredDay } from "./dailyPick";
 
 const MAX_MEMORIES = 30;
@@ -112,7 +113,7 @@ const milestone = v.object({
   line: v.string(),
 });
 
-type Bloom = { frolic: Doc<"frolics">; plan: Doc<"plans"> | null; place: Doc<"places"> | null };
+type Bloom = { frolic: Doc<"frolics">; plan: Doc<"plans"> | null; place: Doc<"places"> | null; going: Doc<"attendees">[] };
 
 export async function happened(ctx: QueryCtx, frolic: Doc<"frolics">, now: number): Promise<boolean> {
   if (frolic.status === "done") return true;
@@ -166,11 +167,12 @@ async function bloomOf(ctx: QueryCtx, frolic: Doc<"frolics">, now = Date.now()):
     .query("attendees")
     .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
     .take(50);
-  if (attendees.filter((a) => a.status === "going").length < 2) return null;
+  const going = attendees.filter((a) => a.status === "going");
+  if (going.length < 2) return null;
   if (!(await happened(ctx, frolic, now))) return null;
   const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
   const place = plan ? await ctx.db.get("places", plan.placeId) : null;
-  return { frolic, plan, place };
+  return { frolic, plan, place, going };
 }
 
 async function blooms(ctx: QueryCtx, groupId: Id<"groups">, newestOnly = false): Promise<Bloom[]> {
@@ -262,44 +264,33 @@ type MemoryRow = {
   collage: Doc<"collages"> | null;
 };
 
-async function memoryRows(
-  ctx: QueryCtx,
-  groupId: Id<"groups">,
-): Promise<MemoryRow[]> {
-  const frolics = await ctx.db
-    .query("frolics")
-    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
-    .order("desc")
-    .take(60);
-  const rows: MemoryRow[] = [];
-  const now = Date.now();
-  for (const frolic of frolics) {
-    if (frolic.status !== "on" && frolic.status !== "done") continue;
-    const attendees = await ctx.db
-      .query("attendees")
-      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
-      .take(50);
-    const going = attendees.filter((a) => a.status === "going");
-    if (going.length === 0) continue;
-    if (!(await happened(ctx, frolic, now))) continue;
-    const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
-    const place = plan ? await ctx.db.get("places", plan.placeId) : null;
-    const snaps = await ctx.db
-      .query("snaps")
-      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
-      .take(50);
-    const collage = await ctx.db
-      .query("collages")
-      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
-      .first();
-    rows.push({ frolic, plan, place, going, snaps, collage });
-  }
-  rows.sort((a, b) => {
+async function memoryRows(ctx: QueryCtx, planted: Bloom[]): Promise<MemoryRow[]> {
+  const recent = [...planted].sort((a, b) => {
     const left = a.frolic.startsAt ?? a.frolic.matchedAt ?? a.frolic._creationTime;
     const right = b.frolic.startsAt ?? b.frolic.matchedAt ?? b.frolic._creationTime;
     return right - left;
   });
-  return rows.slice(0, MAX_MEMORIES);
+  const rows: MemoryRow[] = [];
+  for (const bloom of recent.slice(0, MAX_MEMORIES)) {
+    const snaps = await ctx.db
+      .query("snaps")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", bloom.frolic._id))
+      .take(50);
+    const collage = await ctx.db
+      .query("collages")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", bloom.frolic._id))
+      .first();
+    rows.push({ frolic: bloom.frolic, plan: bloom.plan, place: bloom.place, going: bloom.going, snaps, collage });
+  }
+  return rows;
+}
+
+const DEPARTED_NAME = "a friend";
+
+function departedColor(userId: Id<"users">): (typeof FLOWER_COLORS)[number] {
+  let code = 0;
+  for (const char of userId) code = (code * 31 + char.charCodeAt(0)) % FLOWER_COLORS.length;
+  return FLOWER_COLORS[code];
 }
 
 async function people(
@@ -310,8 +301,11 @@ async function people(
   const out = [];
   for (const userId of userIds) {
     const membership = memberships.find((m) => m.userId === userId);
-    const user = await ctx.db.get("users", userId);
-    if (!membership || !user) continue;
+    const user = membership ? await ctx.db.get("users", userId) : null;
+    if (!membership || !user) {
+      out.push({ userId, name: DEPARTED_NAME, color: departedColor(userId), photoUrl: null });
+      continue;
+    }
     out.push({
       userId,
       name: user.name,
@@ -347,15 +341,15 @@ export const overview = query({
       .query("memberships")
       .withIndex("by_groupId", (q) => q.eq("groupId", args.groupId))
       .take(100);
-    const rows = await memoryRows(ctx, args.groupId);
+    const planted = await blooms(ctx, args.groupId);
+    const rows = await memoryRows(ctx, planted);
     const now = Date.now();
 
     const memories = [];
-    let mine = 0;
+    const mine = planted.filter((bloom) => bloom.going.some((a) => a.userId === user._id)).length;
     let fund: { line: string; frolicTitle: string } | null = null;
     for (const row of rows) {
       const went = row.going.some((a) => a.userId === user._id);
-      if (went) mine++;
       const newestSnap = row.snaps[row.snaps.length - 1];
       const seen = row.frolic.status === "done" || row.snaps.some((s) => s.userId === user._id);
       const photo = seen
@@ -406,8 +400,7 @@ export const overview = query({
     const line = stored ?? templateTaste(topTags, []);
     const taste = stored ? { headline: line.headline, why: line.why } : null;
     const weekLine = line.why.charAt(0).toLowerCase() + line.why.slice(1);
-    const count = memories.length;
-    const planted = await blooms(ctx, args.groupId);
+    const count = planted.length;
     const today = args.day ?? dayIn(group.timezone, now);
 
     return {

@@ -252,3 +252,67 @@ describe("garden overview", () => {
     ).rejects.toThrow(/did not happen/);
   });
 });
+
+describe("people who left", () => {
+  test("a three person frolic keeps its flower and its count when one of them deletes their account", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await tap(t, crew, "Jordan");
+    await flipDue(t);
+    await finish(t, crew);
+
+    await t.mutation(api.users.deleteAccount, { deviceToken: token("Dev") });
+    await t.finishInProgressScheduledFunctions();
+
+    const view = await t.query(api.garden.overview, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(view.count).toBe(1);
+    expect(view.collection.flowers.map((f) => f.frolicId)).toEqual([crew.frolicId]);
+    expect(view.count).toBe(view.collection.flowers.length);
+    expect(view.memories).toHaveLength(1);
+    expect(view.memories[0].going.map((p) => p.name).sort()).toEqual(["Jordan", "Maya", "a friend"]);
+  });
+
+  test("a frolic that never happened still leaves nothing behind", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+
+    await t.mutation(api.users.deleteAccount, { deviceToken: token("Dev") });
+    await t.finishInProgressScheduledFunctions();
+    vi.setSystemTime(NOON + 8 * 60 * 60 * 1000);
+
+    const view = await t.query(api.garden.overview, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(view.count).toBe(0);
+    expect(view.collection.flowers).toEqual([]);
+    expect(view.memories).toEqual([]);
+  });
+
+  test("a crew where everyone but one deletes their account still shows its history", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await tap(t, crew, "Jordan");
+    await flipDue(t);
+    await finish(t, crew);
+
+    await t.mutation(api.users.deleteAccount, { deviceToken: token("Dev") });
+    await t.mutation(api.users.deleteAccount, { deviceToken: token("Jordan") });
+    await t.finishInProgressScheduledFunctions();
+
+    const view = await t.query(api.garden.overview, { deviceToken: token("Maya"), groupId: crew.groupId });
+    expect(view.youWent).toBe(true);
+    expect(view.count).toBe(1);
+    expect(view.yourCount).toBe(1);
+    expect(view.sinceLine).toBe("0 before you, 1 with you");
+    expect(view.memories[0].going.map((p) => p.name)).toEqual(["Maya", "a friend", "a friend"]);
+    expect(new Set(view.memories[0].going.map((p) => p.color)).size).toBe(3);
+
+    const memory = await t.query(api.garden.memory, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    expect(memory.going.map((p) => p.name)).toEqual(["Maya", "a friend", "a friend"]);
+  });
+});

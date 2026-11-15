@@ -33,7 +33,7 @@ test.fails("day 1 / the system / the daily drop hands the crew a frolic to tap",
   expect(view.frolic, "the crew's phone shows the plan to tap").not.toBeNull();
 });
 
-test.fails("day 2 / Jordan / a member leaving keeps the flowers the crew grew", async () => {
+test("day 2 / Jordan / a member leaving keeps the flowers the crew grew", async () => {
   const sim = await openCrew(makeLedger());
   sim.n = 1;
   const day = dayOf(1);
