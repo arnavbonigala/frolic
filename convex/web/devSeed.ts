@@ -75,7 +75,7 @@ export const seed = internalMutation({
       day: "2026-11-15",
       kind: "solo",
       planId: plan,
-      status: mode === "done" ? ("done" as const) : ("open" as const),
+      status: mode === "done" ? ("done" as const) : mode === "drifted" ? ("faded" as const) : ("open" as const),
       window: { start: now, end: now + 6 * 60 * 60 * 1000 },
       durationMinutes: 120,
       deadline: mode === "drifted" ? now - 60 * 1000 : now + 6 * 3600 * 1000,

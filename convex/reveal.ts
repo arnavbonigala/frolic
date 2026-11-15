@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
-import { LEAVE_NUDGE_MS, deleteTaps } from "./lib/core";
+import { LEAVE_NUDGE_MS, deleteTaps, fadeFrolic } from "./lib/core";
 import { names, planFacts } from "./lib/hooks";
 
 export const flip = internalMutation({
@@ -45,27 +45,15 @@ export const flip = internalMutation({
     });
     await ctx.db.delete("reveals", pending._id);
     await ctx.scheduler.runAfter(0, internal.whop.money.onReveal, { frolicId });
-    await ctx.runMutation(internal.keiki.outbound.onReveal, {
+    await ctx.scheduler.runAfter(0, internal.keiki.outbound.onReveal, {
       frolicId,
       userIds: pending.userIds,
       bloomAt: pending.bloomAt,
     });
-    const facts = await planFacts(ctx, frolic);
-    await ctx.runMutation(internal.memory.events.recordEvent, {
-      eventKey: `reveal:${frolicId}`,
-      kind: "reveal",
-      groupId: frolic.groupId,
+    await ctx.scheduler.runAfter(0, internal.reveal.remember, {
       frolicId,
+      userIds: pending.userIds,
       revealAt: pending.revealAt,
-      payload: {
-        memberIds: pending.userIds,
-        memberNames: await names(ctx, pending.userIds),
-        title: facts.title,
-        placeName: facts.placeName,
-        tags: facts.tags,
-        placeId: facts.placeId,
-        day: facts.day,
-      },
     });
     const leaveAt = pending.startsAt - LEAVE_NUDGE_MS;
     if (leaveAt > Date.now()) {
@@ -90,9 +78,34 @@ export const fade = internalMutation({
       .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
       .unique();
     if (pending) return null;
-    await deleteTaps(ctx, frolicId);
-    await ctx.db.patch("frolics", frolicId, { status: "faded" });
-    await ctx.runMutation(internal.keiki.outbound.onFaded, { frolicId });
+    await fadeFrolic(ctx, frolicId);
+    return null;
+  },
+});
+
+export const remember = internalMutation({
+  args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")), revealAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { frolicId, userIds, revealAt }) => {
+    const frolic = await ctx.db.get("frolics", frolicId);
+    if (!frolic) return null;
+    const facts = await planFacts(ctx, frolic);
+    await ctx.runMutation(internal.memory.events.recordEvent, {
+      eventKey: `reveal:${frolicId}`,
+      kind: "reveal",
+      groupId: frolic.groupId,
+      frolicId,
+      revealAt,
+      payload: {
+        memberIds: userIds,
+        memberNames: await names(ctx, userIds),
+        title: facts.title,
+        placeName: facts.placeName,
+        tags: facts.tags,
+        placeId: facts.placeId,
+        day: facts.day,
+      },
+    });
     return null;
   },
 });

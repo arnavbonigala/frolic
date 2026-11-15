@@ -6,17 +6,29 @@ struct RootView: View {
     var body: some View {
         @Bindable var router = router
         TabView(selection: $router.tab) {
-            Tab(AppTab.today.title, systemImage: AppTab.today.systemImage, value: AppTab.today) {
+            Tab(value: AppTab.today) {
                 TodayScreen()
+            } label: {
+                Label(AppTab.today.title, systemImage: AppTab.today.systemImage)
+                    .accessibilityIdentifier("tab.today")
             }
-            Tab(AppTab.crew.title, systemImage: AppTab.crew.systemImage, value: AppTab.crew) {
+            Tab(value: AppTab.crew) {
                 CrewScreen()
+            } label: {
+                Label(AppTab.crew.title, systemImage: AppTab.crew.systemImage)
+                    .accessibilityIdentifier("tab.crew")
             }
-            Tab(AppTab.garden.title, systemImage: AppTab.garden.systemImage, value: AppTab.garden) {
+            Tab(value: AppTab.garden) {
                 GardenScreen()
+            } label: {
+                Label(AppTab.garden.title, systemImage: AppTab.garden.systemImage)
+                    .accessibilityIdentifier("tab.garden")
             }
-            Tab(AppTab.you.title, systemImage: AppTab.you.systemImage, value: AppTab.you) {
+            Tab(value: AppTab.you) {
                 YouScreen()
+            } label: {
+                Label(AppTab.you.title, systemImage: AppTab.you.systemImage)
+                    .accessibilityIdentifier("tab.you")
             }
         }
         .tint(FrolicColor.ink)

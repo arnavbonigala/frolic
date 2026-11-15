@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
-import { energy } from "../schema";
+import { energy, timeWindow } from "../schema";
 import { addDays, localTimeToMs } from "./time";
 
 export const vLimits = v.object({
@@ -23,6 +23,8 @@ export const vHistoryEntry = v.object({
   placeSlug: v.string(),
   favoredUserId: v.union(v.string(), v.null()),
 });
+
+export const vFreeStart = v.object({ userId: v.id("users"), window: timeWindow });
 
 export const vDropInputs = v.object({
   nowMs: v.number(),
@@ -49,7 +51,7 @@ const HISTORY_LIMIT = 120;
 const FROLIC_LIMIT = 40;
 
 export const dropInputs = internalQuery({
-  args: { groupId: v.id("groups"), day: v.string(), nowMs: v.number() },
+  args: { groupId: v.id("groups"), day: v.string(), nowMs: v.number(), free: v.optional(vFreeStart) },
   returns: vDropInputs,
   handler: async (ctx, args): Promise<DropInputs> => {
     const dayEnd = localTimeToMs(addDays(args.day, 1), 0);
@@ -66,15 +68,20 @@ export const dropInputs = internalQuery({
     const available = new Map(dayRows.map((row) => [row.userId, row]));
     const attendees: DropInputs["attendees"] = [];
     for (const member of members) {
+      const starter = args.free?.userId === member.userId;
       const row = available.get(member.userId);
-      if (!row || row.state === "busy") continue;
+      if (!starter && (!row || row.state === "busy")) continue;
       const limits = (
         await ctx.db.query("limits").withIndex("by_userId", (q) => q.eq("userId", member.userId)).take(1)
       )[0];
-      const window =
-        row.state === "window" && row.window
+      const own =
+        !starter && row?.state === "window" && row.window
           ? { start: row.window.start, end: row.window.end }
           : { start: args.nowMs, end: dayEnd };
+      const window = args.free
+        ? { start: Math.max(own.start, args.free.window.start), end: Math.min(own.end, args.free.window.end) }
+        : own;
+      if (args.free && window.end <= window.start) continue;
       attendees.push({
         userId: member.userId,
         limits: {

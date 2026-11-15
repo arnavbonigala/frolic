@@ -14,7 +14,7 @@ Every money state reaches Convex through a signed Whop webhook.
 
 ## 1. What our Whop sandbox can do today
 
-Sandbox only. `WHOP_SANDBOX_API_KEY` is the one key the backend reads, and `WHOP_API_BASE` is `https://sandbox-api.whop.com/api/v1`. `convex/whop/client.ts` refuses any other host, so a stray base URL cannot reach production. The production key is retired: no code reads it, and `convex/tests/noProdKey.test.ts` fails the suite if its name comes back into `convex/`.
+Sandbox only. `WHOP_SANDBOX_API_KEY` is the one key the backend reads, and `WHOP_API_BASE` is `https://sandbox-api.whop.com/api/v1`. `convex/whop/client.ts` refuses any other host, so a stray base URL cannot reach production. The production key is retired: no code reads it, and `tests/backend/noProdKey.test.ts` fails the suite if its name comes back into `convex/`.
 
 Read-only probe of the sandbox account `biz_KRb1JXuRLi8UNe` ("Momentum Labs") with that key (Nov 15 2026):
 
@@ -180,6 +180,19 @@ A hold can't leak a secret yes, because nothing about money exists before the re
 The one moment: **Dev walks into the geofence. His phone says "You made it. Your $3 is back.", and on the projected Whop sandbox dashboard his payment flips from Authorized to Voided in the same beat. Jordan never shows, so his hold is captured and the Crew tab's Frolic Fund ticks from $0 to $3, "toward the next one".** Money that commits a friend and is released by walking into a real place is Whop's money logic running on Frolic's physical-world signal. No other sponsor in the stack touches money, and a generic pay button can't express it.
 
 Script beat for the 90 seconds: reveal, then "Hold $3 to lock it in" on the card form, then arrival releases it, then the no-show feeds the fund, then tomorrow's kayaks show "Frolic Fund covered $3, your share $7".
+
+## 4.1 Frolic Drops: Whop sellers on Frolic
+
+Frolic is a demand channel for real Whop sellers. A local spot or a student club sells a Frolic experience as a **visible** Whop product in the sandbox company, and the daily plan engine can pick it like a place. Three ship for the demo, created by `npx convex run drops:seed`: "Sunset kayaks" from Cal Kayak Club at $8 a person, "Late-night ramen flight" from Ippudo Berkeley at $12, and "Board game night" from The Game Table at $5.
+
+| Need | Whop primitive |
+| - | - |
+| The seller's listing | `POST /products` with `visibility: "visible"`, a `route`, and `metadata.frolic_drop` |
+| The seat | `POST /variants` (the current name for plans, ids `plan_`) with `one_time`, `initial_price` in dollars, `visibility: "visible"`, and `sku: "frolic-drop-<key>"`, which makes it findable again |
+| A link outside the app | the variant's own `purchase_url`, with `POST /checkout_configurations` (`variant_id`) as the fallback when Whop returns none |
+| Charging a friend | `POST /payments` with `variant_id` of the seller's variant when the share equals the price, else an inline `variant` under the seller's `product_id` once the Frolic Fund has taken some off |
+
+On stage, the seller's product in the Whop sandbox dashboard shows each friend's payment the moment it lands. The share, webhook, refund and fund logic is exactly section 3.6.
 
 ## 5. Beyond the baseline, ranked
 

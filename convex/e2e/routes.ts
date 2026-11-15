@@ -89,6 +89,20 @@ export function registerE2eRoutes(http: HttpRouter): void {
   });
 
   http.route({
+    path: "/e2e/skip-boba",
+    method: "POST",
+    handler: httpAction(async (ctx, req) => {
+      const rejection = denied(req);
+      if (rejection) return rejection;
+      const run = readRun(await jsonBody(req));
+      if (!run) return json({ error: "run must be 1 to 64 characters of A-Z a-z 0-9 _ -" }, 400);
+      const result = await ctx.runMutation(internal.memory.e2eBeat.skipBobaTwice, { run });
+      if (!result) return json({ error: "No demo seed for this run" }, 404);
+      return json({ run, ...result }, 200);
+    }),
+  });
+
+  http.route({
     path: "/e2e/reveals",
     method: "GET",
     handler: httpAction(async (ctx, req) => {

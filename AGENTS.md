@@ -30,7 +30,7 @@ A daily in-person plan for your friend group. Each person secretly taps "I'm dow
 - Every state is designed: loading, empty, error, offline. Errors never render as empty.
 - Accessibility: Dynamic Type, VoiceOver labels, 44pt targets, Reduce Motion fallbacks.
 - Secrets live in environment variables only. Never print, log or commit them.
-- Whop: create only new hidden Frolic products and plans. Never modify or delete existing products in the Whop company.
+- Whop: create only new hidden Frolic products and plans, plus the visible Frolic Drops products that `drops:seed` creates. Never modify or delete existing products in the Whop company.
 - Put cloud phones to sleep when you are done with them.
 
 ## Reviews

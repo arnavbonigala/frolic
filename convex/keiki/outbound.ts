@@ -12,6 +12,8 @@ import {
   planDetails,
 } from "./lib";
 import { keikiEnv } from "./env";
+import { fence, noticeToken } from "./notice";
+import { FADED_TEXT } from "../lib/copy";
 
 export const KEIKI_BASE_URL = "https://onkeiki.com";
 export const DEFAULT_AGENT_ID = "44277a5e-b81d-4bb6-92d2-6c9c0eec47b3";
@@ -117,6 +119,49 @@ export const onDrop = internalMutation({
   },
 });
 
+export function freeLine(view: { title: string; startsAt: string }) {
+  return "Someone in your crew is free. " + view.title + " at " + view.startsAt + "?";
+}
+
+export function freeText(view: { title: string; startsAt: string; heroKey: string }, inGroup: boolean) {
+  const lines = [freeLine(view)];
+  const hero = heroLine(view.heroKey);
+  if (hero) lines.push(hero);
+  lines.push(inGroup ? "DM me \"down\", \"only if…\", or \"pass\". It stays secret unless someone else is too." : "Reply \"down\", \"only if…\", or \"pass\".");
+  return lines.join("\n");
+}
+
+export const onFree = internalMutation({
+  args: { frolicId: v.id("frolics") },
+  handler: async (ctx, { frolicId }) => {
+    const c = await context(ctx, frolicId);
+    if (!c) return null;
+    const members = await crewMembers(ctx, c.group._id);
+    const rest = members.filter((m) => m._id !== c.frolic.startedBy).map((m) => m._id);
+    const drafts = await personal(ctx, rest, (user) => ({
+      key: "drop:" + frolicId + ":" + user._id,
+      kind: "drop",
+      text: freeText(c.details.view, false),
+      notBefore: Date.now(),
+    }));
+    for (const chat of await chatsOf(ctx, c.group._id)) {
+      drafts.push({ key: "drop:" + frolicId + ":" + chat.chatId, kind: "drop", target: chat.chatId, text: freeText(c.details.view, true), notBefore: Date.now() });
+    }
+    if (c.frolic.startedBy) {
+      drafts.push(
+        ...(await personal(ctx, [c.frolic.startedBy], (user) => ({
+          key: "drop:" + frolicId + ":" + user._id,
+          kind: "drop",
+          text: "You're counted as down. " + c.details.view.title + " at " + c.details.view.startsAt + " just went to your crew. Nobody knows it was you.",
+          notBefore: Date.now(),
+        }))),
+      );
+    }
+    await enqueue(ctx, frolicId, drafts);
+    return null;
+  },
+});
+
 export const onReveal = internalMutation({
   args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")), bloomAt: v.number() },
   handler: async (ctx, args) => {
@@ -174,7 +219,7 @@ export const onFaded = internalMutation({
     const drafts = await personal(ctx, members.map((m) => m._id), (user) => ({
       key: "faded:" + frolicId + ":" + user._id,
       kind: "faded",
-      text: "Today's plan faded. Tomorrow's drop is a fresh one.",
+      text: FADED_TEXT,
       notBefore: Date.now(),
     }));
     await enqueue(ctx, frolicId, drafts);
@@ -279,6 +324,12 @@ export const onMoney = internalMutation({
   },
 });
 
+export const STALE_MS = 6 * 60 * 60 * 1000;
+
+export function retryWait(attempts: number): number {
+  return attempts === 0 ? 0 : Math.min(60_000, 2_000 * 2 ** (attempts - 1));
+}
+
 export const due = internalQuery({
   args: { frolicId: v.id("frolics"), now: v.number() },
   handler: async (ctx, { frolicId, now }) => {
@@ -287,15 +338,15 @@ export const due = internalQuery({
       .query("keikiOutbox")
       .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
       .take(256);
-    const open = rows.filter((row) => row.status === "queued" && row.notBefore <= now);
-    const sendable: { id: Id<"keikiOutbox">; kind: Kind; target: string; text: string; attempts: number }[] = [];
+    const open = rows.filter((row) => row.status === "queued" && row.notBefore + retryWait(row.attempts) <= now);
+    const sendable: { id: Id<"keikiOutbox">; kind: Kind; target: string; text: string; attempts: number; stale: boolean }[] = [];
     for (const row of open) {
       if (row.userId) {
         const link = await linkOf(ctx, row.userId);
         if (!link || link.paused) continue;
       }
       if ((row.kind === "reveal" || row.kind === "hopIn") && !(frolic?.revealAt !== undefined && now >= frolic.revealAt)) continue;
-      sendable.push({ id: row._id, kind: row.kind, target: row.target, text: row.text, attempts: row.attempts });
+      sendable.push({ id: row._id, kind: row.kind, target: row.target, text: row.text, attempts: row.attempts, stale: now - row.notBefore > STALE_MS });
     }
     return sendable;
   },
@@ -303,31 +354,44 @@ export const due = internalQuery({
 
 export const settle = internalMutation({
   args: {
-    results: v.array(v.object({ id: v.id("keikiOutbox"), ok: v.boolean(), error: v.optional(v.string()) })),
+    results: v.array(
+      v.object({
+        id: v.id("keikiOutbox"),
+        ok: v.boolean(),
+        error: v.optional(v.string()),
+        permanent: v.optional(v.boolean()),
+      }),
+    ),
     now: v.number(),
     frolicId: v.id("frolics"),
   },
   handler: async (ctx, { results, now, frolicId }) => {
-    let retry = false;
+    let retryDelay: number | null = null;
     for (const result of results) {
       const row = await ctx.db.get("keikiOutbox", result.id);
       if (!row || row.status !== "queued") continue;
       const attempts = row.attempts + 1;
-      if (result.ok) await ctx.db.patch("keikiOutbox", row._id, { status: "sent", attempts, sentAt: now, error: undefined });
-      else if (attempts >= MAX_ATTEMPTS) await ctx.db.patch("keikiOutbox", row._id, { status: "failed", attempts, error: result.error });
-      else {
-        await ctx.db.patch("keikiOutbox", row._id, { attempts, error: result.error });
-        retry = true;
+      if (result.ok) {
+        await ctx.db.patch("keikiOutbox", row._id, { status: "sent", attempts, sentAt: now, error: undefined });
+        continue;
       }
+      if (result.permanent || attempts >= MAX_ATTEMPTS) {
+        await ctx.db.patch("keikiOutbox", row._id, { status: "failed", attempts, error: result.error });
+        continue;
+      }
+      await ctx.db.patch("keikiOutbox", row._id, { attempts, error: result.error });
+      retryDelay = Math.max(retryDelay ?? 0, retryWait(attempts));
     }
-    if (retry) await ctx.scheduler.runAfter(2000, internal.keiki.outbound.deliver, { frolicId });
+    if (retryDelay !== null) await ctx.scheduler.runAfter(retryDelay, internal.keiki.outbound.deliver, { frolicId });
     return null;
   },
 });
 
-export function noticeText(kind: Kind, text: string) {
-  return "Frolic " + kind + " event. Send this to them now as one message, word for word, and nothing else:\n" + text;
+export function noticeText(text: string, token: string) {
+  return fence(token) + "\n" + text;
 }
+
+type NoticeBody = { results?: { outcome?: string }[]; ran?: boolean; unavailable?: number };
 
 export const deliver = internalAction({
   args: { frolicId: v.id("frolics") },
@@ -337,17 +401,27 @@ export const deliver = internalAction({
     if (rows.length === 0) return null;
     const { apiKey, agentId: configuredAgent } = keikiEnv();
     const agentId = configuredAgent ?? DEFAULT_AGENT_ID;
+    const token = noticeToken(apiKey ?? "");
     const results = await Promise.all(
       rows.map(async (row) => {
+        if (row.stale) return { id: row.id, ok: false, error: "stale", permanent: true };
         if (!apiKey) return { id: row.id, ok: false, error: "not_configured" };
         try {
           const res = await fetch(KEIKI_BASE_URL + "/api/v1/developer/agents/" + agentId + "/notice", {
             method: "POST",
             headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-            body: JSON.stringify({ text: noticeText(row.kind, row.text), phone: row.target }),
+            body: JSON.stringify({ text: noticeText(row.text, token), phone: row.target }),
           });
-          if (!res.ok) return { id: row.id, ok: false, error: "http_" + res.status };
-          return { id: row.id, ok: true };
+          if (!res.ok) {
+            const permanent = res.status === 400 || res.status === 404 || res.status === 422;
+            return { id: row.id, ok: false, error: (permanent ? "lost_" : "http_") + res.status, permanent };
+          }
+          const body = (await res.json().catch(() => null)) as NoticeBody | null;
+          const outcome = body?.results?.[0]?.outcome ?? (body?.ran === false ? "unavailable" : null);
+          if (outcome === "ran" || outcome === "queued") return { id: row.id, ok: true };
+          if (outcome === null) return { id: row.id, ok: false, error: "unreadable_answer" };
+          const permanent = outcome === "unknown_person" || outcome === "not_found";
+          return { id: row.id, ok: false, error: outcome, permanent };
         } catch {
           return { id: row.id, ok: false, error: "network" };
         }

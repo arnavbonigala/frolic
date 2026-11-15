@@ -27,8 +27,8 @@ export function testEnv(): Record<string, string | undefined> {
   return (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 }
 
-export function makeT(): T {
-  const t = convexTest(schema, modules);
+export function makeT(map: Record<string, () => Promise<unknown>> = modules): T {
+  const t = convexTest(schema, map);
   presence.register(t);
   rateLimiter.register(t);
   workflow.register(t);
@@ -103,7 +103,7 @@ export async function signedHeaders(body: string, options: { secret?: string; ti
 
 export type Notice = { url: string; phone: string; text: string; at: number };
 
-export type FetchOptions = { noticeStatus?: number; mapLink?: string };
+export type FetchOptions = { noticeStatus?: number; mapLink?: string; noticeBody?: unknown };
 
 export function installFetch(options: FetchOptions = {}) {
   const notices: Notice[] = [];
@@ -115,7 +115,7 @@ export function installFetch(options: FetchOptions = {}) {
     if (url.startsWith(NOTICE_PREFIX)) {
       const body = JSON.parse(String(init?.body ?? "{}")) as { phone: string; text: string };
       notices.push({ url, phone: body.phone, text: body.text, at: Date.now() });
-      return new Response("{}", { status: options.noticeStatus ?? 200 });
+      return new Response(JSON.stringify(options.noticeBody ?? { ok: true, conversations: 1, ran: 1, results: [{ phone: body.phone, outcome: "ran" }] }), { status: options.noticeStatus ?? 200 });
     }
     if (url.endsWith(".vcf")) {
       return new Response("BEGIN:VCARD\nVERSION:3.0\nFN:Frolic\nURL:" + mapLink + "\nEND:VCARD\n", {
