@@ -22,7 +22,7 @@ Screen roots: `today.screen`, `crew.screen`, `garden.screen`, `memory.screen`, `
 
 Sign-in deep link: `frolic://e2e/signin?token=<deviceToken>&group=<groupId>`. The older `frolic://signin?deviceToken=..&groupId=..` still resolves, and the seed's `users.<who>.link` comes back in that older shape, so a run rewrites it to the new one or leaves it, either works.
 
-Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`, `name`, `share`, `taste`, `reading`, `calendar`, `today:open|waiting|on|faded|done|solo|hopin|full|off|planning|none`, `crew`, `garden`, `memory/<n>`, `you`, `otw`, `checkin`, `sunday`, `hopin`). The solo state is `frolic://e2e/today?solo=1`, not a `solo` screen. Fixture screens need `?fixture=1`; Garden needs it too. Invite links arrive as `frolic://join/<code>` or `https://frolic.app/j/<code>`.
+Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`, `name`, `share`, `taste`, `reading`, `calendar`, `today:open|waiting|on|faded|done|solo|hopin|full|off|planning|none`, `crew`, `garden`, `memory/<n>`, `you`, `otw`, `checkin`, `sunday`, `hopin`). The solo state is `frolic://e2e/today?solo=1`, not a `solo` screen. Fixture screens need `?fixture=1`; Garden needs it too. On Today, `?fixture=1&pay=due&sheet=hold` lands on the hold sheet and `?fixture=1&paypage=1` opens the pay page sheet with no taps in between, so a walkthrough can prove the pay presentation either by tapping through or by landing on it. Invite links arrive as `frolic://join/<code>` or `https://frolic.app/j/<code>`.
 
 ## Join (`#join`)
 

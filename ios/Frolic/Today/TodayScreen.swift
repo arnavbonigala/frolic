@@ -108,13 +108,14 @@ struct TodayScreen: View {
             router.tab = .today
             store.sheet = .imFree
         }
-        .sheet(item: $store.sheet) { sheet in
-            TodaySheetHost(sheet: sheet, store: store)
-
-        }
-        .sheet(item: Binding(get: { store.payPage }, set: { if $0 == nil { store.closePayPage() } })) { page in
-            TodaySafari(url: page.url)
-                .ignoresSafeArea()
+        .sheet(isPresented: Binding(get: { store.presenting }, set: { if !$0 { store.closePresentation() } })) {
+            if let page = store.payPage {
+                TodaySafari(url: page.url)
+                    .ignoresSafeArea()
+                    .presentationDetents([.large])
+            } else if let sheet = store.sheet {
+                TodaySheetHost(sheet: sheet, store: store)
+            }
         }
     }
 
