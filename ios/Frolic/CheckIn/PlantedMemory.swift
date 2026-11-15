@@ -23,8 +23,9 @@ struct PlantedMemoryLanding: ViewModifier {
     }
 
     private func land() {
-        guard let id = coordinator.plantedFrolicId, let row = memories?.first(where: { $0.frolicId == id }) else { return }
+        guard let id = coordinator.plantedFrolicId, let memories else { return }
         coordinator.plantedFrolicId = nil
+        guard let row = memories.first(where: { $0.frolicId == id }) else { return }
         path = [row]
         guard !reduceMotion else { return }
         withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { blooming = true }

@@ -705,7 +705,7 @@ private struct TodayArrivedView: View {
             .padding(.horizontal, 22)
             .padding(.top, 16)
             Button("Take the group snap") {
-                CheckInFlowCoordinator.shared.open(frolicId: store.frolic?.frolicId)
+                CheckInFlowCoordinator.shared.openSnap(frolicId: store.frolic?.frolicId)
             }
             .buttonStyle(.frolicPrimary)
             .padding(.horizontal, 16)
