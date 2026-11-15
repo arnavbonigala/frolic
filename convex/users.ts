@@ -240,7 +240,9 @@ export const me = query({
       userId: v.id("users"),
       name: v.string(),
       photoUrl: v.union(v.string(), v.null()),
-      groups: v.array(v.object({ groupId: v.id("groups"), name: v.string(), color: v.string() })),
+      groups: v.array(
+        v.object({ groupId: v.id("groups"), name: v.string(), color: v.string(), joinedAt: v.number() }),
+      ),
     }),
   ),
   handler: async (ctx, { deviceToken }) => {
@@ -253,7 +255,7 @@ export const me = query({
     const groups = [];
     for (const m of memberships) {
       const g = await ctx.db.get("groups", m.groupId);
-      if (g) groups.push({ groupId: g._id, name: g.name, color: m.color });
+      if (g) groups.push({ groupId: g._id, name: g.name, color: m.color, joinedAt: m._creationTime });
     }
     return {
       userId: user._id,

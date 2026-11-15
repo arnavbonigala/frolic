@@ -96,6 +96,8 @@ final class FrolicIdentity {
             ?? nonEmpty(UserDefaults.standard.string(forKey: "frolic.onboarding.groupId"))
     }
 
+    static var storedGroupChoice: String? { storedGroup(AppGroup.defaults) }
+
     func setGroup(_ id: String?) {
         groupId = Self.nonEmpty(id)
         if pinnedGroup != nil { pinnedGroup = groupId }

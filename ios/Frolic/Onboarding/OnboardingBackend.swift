@@ -180,15 +180,23 @@ final class OnboardingBackend {
     func existingMembership() async -> String? {
         guard let client else { return nil }
         struct Me: Decodable {
-            struct Group: Decodable { var groupId: String }
+            struct Group: Decodable {
+                var groupId: String
+                var joinedAt: Double?
+            }
             var groups: [Group]
         }
+        let pinned = ProcessInfo.processInfo.environment[FrolicIdentity.groupEnvironmentKey]
+        let persisted = FrolicIdentity.storedGroupChoice
         do {
             let publisher = client.subscribe(to: "users:me", with: ["deviceToken": OnboardingIdentity.deviceToken], yielding: Me?.self)
             return try await withThrowingTaskGroup(of: String?.self) { group in
                 group.addTask {
                     for try await value in publisher.values {
-                        return value?.groups.first?.groupId
+                        let crews = (value?.groups ?? []).enumerated().map { index, crew in
+                            CrewSelection.Candidate(groupId: crew.groupId, joinedAt: crew.joinedAt ?? Double(index))
+                        }
+                        return CrewSelection.choose(pinned: pinned, persisted: persisted, memberships: crews)
                     }
                     return nil
                 }

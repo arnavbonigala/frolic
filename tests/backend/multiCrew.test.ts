@@ -261,6 +261,36 @@ describe("crews:mine", () => {
   });
 });
 
+describe("users:me join times", () => {
+  test("dates each crew so a cold launch can pick the newest one instead of the first listed", async () => {
+    const t = makeT();
+    const first = await setupCrew(t, ["Maya", "Dev"]);
+    const second = await secondCrew(t, "Jordan", "Work Friends", ["Dev"]);
+
+    const crews = (await t.query(api.users.me, { deviceToken: token("Dev") }))!.groups;
+
+    const newest = crews.reduce((best, crew) => (crew.joinedAt >= best.joinedAt ? crew : best));
+    const oldest = crews.reduce((best, crew) => (crew.joinedAt <= best.joinedAt ? crew : best));
+    expect(newest.groupId).toBe(second.groupId);
+    expect(oldest.groupId).toBe(first.groupId);
+    expect(newest.joinedAt).toBeGreaterThan(1_700_000_000_000);
+  });
+
+  test("keeps a join time fixed once the crew is joined", async () => {
+    const t = makeT();
+    const first = await setupCrew(t, ["Maya", "Dev"]);
+    const before = await t.query(api.users.me, { deviceToken: token("Dev") });
+
+    await t.mutation(api.users.updateProfile, { deviceToken: token("Dev"), firstName: "Dev Patel" });
+
+    const after = await t.query(api.users.me, { deviceToken: token("Dev") });
+    expect(after!.groups.map((crew) => [crew.groupId, crew.joinedAt])).toEqual(
+      before!.groups.map((crew) => [crew.groupId, crew.joinedAt]),
+    );
+    expect(after!.groups.map((crew) => crew.groupId)).toEqual([first.groupId]);
+  });
+});
+
 describe("two crews stay apart", () => {
   test("a secret tap in one crew says nothing in the other", async () => {
     const t = makeT();
