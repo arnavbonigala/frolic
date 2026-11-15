@@ -70,6 +70,7 @@ async function insertShare(
 }
 
 const NO_HOLD = "no-hold";
+const LET_GO = "You're not on this one anymore, so there's nothing to pay. Hop back in from Frolic if there's room.";
 
 export async function openMoney(ctx: MutationCtx, frolic: Doc<"frolics">): Promise<void> {
   const existing = await ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id)).first();
@@ -416,6 +417,7 @@ export const payView = internalQuery({
     if (!frolic || frolic.status !== "on" || frolic.revealAt === undefined || frolic.revealAt > now || (frolic.endsAt !== undefined && now >= frolic.endsAt)) {
       return { ok: false as const, message: "This one is not happening right now." };
     }
+    if ((await findAttendee(ctx, share.frolicId, share.userId))?.status !== "going") return { ok: false as const, message: LET_GO };
     if (share.status !== "due" && share.status !== "failed") {
       return { ok: false as const, message: "You're already set for this one.", art: share.kind === "deposit" ? ("released" as const) : undefined };
     }
@@ -484,6 +486,7 @@ export const beginCharge = internalMutation({
     if (!revealed(frolic, Date.now()) || (frolic.endsAt !== undefined && Date.now() >= frolic.endsAt)) {
       return { ok: false as const, message: "This one is not happening right now." };
     }
+    if ((await findAttendee(ctx, share.frolicId, share.userId))?.status !== "going") return { ok: false as const, message: LET_GO };
     if (share.status !== "due" && share.status !== "failed") return { ok: false as const, message: "You're already set for this one." };
     await setStatus(ctx, share, "pending", { lastError: undefined });
     const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;

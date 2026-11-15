@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { findMatch, type TimeWindow } from "./matcher";
 import { rateLimiter } from "./rateLimits";
 import { findMembership, requireMember } from "./identity";
@@ -184,7 +184,7 @@ async function lateTap(
 }
 
 export async function findAttendee(
-  ctx: MutationCtx,
+  ctx: QueryCtx,
   frolicId: Id<"frolics">,
   userId: Id<"users">,
 ): Promise<Doc<"attendees"> | null> {
