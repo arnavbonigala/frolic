@@ -162,6 +162,22 @@ export const onFree = internalMutation({
   },
 });
 
+export const GARDEN_NUDGE_TEXT = "Your garden's getting thirsty. Anyone free tonight?";
+
+export async function gardenNudge(ctx: MutationCtx, groupId: Id<"groups">, frolicId: Id<"frolics">, streak: string) {
+  const members = await crewMembers(ctx, groupId);
+  const drafts = await personal(ctx, members.map((m) => m._id), (user) => ({
+    key: "garden:" + groupId + ":" + streak + ":" + user._id,
+    kind: "nudge",
+    text: GARDEN_NUDGE_TEXT,
+    notBefore: Date.now(),
+  }));
+  for (const chat of await chatsOf(ctx, groupId)) {
+    drafts.push({ key: "garden:" + groupId + ":" + streak + ":" + chat.chatId, kind: "nudge", target: chat.chatId, text: GARDEN_NUDGE_TEXT, notBefore: Date.now() });
+  }
+  return await enqueue(ctx, frolicId, drafts);
+}
+
 export const onReveal = internalMutation({
   args: { frolicId: v.id("frolics"), userIds: v.array(v.id("users")), bloomAt: v.number() },
   handler: async (ctx, args) => {

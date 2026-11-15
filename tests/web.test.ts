@@ -379,3 +379,22 @@ describe("http routes", () => {
     expect(bytes.length).toBeGreaterThan(20000);
   });
 });
+describe("a hosted plan on the card", () => {
+  test("a plan from a drop shows who hosts it, the price and the seats left", async () => {
+    const t = makeT();
+    const crew = await planned(t, await setupCrew(t, ["Maya", "Dev"]));
+    expect(await t.mutation(internal.web.devSeed.attachDrop, { frolicId: crew.frolicId })).toBe("ok");
+    const link = await shareLink(t, crew);
+    const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Guest") });
+    expect(view.card?.drop).toEqual({ hostedBy: "Hosted by Cal Kayak Club", price: "$8", seatsLeft: 12 });
+  });
+
+  test("a plan without a drop carries no host line", async () => {
+    const t = makeT();
+    const crew = await planned(t, await setupCrew(t, ["Maya", "Dev"]));
+    const link = await shareLink(t, crew);
+    const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Guest") });
+    expect(view.card?.drop).toBeNull();
+  });
+});
+

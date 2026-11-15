@@ -70,6 +70,16 @@ if (only === "all" || only === "loading") {
   page = null;
 }
 
+if (only === "all" || only === "drop") {
+  const { frolicId, code } = newLink("open");
+  run("web/devSeed:attachDrop", { frolicId });
+  await newPage();
+  await page.goto(`${SITE}/p/${code}`, { waitUntil: "networkidle0" });
+  await page.waitForSelector(".host");
+  await sleep(400);
+  await shot("14-hosted", "open: the seed packet of a hosted plan");
+}
+
 if (only === "all" || only === "card") {
   const { code } = newLink("open");
   await newPage();

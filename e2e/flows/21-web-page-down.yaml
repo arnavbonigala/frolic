@@ -22,7 +22,7 @@ test:
     - type: "validation"
       step_description: "A field labelled \"Your first name\" and a button \"I'm down\" are visible"
     - type: "validation"
-      step_description: "The line \"Nobody sees you're down unless someone else is too. No app needed.\" is visible"
+      step_description: "The line \"Nobody sees you're down unless someone else is too.\" is visible"
     - type: "instructions"
       step_description: "Type \"Maya\" in the first name field and tap \"I'm down\""
     - type: "validation"
