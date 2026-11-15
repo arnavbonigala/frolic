@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck:tests": "tsc --noEmit -p tests",
-    "dev": "convex dev"
+    "dev": "convex dev",
+    "rehearse": "node e2e/tools/rehearse.mjs"
   },
   "repository": {
     "type": "git",

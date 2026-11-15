@@ -9,7 +9,7 @@ import { clockLabel, solarTimes } from "../plans/time";
 import { CAMPUS, tripLabel, tripTo } from "../plans/travel";
 import { addMember, createGroupFor } from "../users";
 
-const ZONE = "America/Los_Angeles";
+export const ZONE = "America/Los_Angeles";
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const BATCH = 100;
@@ -54,7 +54,7 @@ function offsetAt(utcMs: number, timeZone: string): number {
   return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(utcMs / 1000) * 1000;
 }
 
-function dayInZone(utcMs: number, timeZone: string): string {
+export function dayInZone(utcMs: number, timeZone: string): string {
   const p = zonedParts(utcMs, timeZone);
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
@@ -85,7 +85,7 @@ function closesAt(place: Place, day: string): number | null {
   return instantInZone(day, 0, 0, ZONE) + span[1] * MINUTE;
 }
 
-function startsAtFor(now: number, place: Place, day: string): number {
+export function startsAtFor(now: number, place: Place, day: string): number {
   const preferred = instantInZone(day, PREFERRED_HOUR, PREFERRED_MINUTE, ZONE);
   const lead = Math.ceil((now + PLAN_LEAD) / SLOT) * SLOT;
   const span = spanOf(place, day);
@@ -96,11 +96,11 @@ function startsAtFor(now: number, place: Place, day: string): number {
   return Math.max(open, Math.min(latest, Math.max(preferred, lead)));
 }
 
-function titleFor(place: Place, start: number, sunsetMs: number): string {
+export function titleFor(place: Place, start: number, sunsetMs: number): string {
   return place.titles?.[timeOfDay(start, sunsetMs)] ?? place.title;
 }
 
-function lineFor(place: Place, start: number, sunsetMs: number, day: string): string {
+export function lineFor(place: Place, start: number, sunsetMs: number, day: string): string {
   const hook = place.tip.charAt(0).toUpperCase() + place.tip.slice(1) + ".";
   const parts = [hook];
   if (start < sunsetMs) parts.push("Sunset at " + clockLabel(sunsetMs) + ".");
@@ -110,7 +110,7 @@ function lineFor(place: Place, start: number, sunsetMs: number, day: string): st
   return parts.join(" ");
 }
 
-function chipsFor(place: Place, start: number, sunsetMs: number, day: string): string[] {
+export function chipsFor(place: Place, start: number, sunsetMs: number, day: string): string[] {
   const trip = tripLabel(tripTo(CAMPUS, place));
   const golden = start >= sunsetMs - 90 * MINUTE && start <= sunsetMs;
   const close = closesAt(place, day);
@@ -124,7 +124,7 @@ function chipsFor(place: Place, start: number, sunsetMs: number, day: string): s
   return [place.costLabel, trip, third];
 }
 
-function deviceToken(): string {
+export function deviceToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -146,7 +146,7 @@ async function drain<T extends TableNames>(
   return cleared;
 }
 
-async function clearFrolic(ctx: MutationCtx, frolicId: Id<"frolics">): Promise<number> {
+export async function clearFrolic(ctx: MutationCtx, frolicId: Id<"frolics">): Promise<number> {
   let cleared = 0;
   for (let pass = 0; pass < MAX_BATCHES; pass++) {
     const pending = await ctx.db
@@ -338,7 +338,7 @@ async function upsertPlace(
   return await ctx.db.insert("places", place);
 }
 
-async function catalogPlace(ctx: MutationCtx, slug: string): Promise<Doc<"places">> {
+export async function catalogPlace(ctx: MutationCtx, slug: string): Promise<Doc<"places">> {
   const place = PLACE_BY_SLUG.get(slug);
   if (!place) throw new ConvexError({ code: "NO_PLACE", message: "No catalog place for " + slug });
   const stored = await ctx.db
@@ -355,7 +355,7 @@ async function catalogPlace(ctx: MutationCtx, slug: string): Promise<Doc<"places
   return refreshed;
 }
 
-async function upsertPlan(
+export async function upsertPlan(
   ctx: MutationCtx,
   groupId: Id<"groups">,
   day: string,

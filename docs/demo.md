@@ -47,6 +47,7 @@ Ten minutes out, in this order. Every item is a check, not a setup step.
 9. Jordan types the same test card from his own pay link during beat 7, so budget eight seconds for him as well. If the room will not wait for two entries, place Jordan's hold from his pay link before the run and say so, because a capture needs a hold that exists.
 10. If the room is not the venue, Dev's check-in is the manual "I'm here" button, which calls the same mutation the geofence calls. Do not claim the geofence fired.
 11. Confirm the deployment has `WHOP_SANDBOX_API_KEY`, `WHOP_API_BASE` on the sandbox, and `WHOP_ACCOUNT_ID` set. A key that does not match the base refuses every call, and the failure looks like a broken pay page.
+12. When the starting line has drifted, one command puts it back: `npm run rehearse -- <run>`. It seeds Sunset Crew with Maya, Dev, Jordan and Priya and Climbing Club with Maya and Dev, today's plan open in both with no taps, a start at least 45 minutes out and a deadline six hours out, the past garden nights and their flowers kept, in-flight holds cleared and the reveal log empty so the first tap starts a story. It is idempotent, so a second call leaves one of each crew, and it says where it wrote the sign-in links.
 
 ## Run of show
 
