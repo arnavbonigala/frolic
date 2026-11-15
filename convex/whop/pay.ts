@@ -71,7 +71,7 @@ export const myPayment = query({
     const empty = { state: "none" as const, kind: "none" as const, amountCents: 0, error: null, paidNames: [], noHold: false };
     const user = await findUserByToken(ctx, deviceToken);
     const frolic = await ctx.db.get("frolics", frolicId);
-    if (!user || !frolic || frolic.revealAt === undefined || frolic.status === "open") return empty;
+    if (!user || !frolic || frolic.revealAt === undefined || frolic.revealAt > Date.now() || frolic.status === "open") return empty;
     const share = await shareFor(ctx, frolicId, user._id);
     if (!share) return { ...empty, noHold: await noHold(ctx, frolicId) };
     const all = await ctx.db.query("shares").withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId)).take(200);

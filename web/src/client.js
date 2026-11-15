@@ -1,6 +1,6 @@
 import {ConvexClient} from "convex/browser";
 import {anyApi} from "convex/server";
-import {FADED_TITLE, FADED_BODY} from "../../convex/lib/copy";
+import {FADED_TITLE, FADED_BODY, PROMISE} from "../../convex/lib/copy";
 
 const boot = JSON.parse(document.getElementById("boot").textContent);
 const app = document.getElementById("app");
@@ -60,6 +60,11 @@ function head(v) {
   return '<div class="top">' + MARK + '<a class="txtbtn" style="margin:0;padding:0;font:600 15px system-ui;text-decoration:none" href="' + esc(boot.appUrl) + '">Back to the app</a></div>' + (v && v.host ? '<p class="from">' + esc(v.host) + " shared a plan" + (v.group ? " with " + esc(v.group) : "") + "</p>" : "");
 }
 
+function promise(v) {
+  if (!v || v.phase === "drifted" || v.phase === "invalid" || v.phase === "expired") return "";
+  return '<p class="from" style="padding-top:16px">' + esc(PROMISE) + "</p>";
+}
+
 function body(v) {
   if (!v) return '<div class="below"><div class="skel" style="height:56px"></div><div class="skel" style="height:54px;border-radius:999px;margin-top:12px"></div></div>';
   if (ui.subError) return '<div class="below"><div class="card center" role="alert"><b style="font-size:17px">Something went wrong</b><p class="sub">We could not load this plan. Your yes, if you sent one, is safe.</p></div><button class="btn" id="retry">Try again</button></div>';
@@ -86,7 +91,7 @@ function render() {
   if (v && v.phase === "expired") { app.innerHTML = dead("This plan has wandered off", "The day moved on. Ask your friend for today\u2019s link, or get Frolic to see the next plan."); return; }
   const focused = document.activeElement && document.activeElement.id === "wn";
   const val = focused ? document.activeElement.value : null;
-  app.innerHTML = banner() + head(v || {host: boot.host, group: boot.group}) + packet(v ? v.card : boot.card) + body(v);
+  app.innerHTML = banner() + head(v || {host: boot.host, group: boot.group}) + promise(v) + packet(v ? v.card : boot.card) + body(v);
   const f = document.getElementById("f");
   if (f) {
     const input = document.getElementById("wn");

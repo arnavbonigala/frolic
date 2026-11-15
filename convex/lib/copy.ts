@@ -4,3 +4,4 @@ export const FADED_TEXT = FADED_TITLE + ". " + FADED_BODY;
 export const BAIL_BODY = "Your crew will see a spot open up.";
 export const ONLY_IF_BUTTON = "Only with…";
 export const ONLY_IF_TITLE = "I'm down only with…";
+export const PROMISE = "Be the friend who says yes.";

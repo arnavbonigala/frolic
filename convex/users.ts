@@ -14,6 +14,7 @@ import {
 import { isPortraitKey } from "./avatars/portraits";
 import { photoUrlOf } from "./lib/photo";
 import { rateLimiter } from "./lib/rateLimits";
+import { removeTap, sitOutAndRefill } from "./lib/core";
 
 export const FLOWER_COLORS = ["pink", "cobalt", "moss", "marigold", "tomato", "lilac"] as const;
 
@@ -322,9 +323,26 @@ async function purgeFrolic(ctx: MutationCtx, frolicId: Id<"frolics">, userId: Id
   for (const row of logged) if (row.userId === userId) await ctx.db.delete("revealLog", row._id);
 }
 
+async function leaveLiveFrolics(ctx: MutationCtx, userId: Id<"users">): Promise<void> {
+  const taps = await ctx.db.query("taps").withIndex("by_userId", (q) => q.eq("userId", userId)).take(PURGE_BATCH);
+  for (const tap of taps) {
+    const frolic = await ctx.db.get("frolics", tap.frolicId);
+    if (frolic?.status === "open" && (await findMembership(ctx, frolic.groupId, userId))) {
+      await removeTap(ctx, userId, frolic._id, false);
+    }
+  }
+  const attendees = await ctx.db.query("attendees").withIndex("by_userId", (q) => q.eq("userId", userId)).take(PURGE_BATCH);
+  for (const attendee of attendees) {
+    if (attendee.status !== "going") continue;
+    const frolic = await ctx.db.get("frolics", attendee.frolicId);
+    if (frolic?.status === "on") await sitOutAndRefill(ctx, frolic, attendee, Date.now());
+  }
+}
+
 async function purgeRows(ctx: MutationCtx, user: Doc<"users">): Promise<boolean> {
   const userId = user._id;
   let finished = true;
+  await leaveLiveFrolics(ctx, userId);
   const memberships = await ctx.db
     .query("memberships")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -347,7 +365,7 @@ async function purgeRows(ctx: MutationCtx, user: Doc<"users">): Promise<boolean>
     for (const frolic of frolics) await purgeFrolic(ctx, frolic._id, userId);
     await ctx.db.delete("memberships", membership._id);
   }
-  for (const table of ["taps", "attendees", "limits", "keikiLinks"] as const) {
+  for (const table of ["taps", "attendees", "limits", "keikiLinks", "dailyPickAnswers"] as const) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_userId", (q) => q.eq("userId", userId))
