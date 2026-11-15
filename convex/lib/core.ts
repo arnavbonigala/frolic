@@ -126,20 +126,20 @@ async function rematch(
   });
   const pending = await pendingReveal(ctx, frolic._id);
 
-  if (!match) {
-    if (pending) {
-      await ctx.scheduler.cancel(pending.scheduledId);
-      await ctx.db.delete("reveals", pending._id);
-      if (now >= frolic.deadline) await fadeFrolic(ctx, frolic._id);
-    }
-    return;
-  }
-
-  const userIds = match.userIds as Id<"users">[];
-  if (pending) {
+  const userIds = match ? (match.userIds as Id<"users">[]) : [];
+  if (match && pending) {
     await ctx.db.patch("reveals", pending._id, { userIds, startsAt: match.startsAt });
     return;
   }
+  if (pending) {
+    await ctx.scheduler.cancel(pending.scheduledId);
+    await ctx.db.delete("reveals", pending._id);
+  }
+  if (now >= frolic.deadline) {
+    await fadeFrolic(ctx, frolic._id);
+    return;
+  }
+  if (!match) return;
   const revealAt = now + REVEAL_DELAY_MS;
   const scheduledId = await ctx.scheduler.runAt(
     revealAt,
@@ -292,15 +292,12 @@ export async function removeTap(
   const frolic = await getFrolic(ctx, frolicId);
   await requireMember(ctx, frolic.groupId, userId);
   if (limited) await rateLimiter.limit(ctx, "tap", { key: userId, throws: true });
-  const now = Date.now();
-  if (frolic.status === "open" && now >= frolic.deadline && !(await pendingReveal(ctx, frolicId))) {
-    throw closed("This one is over");
-  }
   const existing = await ctx.db
     .query("taps")
     .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
     .unique();
-  if (existing) await ctx.db.delete("taps", existing._id);
-  if (frolic.status === "open") await rematch(ctx, frolic, now);
+  if (!existing) return null;
+  await ctx.db.delete("taps", existing._id);
+  if (frolic.status === "open") await rematch(ctx, frolic, Date.now());
   return null;
 }
