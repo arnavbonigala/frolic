@@ -37,9 +37,10 @@ final class LockScreenAppDelegate: NSObject, UIApplicationDelegate, UNUserNotifi
         guard url.scheme == "frolic" else { return }
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let query = Dictionary((components?.queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { _, last in last })
-        if url.host == "signin", let token = query["deviceToken"], let groupId = query["groupId"], token.count >= 32 {
-            SharedSession.store(deviceToken: token, groupId: groupId)
+        if url.host == "signin" {
             SharedSession.userId = nil
+            SharedSession.name = nil
+            LockScreenStore.snapshot = nil
             Task { await LockScreenSync.shared.refresh() }
             return
         }

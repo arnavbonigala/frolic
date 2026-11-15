@@ -66,6 +66,15 @@ The deployment URL resolves in this order:
 
 With neither set, every tab shows its error state ("Frolic isn't connected to a server yet."). Branch builds point at their own anonymous backend, never at the shared dev deployment.
 
+## Identity
+
+`FrolicIdentity.shared` (in `Shared/Identity/`, so the widget can use it too, and in the environment) holds `deviceToken` and `groupId`. Every Convex call passes `identity.deviceToken`.
+
+- **Token, in this order:** the `FROLIC_DEVICE_TOKEN` launch variable, the Keychain (service `com.frolic.app`, account `deviceToken`), then App Group defaults `frolic.deviceToken`. If none is set, a 48-character hex token is minted on first launch. Tokens are 32 to 256 characters.
+- **Group, in this order:** the `FROLIC_GROUP_ID` launch variable, then App Group defaults `frolic.groupId`. Call `identity.setGroup(id)` after `createGroup` or `joinGroup`.
+- **Debug and E2E builds:** `frolic://signin?deviceToken=..&groupId=..` stores both.
+- **Lane stand-ins:** delete `CrewIdentity`, `YouIdentity`, `CheckInSession` and the Garden stand-in once this lands.
+
 ## Build
 
 Linux machines cannot build iOS. Build on Revyl with `tools.mobile.build`, app name `frolic-ios` (the e2e flows use it), source path `ios`, output `build/Build/Products/Debug-iphonesimulator/Frolic.app`, command:

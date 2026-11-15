@@ -7,12 +7,12 @@ struct FlowerPerson: Identifiable, Hashable {
     var photo: String?
     var avatarURL: URL?
 
-    init(id: String? = nil, name: String, color: FlowerColor, photo: String? = nil, avatarURL: URL? = nil) {
+    init(id: String? = nil, name: String, color: FlowerColor, photo: String? = nil, avatarURL: URL? = nil, photoUrl: String? = nil) {
         self.id = id ?? name
         self.name = name
         self.color = color
         self.photo = photo
-        self.avatarURL = avatarURL
+        self.avatarURL = avatarURL ?? photoUrl.flatMap(URL.init(string:))
     }
 
     var initial: String { String(name.prefix(1)).uppercased() }

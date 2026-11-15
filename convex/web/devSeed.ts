@@ -139,3 +139,15 @@ export const users = internalQuery({
     return rows.map((u) => ({ name: u.name, source: u.source }));
   },
 });
+
+export const setAvatar = internalMutation({
+  args: { name: v.string(), key: v.string() },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db.query("users").collect();
+    for (const user of rows) {
+      if (user.name === args.name) await ctx.db.patch(user._id, { avatarUrl: `/p/avatar/${args.key}.jpg` });
+    }
+    return "ok";
+  },
+});
