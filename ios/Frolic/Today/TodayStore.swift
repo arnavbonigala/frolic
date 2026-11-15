@@ -222,8 +222,16 @@ final class TodayStore {
         tasks.forEach { $0.cancel() }
         tasks.removeAll()
         bloomTask?.cancel()
-        paymentFrolic = nil
+        forgetFrolic()
+    }
+
+    private func forgetFrolic() {
+        etas = []
         etaFrolic = nil
+        payment = nil
+        paymentFrolic = nil
+        drop = nil
+        dropFrolic = nil
     }
 
     func becameActive() {
@@ -668,6 +676,12 @@ final class TodayStore {
     }
 
     private func apply(_ view: TodayView) {
+        if view.frolic?.frolicId != today?.frolic?.frolicId {
+            forgetFrolic()
+            pending = nil
+            bloomed = false
+            bloomedFrolic = nil
+        }
         today = view
         load = .ready
         if let pending, confirms(pending) {
