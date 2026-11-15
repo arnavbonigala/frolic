@@ -10,6 +10,8 @@ import {
   newCode,
   userFromToken,
 } from "./lib/identity";
+import { isPortraitKey } from "./avatars/portraits";
+import { photoUrlOf } from "./lib/photo";
 import { rateLimiter } from "./lib/rateLimits";
 
 export const FLOWER_COLORS = ["pink", "cobalt", "moss", "marigold", "tomato", "lilac"] as const;
@@ -202,20 +204,29 @@ export const me = query({
     return {
       userId: user._id,
       name: user.name,
-      photoUrl: user.photoId ? await ctx.storage.getUrl(user.photoId) : null,
+      photoUrl: await photoUrlOf(ctx, user),
       groups,
     };
   },
 });
 
 export const updateProfile = mutation({
-  args: { deviceToken: v.string(), firstName: v.optional(v.string()), photoId: v.optional(v.id("_storage")) },
+  args: {
+    deviceToken: v.string(),
+    firstName: v.optional(v.string()),
+    photoId: v.optional(v.id("_storage")),
+    avatarKey: v.optional(v.string()),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await userFromToken(ctx, args.deviceToken);
+    if (args.avatarKey !== undefined && !isPortraitKey(args.avatarKey)) {
+      throw new ConvexError({ code: "BAD_AVATAR", message: "That portrait does not exist" });
+    }
     await ctx.db.patch("users", user._id, {
       ...(args.firstName !== undefined ? { name: cleanName(args.firstName) } : {}),
       ...(args.photoId !== undefined ? { photoId: args.photoId } : {}),
+      ...(args.avatarKey !== undefined ? { avatarUrl: `/p/avatar/${args.avatarKey}.jpg` } : {}),
     });
     return null;
   },
