@@ -103,6 +103,18 @@ final class OnboardingBackend {
         }
     }
 
+    func rename(firstName: String) async throws {
+        guard let client else { throw OnboardingFailure.notConnected }
+        do {
+            try await client.mutation("users:updateProfile", with: [
+                "deviceToken": OnboardingIdentity.deviceToken,
+                "firstName": firstName,
+            ])
+        } catch {
+            throw Self.classify(error)
+        }
+    }
+
     func join(code: String, firstName: String) async throws -> JoinOutcome {
         guard let client else { throw OnboardingFailure.notConnected }
         do {
@@ -123,7 +135,7 @@ final class OnboardingBackend {
             let outcome: CreateOutcome = try await client.mutation("users:createGroup", with: [
                 "deviceToken": OnboardingIdentity.deviceToken,
                 "firstName": firstName,
-                "groupName": firstName + "'s crew",
+                "groupName": String(firstName.prefix(33)) + "'s crew",
             ])
             return outcome
         } catch {

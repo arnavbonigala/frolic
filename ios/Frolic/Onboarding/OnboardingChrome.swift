@@ -122,12 +122,31 @@ struct OnboardingChipFlow: View {
 }
 
 struct OnboardingPage<Content: View, Bar: View>: View {
+    var onBack: (() -> Void)?
     @ViewBuilder var content: Content
     @ViewBuilder var bar: Bar
+
+    init(onBack: (() -> Void)? = nil, @ViewBuilder content: () -> Content, @ViewBuilder bar: () -> Bar) {
+        self.onBack = onBack
+        self.content = content()
+        self.bar = bar()
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                if let onBack {
+                    Button(action: onBack) {
+                        Label("Back", systemImage: "chevron.left")
+                            .frolicFont(.bodyEmphasis)
+                            .foregroundStyle(FrolicColor.ink)
+                            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, -24)
+                    .accessibilityIdentifier("onboarding.back")
+                }
                 content
             }
             .padding(.horizontal, 18)
