@@ -13,9 +13,7 @@ import { timeWindow } from "../schema";
 import {
   fallbackPlan,
   generatePlan,
-  TAG_LABEL,
   copyOk,
-  memoryWhy,
   rankCandidates,
   validatePlan,
   type DropInput,
@@ -26,6 +24,7 @@ import {
 } from "./engine";
 import { vDropInputs, type DropInputs } from "./inputs";
 import { EMPTY_MEMORY, type MemoryContext } from "./memoryContext";
+import { vPickRef } from "../memory/why";
 import { addDays, localParts, weekdayOf } from "./time";
 import { tripTo } from "./travel";
 import { fetchWeather, hourAt, isRainy, type DayWeather } from "./weather";
@@ -70,6 +69,7 @@ const vMemoryContext = v.object({
       date: v.optional(v.string()),
     }),
   ),
+  picks: v.array(vPickRef),
 });
 
 const vMeetingPoint = v.object({ lat: v.number(), lng: v.number(), label: v.string() });
@@ -313,7 +313,7 @@ export const memoryStep = internalAction({
   handler: async (ctx, args): Promise<MemoryContext> => {
     try {
       const m: MemoryContext = await ctx.runAction(internal.memory.read.getMemoryContext, args);
-      return { likedTags: m.likedTags, skipped: m.skipped, suppressed: m.suppressed, pastNights: m.pastNights.map((n) => ({ id: n.id, text: n.text, placeId: n.placeId, date: n.date })) };
+      return { likedTags: m.likedTags, skipped: m.skipped, suppressed: m.suppressed, pastNights: m.pastNights.map((n) => ({ id: n.id, text: n.text, placeId: n.placeId, date: n.date })), picks: m.picks };
     } catch {
       return EMPTY_MEMORY;
     }
@@ -364,15 +364,20 @@ export const pickStep = internalAction({
     if (!picked) return null;
     if (picked.whySource !== "memory" && !picked.drop) {
       const place = PLACE_BY_SLUG.get(picked.placeSlug);
-      const hit: { memoryId: string; text: string } | null = place
-        ? await ctx.runAction(internal.memory.read.whyThis, { groupId: args.groupId, tags: [place.name.replace(/^the /, ""), ...place.tags.map((t) => TAG_LABEL[t])] }).catch(() => null)
+      const cite = place
+        ? await ctx.runAction(internal.memory.read.whyCite, {
+            groupId: args.groupId,
+            day: args.day,
+            placeSlug: place.slug,
+            placeName: place.name,
+            placeTags: place.tags,
+          }).catch(() => null)
         : null;
-      const why = hit ? memoryWhy(hit.text) : null;
-      if (hit && why && copyOk(why)) {
-        picked.why = why;
+      if (cite && copyOk(cite.why)) {
+        picked.why = cite.why;
         picked.whySource = "memory";
-        picked.whyMemoryId = hit.memoryId;
-        picked.whyInputs.memory = hit.text;
+        picked.whyMemoryId = cite.memoryId;
+        picked.whyInputs.memory = cite.memory;
       }
     }
     return toStored(picked);

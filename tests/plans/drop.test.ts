@@ -474,13 +474,13 @@ describe("demo beat", () => {
     expect(first).not.toBeNull();
     const place = PLACE_BY_SLUG.get(first!.placeSlug)!;
     const night = "Went to " + place.name + " and stayed until the sky went orange.";
-    fake.docs.set(groupNamespace(groupId), new Map([["night1", { id: "night1", content: night, metadata: { kind: "night", tags: place.tags }, date: "2026-11-08" }]]));
+    fake.docs.set(groupNamespace(groupId), new Map([["night1", { id: "night1", content: night, metadata: { kind: "night", tags: place.tags, placeId: place.slug, day: "2026-11-08" }, date: "2026-11-08" }]]));
     const plan = await t.action(internal.plans.drop.pickStep, args);
     expect(plan!.placeSlug).toBe(first!.placeSlug);
     expect(plan!.whySource).toBe("memory");
     expect(plan!.whyMemoryId).toBe("mem_night1");
     expect(plan!.why).toContain(place.name);
-    expect(plan!.why).toContain("you remembered it like this");
+    expect(plan!.why).toBe("You all went to " + place.name + " on Nov 8.");
     expect(plan!.whyInputs.memory).toBe(night);
     await t.mutation(internal.plans.drop.writePlan, { groupId, day: DAY, kind: "daily", plan: plan! });
     const rows = await plans(t, groupId);
