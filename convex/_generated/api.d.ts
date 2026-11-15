@@ -24,6 +24,7 @@ import type * as dailyPick from "../dailyPick.js";
 import type * as dailyPickBank from "../dailyPickBank.js";
 import type * as drops from "../drops.js";
 import type * as e2e_admin from "../e2e/admin.js";
+import type * as e2e_friends from "../e2e/friends.js";
 import type * as e2e_rehearse from "../e2e/rehearse.js";
 import type * as e2e_routes from "../e2e/routes.js";
 import type * as etas from "../etas.js";
@@ -128,6 +129,7 @@ declare const fullApi: ApiFromModules<{
   dailyPickBank: typeof dailyPickBank;
   drops: typeof drops;
   "e2e/admin": typeof e2e_admin;
+  "e2e/friends": typeof e2e_friends;
   "e2e/rehearse": typeof e2e_rehearse;
   "e2e/routes": typeof e2e_routes;
   etas: typeof etas;
