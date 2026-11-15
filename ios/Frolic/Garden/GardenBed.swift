@@ -1,9 +1,15 @@
 import SwiftUI
 
+struct GardenYourFlower {
+    var index: Int
+    var color: FlowerColor
+    var person: GardenPerson?
+}
+
 struct GardenBed: View {
     var countLine: String
     var sinceLine: String
-    var yourFlower: Bool
+    var yourFlower: GardenYourFlower?
     var colors: [FlowerColor] = []
     var health: GardenHealthState = .fine
 
@@ -11,10 +17,15 @@ struct GardenBed: View {
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
 
     init(count: Int, caption: String) {
-        self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
+        self.init(
+            countLine: "\(count) frolics",
+            sinceLine: caption,
+            yourFlower: nil,
+            colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato]
+        )
     }
 
-    init(countLine: String, sinceLine: String, yourFlower: Bool, colors: [FlowerColor], health: GardenHealthState = .fine) {
+    init(countLine: String, sinceLine: String, yourFlower: GardenYourFlower? = nil, colors: [FlowerColor], health: GardenHealthState = .fine) {
         self.health = health
         self.countLine = countLine
         self.sinceLine = sinceLine
@@ -23,6 +34,19 @@ struct GardenBed: View {
     }
 
     private let stems: [CGFloat] = [30, 52, 40, 64, 36, 58, 44, 70, 32, 50, 42, 60]
+    private let flowerRadius: CGFloat = 13
+    private let yourRadius: CGFloat = 20
+    private let yourStem: CGFloat = 74
+    private let yourDrop: CGFloat = 4
+    private let widestPitch: CGFloat = 24
+    private let bedInset: CGFloat = 8
+    private let bedBottom: CGFloat = 6
+    private let cap = 14
+
+    private var flowerWidth: CGFloat { flowerRadius * 2 + 8 }
+    private var yourWidth: CGFloat { yourRadius * 2 + 8 }
+
+    private var shown: [FlowerColor] { Array(colors.prefix(cap)) }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -36,17 +60,16 @@ struct GardenBed: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            HStack(alignment: .bottom, spacing: -10) {
-                ForEach(colors.indices, id: \.self) { index in
-                    FlowerView(color: colors[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
-                        .scaleEffect(health.flowerScale, anchor: .bottom)
-                        .saturation(health.saturation)
-                        .rotationEffect(.degrees(health.droop * (index.isMultiple(of: 2) ? 1 : -1) * (0.6 + Double(index % 3) * 0.25)), anchor: .bottom)
+            GeometryReader { proxy in
+                let pitch = pitch(for: shown.count, in: proxy.size.width)
+                ZStack(alignment: .bottomLeading) {
+                    ForEach(shown.indices, id: \.self) { slot in
+                        bloom(shown[slot], slot: slot, pitch: pitch)
+                    }
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottomLeading)
+                .offset(y: -bedBottom)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            .padding(.horizontal, 8)
-            .padding(.bottom, 6)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(countLine)
@@ -64,6 +87,28 @@ struct GardenBed: View {
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
         .accessibilityElement(children: .contain)
+    }
+
+    private func pitch(for count: Int, in width: CGFloat) -> CGFloat {
+        guard count > 1 else { return widestPitch }
+        let span = max(width - bedInset * 2 - flowerWidth, 0)
+        return min(widestPitch, span / CGFloat(count - 1))
+    }
+
+    private func bloom(_ color: FlowerColor, slot: Int, pitch: CGFloat) -> some View {
+        let yours = yourFlower?.index == slot
+        let x = bedInset + CGFloat(slot) * pitch + (yours ? flowerWidth - yourWidth : 0)
+        return GardenFlower(
+            person: yours ? yourFlower?.person : nil,
+            color: yours ? (yourFlower?.color ?? color) : color,
+            radius: yours ? yourRadius : flowerRadius,
+            stem: yours ? yourStem : stems[slot % stems.count],
+            swayDelay: Double(slot) * 0.4
+        )
+        .scaleEffect(health.flowerScale, anchor: .bottom)
+        .saturation(health.saturation)
+        .rotationEffect(.degrees(health.droop * (slot.isMultiple(of: 2) ? 1 : -1) * (0.6 + Double(slot % 3) * 0.25)), anchor: .bottom)
+        .offset(x: max(bedInset, x), y: yours ? yourDrop : 0)
     }
 }
 

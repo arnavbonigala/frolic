@@ -79,7 +79,7 @@ struct GardenScreen: View {
                 GardenOnThisDayCard(card: card)
                     .padding(.top, 16)
             }
-            GardenBed(countLine: overview.countLine, sinceLine: overview.cleanSinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { row in row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
+            gardenBed(overview)
                 .padding(.top, 16)
             if let health = overview.health {
                 GardenHealthRow(health: health) {
@@ -120,6 +120,24 @@ struct GardenScreen: View {
                 }
             }
         }
+    }
+
+    private func gardenBed(_ overview: GardenOverview) -> GardenBed {
+        let rows = Array(overview.memories.prefix(14).reversed())
+        let colors = rows.map { row in
+            row.going.first(where: { $0.userId == store.myUserId })?.color ?? row.going.first?.color ?? .lilac
+        }
+        let mine = rows.firstIndex { $0.youWent && $0.going.contains(where: { $0.userId == store.myUserId }) }
+        let yourFlower = mine.map { index in
+            GardenYourFlower(index: index, color: colors[index], person: rows[index].going.first(where: { $0.userId == store.myUserId }))
+        }
+        return GardenBed(
+            countLine: overview.countLine,
+            sinceLine: overview.cleanSinceLine,
+            yourFlower: yourFlower,
+            colors: colors,
+            health: overview.health?.state ?? .fine
+        )
     }
 
     private var placeholderCopy: PlaceholderCopy {
