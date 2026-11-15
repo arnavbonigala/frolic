@@ -116,6 +116,7 @@ final class FrolicIdentity {
 
     func signIn(deviceToken token: String, groupId group: String?) {
         guard let token = Self.validToken(token) else { return }
+        if token != deviceToken { setGroup(nil) }
         deviceToken = token
         Self.writeKeychain(token)
         AppGroup.defaults.set(token, forKey: Self.tokenDefaultsKey)

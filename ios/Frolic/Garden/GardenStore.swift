@@ -69,9 +69,9 @@ final class GardenStore {
             phase = .loading
             emptyTask?.cancel()
             emptyTask = Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(400))
+                try? await Task.sleep(for: .seconds(6))
                 guard !Task.isCancelled, let self, overview == nil, phase == .loading else { return }
-                phase = .empty
+                phase = .error("Check your connection and try again.")
             }
         }
         let args: [String: ConvexEncodable?] = ["deviceToken": identity.deviceToken, "groupId": identity.groupId]

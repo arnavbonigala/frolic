@@ -167,6 +167,7 @@ struct CrewFriendSheet: View {
 }
 
 struct CrewInviteSheet: View {
+    var crewName: String
     var link: String?
     var error: String?
     var onRetry: () -> Void
@@ -174,7 +175,7 @@ struct CrewInviteSheet: View {
     var copied: Bool
 
     var body: some View {
-        CrewSheetShell(title: "Invite to Sunset Crew", identifier: "crew.invite.title") {
+        CrewSheetShell(title: "Invite to \(crewName)", identifier: "crew.invite.title") {
             Group {
                 if let link {
                     Text("Code \(link.split(separator: "/").last.map { String($0).uppercased() } ?? "")")
@@ -206,23 +207,25 @@ struct CrewInviteSheet: View {
             .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
             .padding(.top, 14)
-            HStack(spacing: 12) {
-                Button(copied ? "Link copied" : "Copy link", action: onCopy)
-                    .buttonStyle(.frolicSecondaryWide)
-                    .accessibilityIdentifier("crew.invite.copy")
-                if let link, let url = URL(string: link) {
-                    ShareLink(item: url, subject: Text("Sunset Crew"), message: Text("Come frolic with us")) {
-                        Text("Text it")
-                            .frolicFont(.button)
-                            .frame(maxWidth: .infinity, minHeight: 54)
-                            .foregroundStyle(.white)
-                            .background(Capsule().fill(Color(hex: 0x34A160)))
+            if let link {
+                HStack(spacing: 12) {
+                    Button(copied ? "Link copied" : "Copy link", action: onCopy)
+                        .buttonStyle(.frolicSecondaryWide)
+                        .accessibilityIdentifier("crew.invite.copy")
+                    if let url = URL(string: link) {
+                        ShareLink(item: url, subject: Text(crewName), message: Text("Come frolic with us")) {
+                            Text("Text it")
+                                .frolicFont(.button)
+                                .frame(maxWidth: .infinity, minHeight: 54)
+                                .foregroundStyle(.white)
+                                .background(Capsule().fill(Color(hex: 0x34A160)))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("crew.invite.text")
                     }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("crew.invite.text")
                 }
+                .padding(.top, 14)
             }
-            .padding(.top, 14)
         }
     }
 }

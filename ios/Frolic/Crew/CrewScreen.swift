@@ -105,6 +105,7 @@ struct CrewScreen: View {
         }
         .sheet(isPresented: $store.showsInvite) {
             CrewInviteSheet(
+                crewName: store.view?.groupName ?? "your crew",
                 link: inviteLink,
                 error: store.inviteError,
                 onRetry: { Task { await loadInvite() } },

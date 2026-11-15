@@ -137,12 +137,15 @@ struct MemoryDetailScreen: View {
         }
     }
 
+    @ViewBuilder
     private func photosSection(_ memory: GardenMemory) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title: "Photos")
-                .accessibilityIdentifier("memory.photos")
-                .padding(.horizontal, 18)
-            photoStrip(memory)
+        if !memory.photos.isEmpty || canAddPhoto(memory) {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionHeader(title: "Photos")
+                    .accessibilityIdentifier("memory.photos")
+                    .padding(.horizontal, 18)
+                photoStrip(memory)
+            }
         }
     }
 

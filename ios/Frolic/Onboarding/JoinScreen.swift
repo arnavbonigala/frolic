@@ -129,7 +129,7 @@ struct JoinScreen: View {
                     .buttonStyle(.frolicText)
                     .accessibilityIdentifier("join.haveLink")
             }
-        case .offline, .expired, .invalid:
+        case .offline, .expired, .invalid, .failed:
             Button("Start on your own") { model.startSolo() }
                 .buttonStyle(.frolicPrimary)
                 .accessibilityIdentifier("join.join")
