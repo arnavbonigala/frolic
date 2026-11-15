@@ -16,6 +16,7 @@ struct OnboardingBottomBar<Content: View>: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+            .ignoresSafeArea(edges: .bottom)
             .allowsHitTesting(false)
         )
     }
@@ -45,6 +46,7 @@ struct OnboardingTitle: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.top, 28)
     }
 }
 

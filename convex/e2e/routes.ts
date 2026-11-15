@@ -86,6 +86,19 @@ export function registerE2eRoutes(http: HttpRouter): void {
   });
 
   http.route({
+    path: "/e2e/rehearse",
+    method: "POST",
+    handler: httpAction(async (ctx, req) => {
+      const rejection = denied(req);
+      if (rejection) return rejection;
+      const run = readRun(await jsonBody(req));
+      if (!run) return json({ error: "run must be 1 to 64 characters of A-Z a-z 0-9 _ -" }, 400);
+      const result = await ctx.runMutation(internal.e2e.rehearse.rehearse, { run });
+      return json(result, 200);
+    }),
+  });
+
+  http.route({
     path: "/e2e/advance",
     method: "POST",
     handler: httpAction(async (ctx, req) => {

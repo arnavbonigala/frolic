@@ -26,6 +26,8 @@ import * as dailyPickBank from "../../../convex/dailyPickBank";
 import * as drops from "../../../convex/drops";
 import * as e2e_admin from "../../../convex/e2e/admin";
 import * as e2e_routes from "../../../convex/e2e/routes";
+import * as e2e_friends from "../../../convex/e2e/friends";
+import * as e2e_rehearse from "../../../convex/e2e/rehearse";
 import * as etas from "../../../convex/etas";
 import * as frolics from "../../../convex/frolics";
 import * as garden from "../../../convex/garden";
@@ -46,6 +48,7 @@ import * as lib_heroArt from "../../../convex/lib/heroArt";
 import * as lib_hold from "../../../convex/lib/hold";
 import * as lib_hooks from "../../../convex/lib/hooks";
 import * as lib_identity from "../../../convex/lib/identity";
+import * as lib_names from "../../../convex/lib/names";
 import * as lib_matcher from "../../../convex/lib/matcher";
 import * as lib_photo from "../../../convex/lib/photo";
 import * as lib_rateLimits from "../../../convex/lib/rateLimits";
@@ -63,6 +66,11 @@ import * as memory_stats from "../../../convex/memory/stats";
 import * as memory_taste from "../../../convex/memory/taste";
 import * as memory_why from "../../../convex/memory/why";
 import * as places_data from "../../../convex/places/data";
+import * as places_sets_animals_nights_museums from "../../../convex/places/sets/animals_nights_museums";
+import * as places_sets_classes from "../../../convex/places/sets/classes";
+import * as places_sets_emeryville_alameda_games from "../../../convex/places/sets/emeryville_alameda_games";
+import * as places_sets_escape_karaoke_dance from "../../../convex/places/sets/escape_karaoke_dance";
+import * as places_sets_games_and_skating from "../../../convex/places/sets/games_and_skating";
 import * as places_seed from "../../../convex/places/seed";
 import * as plans_crons from "../../../convex/plans/crons";
 import * as plans_crowd from "../../../convex/plans/crowd";
@@ -134,6 +142,8 @@ const MODULE_TABLE: Record<string, Record<string, unknown>> = {
   "drops": drops as unknown as Record<string, unknown>,
   "e2e/admin": e2e_admin as unknown as Record<string, unknown>,
   "e2e/routes": e2e_routes as unknown as Record<string, unknown>,
+  "e2e/friends": e2e_friends as unknown as Record<string, unknown>,
+  "e2e/rehearse": e2e_rehearse as unknown as Record<string, unknown>,
   "etas": etas as unknown as Record<string, unknown>,
   "frolics": frolics as unknown as Record<string, unknown>,
   "garden": garden as unknown as Record<string, unknown>,
@@ -154,6 +164,7 @@ const MODULE_TABLE: Record<string, Record<string, unknown>> = {
   "lib/hold": lib_hold as unknown as Record<string, unknown>,
   "lib/hooks": lib_hooks as unknown as Record<string, unknown>,
   "lib/identity": lib_identity as unknown as Record<string, unknown>,
+  "lib/names": lib_names as unknown as Record<string, unknown>,
   "lib/matcher": lib_matcher as unknown as Record<string, unknown>,
   "lib/photo": lib_photo as unknown as Record<string, unknown>,
   "lib/rateLimits": lib_rateLimits as unknown as Record<string, unknown>,
@@ -171,6 +182,11 @@ const MODULE_TABLE: Record<string, Record<string, unknown>> = {
   "memory/taste": memory_taste as unknown as Record<string, unknown>,
   "memory/why": memory_why as unknown as Record<string, unknown>,
   "places/data": places_data as unknown as Record<string, unknown>,
+  "places/sets/animals_nights_museums": places_sets_animals_nights_museums as unknown as Record<string, unknown>,
+  "places/sets/classes": places_sets_classes as unknown as Record<string, unknown>,
+  "places/sets/emeryville_alameda_games": places_sets_emeryville_alameda_games as unknown as Record<string, unknown>,
+  "places/sets/escape_karaoke_dance": places_sets_escape_karaoke_dance as unknown as Record<string, unknown>,
+  "places/sets/games_and_skating": places_sets_games_and_skating as unknown as Record<string, unknown>,
   "places/seed": places_seed as unknown as Record<string, unknown>,
   "plans/crons": plans_crons as unknown as Record<string, unknown>,
   "plans/crowd": plans_crowd as unknown as Record<string, unknown>,

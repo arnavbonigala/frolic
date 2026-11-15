@@ -292,7 +292,7 @@ final class OnboardingModel {
         step = .name
     }
 
-    var shareCode: String? { createdInviteCode.map { "Code \($0.uppercased())" } }
+    var shareCode: String? { createdInviteCode.map { $0.uppercased() } }
 
     func submitName() async {
         let name = firstName.trimmingCharacters(in: .whitespacesAndNewlines)

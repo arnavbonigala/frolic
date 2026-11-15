@@ -90,8 +90,8 @@ struct JoinScreen: View {
     private var header: some View {
         Wordmark(width: 92)
             .frame(maxWidth: .infinity)
-            .padding(.top, 10)
-            .padding(.bottom, 30)
+            .padding(.top, 44)
+            .padding(.bottom, 34)
     }
 
     private var welcomeCopy: some View {
