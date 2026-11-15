@@ -229,7 +229,7 @@ final class CheckInStore {
         myMinutes = watcher.arrived ? 0 : minutes
         let _: String? = try? await client.mutation(
             "etas:setMine",
-            with: ["deviceToken": token, "frolicId": frolicId, "minutes": myMinutes ?? minutes, "onTheWay": !watcher.arrived]
+            with: ["deviceToken": token, "frolicId": frolicId, "minutes": Double(myMinutes ?? minutes), "onTheWay": !watcher.arrived]
         )
     }
 
