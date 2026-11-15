@@ -23,6 +23,7 @@ export type AddInput = {
   id: string;
   metadata?: Record<string, string | number | boolean | string[]>;
   date?: string;
+  taskType?: "memory" | "superrag";
 };
 
 export type SearchInput = {

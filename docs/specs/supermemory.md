@@ -45,7 +45,13 @@ The mapping lives in one pure function (`convex/memory/events.ts`), keyed by eve
 
 Skips in aggregate: skips are personal. `closeDay(group, day)` runs after the day ends, counts a tag as skipped for the group once if the plan was shown, nobody revealed, and at least one skip was recorded. The counter has no person ids. Counter (Convex table, since Supermemory is not an aggregate store) drives suppression; a one-line group memory ("The crew passed on boba 2 times") goes to Supermemory so the taste profile reflects it.
 
+## Entry points (stable, used by the Keiki lane too)
+
+`internal.memory.events.recordEvent` (accepts `source: "app" | "web" | "notification" | "imessage"`), `internal.memory.read.getMemoryContext`, `internal.memory.read.whyThis`, `internal.memory.read.tasteProfile`, `internal.memory.stats.closeDay`, `internal.memory.account.deleteAccountMemory`, `internal.memory.ingest.flushDue`.
+
 ## Ingest
+
+A namespace only exists after its first write (PATCH and PUT on a new namespace return 404), so the first write is a tiny superrag document `frolic_init` carrying the namespace context, followed by the supportingContext and bucket calls.
 
 `recordEvent` (internal mutation) inserts a `memoryEvents` row keyed by `eventKey` (second insert is a no-op) and schedules `flushEvent`. `flushEvent` (internal action) claims the row, calls Supermemory with the eventKey as document id, and on failure reschedules with exponential backoff, up to 6 attempts, then marks failed. The client also retries 429 and 5xx twice inline.
 

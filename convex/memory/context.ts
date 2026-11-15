@@ -82,7 +82,9 @@ export async function findWhyThis(client: MemoryClient, namespace: string, tags:
 }
 
 export async function ensureNamespace(client: MemoryClient, namespace: string, kind: "group" | "personal") {
-  await client.setContext(namespace, kind === "group" ? GROUP_CONTEXT : PERSONAL_CONTEXT);
+  const context = kind === "group" ? GROUP_CONTEXT : PERSONAL_CONTEXT;
+  await client.add(namespace, { content: context, id: "frolic_init", metadata: { kind: "init" }, taskType: "superrag" });
+  await client.setContext(namespace, context);
   await client.setBuckets(namespace, kind === "group" ? GROUP_BUCKETS : PERSONAL_BUCKETS);
 }
 
