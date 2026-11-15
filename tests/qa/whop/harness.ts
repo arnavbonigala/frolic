@@ -167,6 +167,7 @@ export async function crew(
     firstName: first,
     groupName: "Sunset Crew",
   });
+  await t.run(async (ctx: any) => await ctx.db.patch("groups", created.groupId, { holdEnabled: true }));
   const ids: Record<string, Id<"users">> = { [first]: created.userId };
   for (const name of rest) {
     const joined = await t.mutation(api.users.joinGroup, {

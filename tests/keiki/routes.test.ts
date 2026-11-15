@@ -726,7 +726,9 @@ describe("pay_deposit", () => {
   });
 
   it("asks for the $3 hold on a free plan", async () => {
-    const { t, seed } = await onNow();
+    const { t, seed } = await matched();
+    await t.run(async (ctx) => await ctx.db.patch("groups", seed.groupId, { holdEnabled: true }));
+    await advance(t, REVEAL_DELAY_MS);
     const result = await toolResult(t, "pay_deposit", { phone: SAM_PHONE });
     expect(result.body).toMatchObject({ ok: true, amount: "$3", what: "a hold that comes back when they arrive" });
     const share = await shareOf(t, seed.frolicId, seed.samId);
