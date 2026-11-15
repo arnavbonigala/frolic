@@ -25,6 +25,7 @@ async function checkIn(
     .unique();
   if (existing) return existing._id;
   const checkinId = await ctx.db.insert("checkins", { frolicId, userId, method: how, at: Date.now() });
+  await ctx.scheduler.runAfter(0, internal.whop.money.onArrive, { frolicId, userId });
   const facts = await planFacts(ctx, frolic);
   const user = await ctx.db.get("users", userId);
   await ctx.runMutation(internal.memory.events.recordEvent, {

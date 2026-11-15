@@ -78,7 +78,8 @@ describe("tap and synced reveal", () => {
     await tap(t, crew, "Maya");
     await tap(t, crew, "Dev");
     await flipDue(t);
-    await t.mutation(internal.reveal.flip, { frolicId: crew.frolicId });
+    const f = await t.run(async (ctx) => await ctx.db.get("frolics", crew.frolicId));
+    await t.mutation(internal.reveal.flip, { frolicId: crew.frolicId, revealAt: f!.revealAt! });
     expect(await t.run(async (ctx) => await ctx.db.query("revealLog").collect())).toHaveLength(2);
   });
 
@@ -242,6 +243,43 @@ describe("hop in, sit out and refill", () => {
     expect(r.reveal?.going.find((p) => p.name === "Jordan")?.role).toBe("refill");
     expect((await today(t, crew, "Dev")).reveal?.me.going).toBe(false);
     expect((await today(t, crew, "Priya")).reveal?.me.hopInWaiting).toBe(true);
+  });
+
+  test("a match never seats more than the capacity", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan", "Priya"], { capacity: 2 });
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await tap(t, crew, "Jordan");
+    await tap(t, crew, "Priya");
+    await flipDue(t);
+    const r = await today(t, crew, "Priya");
+    expect(r.reveal?.going.map((p) => p.name).sort()).toEqual(["Dev", "Maya"]);
+    expect(r.reveal?.me.canHopIn).toBe(false);
+  });
+
+  test("a stale flip for a cancelled reveal does nothing", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev", "Jordan"]);
+    await tap(t, crew, "Maya");
+    await tap(t, crew, "Dev");
+    await tap(t, crew, "Dev", { kind: "notToday" });
+    await t.mutation(internal.reveal.flip, { frolicId: crew.frolicId, revealAt: NOON + 1500 });
+    expect((await today(t, crew, "Maya")).phase).toBe("waiting");
+  });
+
+  test("untap removes the yes before a match and retap matches again", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, ["Maya", "Dev"]);
+    await tap(t, crew, "Maya");
+    await t.mutation(api.taps.untap, { deviceToken: token("Maya"), frolicId: crew.frolicId });
+    expect((await today(t, crew, "Maya")).phase).toBe("open");
+    await tap(t, crew, "Dev");
+    await flipDue(t);
+    expect((await today(t, crew, "Dev")).phase).toBe("waiting");
+    await tap(t, crew, "Maya");
+    await flipDue(t);
+    expect((await today(t, crew, "Dev")).phase).toBe("on");
   });
 
   test("a late tap that fits the going set joins after the reveal", async () => {

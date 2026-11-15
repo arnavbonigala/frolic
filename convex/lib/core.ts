@@ -4,7 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { findMatch, type TimeWindow } from "./matcher";
 import { rateLimiter } from "./rateLimits";
-import { requireMember } from "./identity";
+import { findMembership, requireMember } from "./identity";
 import { recordTap } from "./hooks";
 
 export const REVEAL_DELAY_MS = 1500;
@@ -56,9 +56,9 @@ export async function applyTap(
   const onlyIf: Id<"users">[] = [];
   for (const id of input.onlyIf ?? []) {
     if (id === userId || onlyIf.includes(id)) continue;
-    await requireMember(ctx, frolic.groupId, id).catch(() => {
+    if (!(await findMembership(ctx, frolic.groupId, id))) {
       throw new ConvexError({ code: "BAD_ONLY_IF", message: "Only if must name people in this crew" });
-    });
+    }
     onlyIf.push(id);
   }
   if (onlyIf.length > 12) {
@@ -112,15 +112,27 @@ async function rematch(
     .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
     .take(MAX_TAPS);
   const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
-  const match = findMatch({
-    taps: taps
-      .filter((t) => t.kind === "down")
-      .map((t) => ({ userId: t.userId, onlyIf: t.onlyIf, window: t.window ?? null })),
-    defaultWindow: frolic.window,
-    durationMs: frolic.durationMinutes * 60 * 1000,
-    preferredStart: plan?.startsAt ?? null,
-    now,
-  });
+  const downs = taps
+    .filter((t) => t.kind === "down")
+    .sort((a, b) => a.updatedAt - b.updatedAt)
+    .map((t) => ({ userId: t.userId, onlyIf: t.onlyIf, window: t.window ?? null }));
+  const matchOf = (subset: typeof downs) =>
+    findMatch({
+      taps: subset,
+      defaultWindow: frolic.window,
+      durationMs: frolic.durationMinutes * 60 * 1000,
+      preferredStart: plan?.startsAt ?? null,
+      now,
+    });
+  let match = matchOf(downs);
+  const cap = frolic.capacity;
+  if (match && cap !== undefined && match.userIds.length > cap) {
+    const members = new Set(match.userIds);
+    const pool = downs.filter((t) => members.has(t.userId));
+    let capped = null;
+    for (let take = cap; take >= 2 && !capped; take--) capped = matchOf(pool.slice(0, take));
+    match = capped;
+  }
   const pending = await ctx.db
     .query("reveals")
     .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
@@ -143,7 +155,7 @@ async function rematch(
   const scheduledId = await ctx.scheduler.runAt(
     revealAt,
     internal.reveal.flip,
-    { frolicId: frolic._id },
+    { frolicId: frolic._id, revealAt },
   );
   await ctx.db.insert("reveals", {
     frolicId: frolic._id,
@@ -179,7 +191,7 @@ async function lateTap(
     startsAt + frolic.durationMinutes * 60 * 1000 <= w.end;
   const room = frolic.capacity === undefined || going.length < frolic.capacity;
   if (!fits || !room) return;
-  await putAttendee(ctx, frolic, userId, "matched", now, attendee);
+  await putAttendee(ctx, frolic, userId, "hopIn", now, attendee);
 }
 
 export async function findAttendee(
@@ -225,6 +237,9 @@ export async function putAttendee(
       ...fields,
     });
   }
+  if (frolic.status === "on") {
+    await ctx.scheduler.runAfter(0, internal.whop.money.onJoin, { frolicId: frolic._id, userId });
+  }
 }
 
 export async function sitOutAndRefill(
@@ -233,6 +248,7 @@ export async function sitOutAndRefill(
   attendee: Doc<"attendees">,
   now: number,
 ): Promise<void> {
+  await ctx.scheduler.runAfter(0, internal.whop.money.onBail, { frolicId: frolic._id, userId: attendee.userId });
   await ctx.db.patch("attendees", attendee._id, { status: "sittingOut" });
   const going = await goingAttendees(ctx, frolic._id);
   if (frolic.capacity !== undefined && going.length >= frolic.capacity) return;
@@ -257,4 +273,21 @@ export async function deleteTaps(
     .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
     .take(MAX_TAPS);
   for (const tap of taps) await ctx.db.delete("taps", tap._id);
+}
+
+export async function removeTap(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  frolicId: Id<"frolics">,
+): Promise<null> {
+  const frolic = await getFrolic(ctx, frolicId);
+  await requireMember(ctx, frolic.groupId, userId);
+  await rateLimiter.limit(ctx, "tap", { key: userId, throws: true });
+  const existing = await ctx.db
+    .query("taps")
+    .withIndex("by_frolicId_and_userId", (q) => q.eq("frolicId", frolicId).eq("userId", userId))
+    .unique();
+  if (existing) await ctx.db.delete("taps", existing._id);
+  if (frolic.status === "open") await rematch(ctx, frolic, Date.now());
+  return null;
 }

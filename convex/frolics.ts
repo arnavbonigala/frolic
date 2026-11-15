@@ -221,7 +221,7 @@ export const today = query({
       ? { kind: tap.kind, onlyIf: await people(ctx, memberships, tap.onlyIf), window: tap.window ?? null }
       : null;
 
-    if (frolic.status === "faded" || (frolic.status !== "on" && frolic.status !== "done" && frolic.status !== "open")) {
+    if (frolic.status === "faded") {
       return { ...base, phase: "faded" as const, frolic: frolicView, myTap: null, reveal: null };
     }
     if (frolic.status === "open") {
@@ -256,7 +256,7 @@ export const today = query({
         going: goingPeople.map((p) => ({ ...p, role: going.find((a) => a.userId === p.userId)!.role })),
         me: {
           going: amGoing,
-          role: mine?.role ?? null,
+          role: amGoing ? mine!.role : null,
           bloomAt: amGoing ? mine!.bloomAt : null,
           hopInWaiting: hop?.status === "waiting",
           canHopIn: frolic.status === "on" && !amGoing && hop?.status !== "waiting" && room,
