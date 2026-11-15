@@ -27,7 +27,7 @@ test:
       script: "barrier-t0"
       timeout_seconds: 240
     - type: "instructions"
-      step_description: "Tap \"Only with…\", tap Dev, then tap \"I'm down if Dev\""
+      step_description: "Tap \"Only with…\", tap Dev, then tap \"I'm down if Dev comes\""
     - type: "while"
       condition: "The headline \"It's on.\" is not visible"
       body:

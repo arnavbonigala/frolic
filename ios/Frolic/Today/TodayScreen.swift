@@ -234,6 +234,13 @@ private struct TodayPlanPacket: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.plan.line")
             }
+            if let note = store.outsideFreeNote {
+                Text(note)
+                    .todayFont(13, .semibold, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.chipText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("today.plan.outsideFree")
+            }
             ChipRow(chips: TodayCopy.chips(plan: plan, walk: store.walkMinutes))
             if let hostedBy = hostedBy ?? store.drop?.hostedBy {
                 Text(hostedBy.hasPrefix("Hosted by") ? hostedBy : "Hosted by \(hostedBy)")
@@ -374,11 +381,17 @@ private struct TodayWaitingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
                 .accessibilityIdentifier("today.takeBack")
-            Text("We'll tell you the moment it's on.")
-                .todayFont(13, relativeTo: .footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 8)
-                .accessibilityIdentifier("today.next")
+            if store.notifyAsk {
+                TodayNotifyAsk(store: store)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+            } else {
+                Text("We'll tell you the moment it's on.")
+                    .todayFont(13, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("today.next")
+            }
             TodayAnsweredSlot(store: store)
             TodayTomorrowRow(store: store)
         }
@@ -425,6 +438,11 @@ private struct TodaySoloView: View {
                     .buttonStyle(.frolicText)
                     .padding(.top, 4)
                     .accessibilityIdentifier("today.takeBack")
+                if store.notifyAsk {
+                    TodayNotifyAsk(store: store)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                }
                 TodayAnsweredSlot(store: store)
             } else {
                 HStack(spacing: 10) {
@@ -480,6 +498,30 @@ private struct TodayOffView: View {
     }
 }
 
+private struct TodayNotifyAsk: View {
+    var store: TodayStore
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text("We'll tell you the second it's on.")
+                .todayFont(15, .semibold, relativeTo: .subheadline)
+                .foregroundStyle(FrolicColor.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Turn on notifications") { store.allowNotifications() }
+                .buttonStyle(.frolicPrimary)
+                .accessibilityIdentifier("today.notify.allow")
+            Button("Not now") { store.skipNotifications() }
+                .buttonStyle(.frolicText)
+                .accessibilityIdentifier("today.notify.skip")
+        }
+        .padding(16)
+        .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
+        .accessibilityIdentifier("today.notify")
+    }
+}
+
 struct TodayAnsweredSlot: View {
     var store: TodayStore
 
@@ -527,6 +569,7 @@ private struct TodayOnView: View {
         VStack(alignment: .leading, spacing: 0) {
             TodayBunch(people: people, radius: 50, stems: [70, 120, 90, 104], height: 290, animatesIn: store.bloomID > 0)
                 .id(store.bloomID)
+                .padding(.top, 28)
             VStack(alignment: .leading, spacing: 0) {
                 Text((["You"] + store.goingFriendNames).count > 1 ? TodayCopy.names(["You"] + store.goingFriendNames) : "You")
                     .todayFont(15, .bold, relativeTo: .subheadline)
@@ -563,7 +606,7 @@ private struct TodayOnView: View {
                     thumb: TodayCopy.heroAsset(plan),
                     thumbRemote: plan.place?.photoUrl,
                     prefix: plan.title,
-                    text: [plan.place?.name, plan.place?.neighborhood, store.walkMinutes.map { "\(Int($0)) min walk" }].compactMap { $0 }.joined(separator: " · "),
+                    text: [plan.place?.neighborhood, store.walkMinutes.map { "\(Int($0)) min walk" }].compactMap { $0 }.joined(separator: " · "),
                     identifier: "today.on.plan",
                     action: { directions(plan) }
                 )

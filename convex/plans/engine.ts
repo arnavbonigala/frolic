@@ -1,4 +1,5 @@
 import { BERKELEY_PLACES, PLACE_BY_SLUG, heroKeyFor, type HeroKey, type Place, type PlaceTag, type TimeOfDay, type WeekHours } from "../places/data";
+import { crowdWeight } from "./crowd";
 import type { MemoryContext } from "./memoryContext";
 import { addDays, clockLabel, dateLabel, daysBetween, localParts, localTimeToMs, solarTimes } from "./time";
 import { conditionLabel, hourAt, isClear, isRainy, type DayWeather, type HourWeather } from "./weather";
@@ -320,6 +321,7 @@ function scoreCandidate(c: Omit<Candidate, "dryScore" | "score">, ctx: Ctx): { d
   }
   if (ctx.blocked.onceSlugs.has(p.slug) || p.tags.some((t) => ctx.blocked.onceTags.has(t))) s -= 12;
   s -= p.costPerPersonCents / 400;
+  s += crowdWeight(p) * (ctx.weights.size === 0 ? CROWD_MAX : CROWD_MAX / 3);
   s += hash01(ctx.input.seed + "|" + p.slug) * 0.5;
   const rainDelta = c.rainy ? (p.indoor ? 8 : -60) : 0;
   return { dryScore: s, score: s + rainDelta };
@@ -355,6 +357,7 @@ function buildCtx(input: DropInput): Ctx {
 }
 
 export const DROP_BOOST = 8;
+export const CROWD_MAX = 8;
 
 export const centsLabel = (cents: number) => "$" + (cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2));
 

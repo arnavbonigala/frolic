@@ -33,4 +33,4 @@ test:
     - type: "instructions"
       step_description: "Open the Frolic app"
     - type: "validation"
-      step_description: "The status card reads \"You're down, if Maya\""
+      step_description: "The status card reads \"You're down, if Maya comes\""
