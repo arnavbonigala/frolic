@@ -190,10 +190,10 @@ private struct YouContent: View {
         case .ready:
             guard let totals = model.totals else { return ("Your frolics", "Counting them up.") }
             let frolics = max(totals.frolics, model.card.went ? 1 : 0)
+            if frolics == 0 { return ("No frolics yet", "Your first flower grows the first time you go.") }
             let count = frolics == 1 ? "1 frolic" : "\(frolics) frolics"
             let title = totals.crews > 1 ? "\(count) across \(totals.crews) crews" : count
             if model.card.went { return (title, model.card.friendLine) }
-            if frolics == 0 { return (title, "Your first flower grows the first time you go.") }
             return (title, "It blooms again the next time you go.")
         }
     }
