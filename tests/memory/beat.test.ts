@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { api, internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
-import { PLACE_BY_SLUG } from "../places/data";
-import { localTimeToMs } from "../plans/time";
-import { makeT, token } from "../tests/setup.helpers";
-import { createFake } from "./fakeSupermemory";
-import { groupNamespace } from "./mapping";
+import { api, internal } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { PLACE_BY_SLUG } from "../../convex/places/data";
+import { localTimeToMs } from "../../convex/plans/time";
+import { makeT, token } from "../backend/setup.helpers";
+import { createFake } from "../../convex/memory/fakeSupermemory";
+import { groupNamespace } from "../../convex/memory/mapping";
 
 declare const process: { env: Record<string, string | undefined> };
 
