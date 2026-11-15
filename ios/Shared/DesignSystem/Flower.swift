@@ -44,9 +44,10 @@ struct FlowerView: View {
     var animatesIn = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var swayed = false
+    @State private var lean: Double = 0
     @State private var breathing = false
     @State private var appeared = true
+    @State private var wind = Double.random(in: 0...1)
 
     private var tint: FlowerColor { color ?? person?.color ?? .marigold }
     private var width: CGFloat { radius * 2 + 8 }
@@ -68,13 +69,14 @@ struct FlowerView: View {
                     .minimumScaleFactor(0.7)
             }
         }
-        .rotationEffect(.degrees(sways ? (swayed ? 3 : -3) : 0), anchor: .bottom)
+        .rotationEffect(.degrees(sways ? lean : 0), anchor: .bottom)
         .scaleEffect(reduceMotion || appeared ? 1 : 0.2, anchor: .bottom)
         .offset(y: reduceMotion || appeared ? 0 : 60)
         .opacity(appeared ? 1 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
         .onAppear(perform: startMotion)
+        .task(id: sways) { await sway() }
     }
 
     private var accessibilityText: String {
@@ -222,15 +224,31 @@ struct FlowerView: View {
             }
         }
         guard !reduceMotion else { return }
-        if sways {
-            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true).delay(swayDelay)) {
-                swayed = true
-            }
-        }
         if state == .bud {
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
                 breathing = true
             }
+        }
+    }
+
+    private var gust: Animation { .spring(response: 0.35, dampingFraction: 1) }
+
+    private var reach: Double { 2.2 + (1 - wind) * 1.6 }
+
+    private var tempo: Double { 1.8 + wind * 1.4 }
+
+    @MainActor
+    private func sway() async {
+        guard sways else {
+            lean = 0
+            return
+        }
+        try? await Task.sleep(for: .seconds(swayDelay + wind * 1.2))
+        while !Task.isCancelled {
+            withAnimation(gust) { lean = reach * Double.random(in: 0.55...1) }
+            try? await Task.sleep(for: .seconds(tempo * Double.random(in: 0.5...0.8)))
+            withAnimation(gust) { lean = -reach * Double.random(in: 0.3...0.7) }
+            try? await Task.sleep(for: .seconds(tempo * Double.random(in: 0.8...1.4)))
         }
     }
 }
