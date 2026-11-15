@@ -7,6 +7,8 @@ struct TodayScreen: View {
     @Environment(FrolicIdentity.self) private var identity
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var systemScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var store = TodayStore()
 
     private var route: E2ERoute? {
@@ -48,8 +50,10 @@ struct TodayScreen: View {
                     .padding(.bottom, 32)
                 }
             }
-            .scrollBounceBehavior(.always)
-            .contentMargins(.bottom, 24, for: .scrollContent)
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollIndicators(.hidden)
+            .scrollDisabled(bleeds && store.scene == .open && !dynamicTypeSize.isAccessibilitySize)
+            .contentMargins(.bottom, 0, for: .scrollContent)
             .ignoresSafeArea(edges: bleeds ? .top : [])
             if !connectivity.isOnline && store.today != nil && router.phaseOverride == nil {
                 TodayOfflineBanner()
@@ -75,21 +79,16 @@ struct TodayScreen: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: connectivity.isOnline)
         .background {
             if bleeds {
-                ZStack {
-                    FrolicColor.cream
-                    TodayHeroImage(asset: TodayCopy.heroAsset(store.plan), remote: store.plan?.place?.photoUrl, description: nil)
-                        .scaleEffect(1.4)
-                        .blur(radius: 46)
-                        .opacity(0.85)
-                    LinearGradient(colors: [FrolicColor.cream.opacity(0.15), FrolicColor.cream.opacity(0.55)], startPoint: .top, endPoint: .bottom)
-                }
-                .ignoresSafeArea()
-                .accessibilityHidden(true)
+                StoryColor.page
+                    .overlay(NightStars().padding(.top, 280))
+                    .ignoresSafeArea()
+                    .accessibilityHidden(true)
             } else {
                 SkyBackground()
             }
         }
         .accessibilityIdentifier("today.screen")
+        .environment(\.colorScheme, bleeds && store.scene == .open ? systemScheme : .light)
         .environment(\.todayOnline, connectivity.isOnline)
         .task(id: routeKey) {
             if let location = router.simulatedLocation {
@@ -111,6 +110,7 @@ struct TodayScreen: View {
         }
         .sheet(item: $store.sheet) { sheet in
             TodaySheetHost(sheet: sheet, store: store)
+                .environment(\.colorScheme, .light)
         }
         .sheet(item: Binding(get: { store.payPage }, set: { if $0 == nil { store.closePayPage() } })) { page in
             TodaySafari(url: page.url)
@@ -163,11 +163,11 @@ private struct TodayTopBar: View {
 
     var body: some View {
         HStack {
-            Wordmark(width: 74)
+            Wordmark(color: StoryColor.ink, width: 74)
                 .padding(.horizontal, 16)
                 .frame(minHeight: 44)
-                .background(Capsule().fill(FrolicColor.paper))
-                .overlay(Capsule().stroke(FrolicColor.ink.opacity(0.14), lineWidth: 1))
+                .background(Capsule().fill(StoryColor.control))
+                .overlay(Capsule().stroke(StoryColor.controlStroke, lineWidth: 1))
                 .shadow(color: Color(hex: 0x3C5078, opacity: 0.08), radius: 6, y: 4)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Frolic")
@@ -284,14 +284,14 @@ private struct TodayPlanPacket: View {
             teaches: teaches
         ) {
             Text(title)
-                .storyFont(title.count > 22 ? 30 : 34)
-                .foregroundStyle(FrolicColor.ink)
+                .storyFont(title.count > 22 ? 28 : 31)
+                .foregroundStyle(StoryColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             if let line = plan?.line, !line.isEmpty {
                 Text(line)
                     .todayFont(17, relativeTo: .body)
-                    .foregroundStyle(FrolicColor.secondaryText)
+                    .foregroundStyle(StoryColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.plan.line")
             }
@@ -322,17 +322,17 @@ private struct TodayPlanPacket: View {
 }
 
 private func stat(value: String, label: String) -> some View {
-    VStack(alignment: .leading, spacing: 2) {
+    VStack(alignment: .center, spacing: 2) {
         Text(value)
             .todayFont(20, .bold, rounded: true, relativeTo: .title3)
-            .foregroundStyle(FrolicColor.ink)
+            .foregroundStyle(StoryColor.ink)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
         Text(label)
             .todayFont(13, .medium, rounded: true, relativeTo: .caption)
-            .foregroundStyle(FrolicColor.tertiaryText)
+            .foregroundStyle(StoryColor.muted)
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
+    .frame(maxWidth: .infinity, alignment: .center)
 }
 
 private struct TodayHush: View {
@@ -390,7 +390,6 @@ private struct TodayOpenView: View {
             .disabled(!online)
             .padding(.horizontal, 16)
             .padding(.top, 16)
-            TodayTomorrowRow(store: store)
         }
     }
 }

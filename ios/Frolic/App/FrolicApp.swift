@@ -12,6 +12,9 @@ struct FrolicApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                #if DEBUG || E2E
+                .preferredColorScheme(ProcessInfo.processInfo.environment["FROLIC_FORCE_DARK"] == "1" ? .dark : nil)
+                #endif
                 .environment(router)
                 .environment(connectivity)
                 .environment(backend)

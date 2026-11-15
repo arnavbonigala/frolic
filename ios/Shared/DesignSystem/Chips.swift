@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct FrolicChip: View {
     enum Size {
@@ -98,11 +99,11 @@ struct StatusPill: View {
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .opacity(0.6)
         }
-        .foregroundStyle(FrolicColor.ink)
+        .foregroundStyle(Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.965, green: 0.922, blue: 0.867, alpha: 1) : UIColor(red: 0.137, green: 0.094, blue: 0.059, alpha: 1) }))
         .padding(.horizontal, 14)
         .frame(minHeight: 44)
-        .background(Capsule().fill(FrolicColor.paper))
-        .overlay(Capsule().stroke(FrolicColor.ink.opacity(0.14), lineWidth: 1))
+        .background(Capsule().fill(Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.137, green: 0.161, blue: 0.29, alpha: 1) : .white })))
+        .overlay(Capsule().stroke(Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.14) : UIColor(white: 0, alpha: 0.14) }), lineWidth: 1))
         .shadow(color: Color(hex: 0x3C5078, opacity: 0.08), radius: 6, y: 4)
     }
 }
