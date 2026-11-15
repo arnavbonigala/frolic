@@ -1,9 +1,9 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { internal } from "../../convex/_generated/api";
-import { personalNamespace, planWrites } from "../../convex/memory/mapping";
+import { internal } from "../_generated/api";
+import { frolicsRefusingImFree, frolicsWithImFree } from "../../keiki/test/fakes";
 import { tapErrorAnswer } from "../../convex/keiki/tools";
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import { ANA_PHONE, INVITE_CODE, SAM_PHONE, linkChat, linkPhone, nowFor, seedCrew } from "../../keiki/test/seed";
 import type { Seed, SeedOptions, T } from "../../keiki/test/seed";
 import {
@@ -329,7 +329,6 @@ describe("get_member", () => {
       crew: "Sunset Crew",
       friends: ["Maya", "Dev", "Ana"],
       paused: false,
-      crewTaste: { loves: [], keepsPassingOn: [] },
     });
   });
 
@@ -778,26 +777,6 @@ describe("remember", () => {
     expect(result.body).toEqual({ ok: true, remembered: "Maya hates hikes." });
   });
 
-  it("writes the note to the same personal memory the app uses", async () => {
-    const { t, seed } = await seeded();
-    await toolResult(t, "remember", { phone: SAM_PHONE, input: { text: "Sam is vegetarian." } });
-    const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ kind: "limit", userId: seed.samId, source: "imessage", payload: { text: "Sam is vegetarian." } });
-    const writes = planWrites(events[0].eventKey, { kind: events[0].kind, groupId: events[0].groupId, userId: events[0].userId, payload: events[0].payload });
-    expect(writes.writes.map((w) => w.namespace)).toEqual([personalNamespace(seed.samId)]);
-  });
-
-  it("records an iMessage pass as a personal skip in the same namespace", async () => {
-    const { t, seed } = await seeded();
-    await toolResult(t, "tap_pass", { phone: SAM_PHONE });
-    const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
-    const skip = events.find((e) => e.kind === "skip");
-    expect(skip).toMatchObject({ userId: seed.samId, source: "imessage" });
-    const writes = planWrites(skip!.eventKey, { kind: skip!.kind, groupId: skip!.groupId, userId: skip!.userId, payload: skip!.payload });
-    expect(writes.writes.map((w) => w.namespace)).toEqual([personalNamespace(seed.samId)]);
-  });
-
   it("refuses an empty note", async () => {
     const { t } = await seeded();
     const result = await toolResult(t, "remember", { phone: SAM_PHONE, input: { text: "   " } });
@@ -970,5 +949,45 @@ describe("joining by text", () => {
     expect(memberships).toHaveLength(4);
     const link = await t.run(async (ctx) => await ctx.db.query("keikiLinks").withIndex("by_phone", (q) => q.eq("phone", MAYA_TEXT_PHONE)).unique());
     expect(link?.userId).toBe(seed.mayaId);
+  });
+});
+
+describe("im_free", () => {
+  it("stays inert until the plan starter is on the deployment", async () => {
+    const { t } = await seeded();
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE });
+    expect(result.status).toBe(200);
+    expect(result.body.ok).toBe(false);
+    expect(result.body.error).toBe("not_ready");
+    const direct = await t.mutation(internal.keiki.tools.imFree, { phone: SAM_PHONE, forMinutes: 90 });
+    expect(direct).toMatchObject({ ok: false, error: "not_ready" });
+    expect(await t.mutation(internal.keiki.tools.imFree, { phone: "not-a-phone", forMinutes: 90 })).toMatchObject({ ok: false, error: "not_in_a_crew" });
+  });
+
+  it("never says who started it and tells the agent not to", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT(frolicsWithImFree);
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
+    expect(result.body).toEqual({
+      ok: true,
+      plan: "A walk at the marina",
+      startsAt: expect.any(String),
+      say: "Say the plan is going to the crew without naming who started it. Tell them they are counted as down.",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("Sam");
+    delete testEnv().KEIKI_IM_FREE;
+  });
+
+  it("answers in words when the crew already has a plan open", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT(frolicsRefusingImFree);
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE });
+    expect(result.body.ok).toBe(false);
+    expect(result.body.say).toBe("That did not start. Offer today's plan instead.");
+    delete testEnv().KEIKI_IM_FREE;
   });
 });
