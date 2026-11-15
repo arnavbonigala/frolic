@@ -1,8 +1,8 @@
-import { PLACES as ANIMALS_NIGHTS_MUSEUMS } from "./sets/animals-nights-museums";
+import { PLACES as ANIMALS_NIGHTS_MUSEUMS } from "./sets/animals_nights_museums";
 import { PLACES as CLASSES } from "./sets/classes";
-import { PLACES as EMERYVILLE_ALAMEDA_GAMES } from "./sets/emeryville-alameda-games";
-import { PLACES as ESCAPE_KARAOKE_DANCE } from "./sets/escape-karaoke-dance";
-import { PLACES as GAMES_AND_SKATING } from "./sets/games-and-skating";
+import { PLACES as EMERYVILLE_ALAMEDA_GAMES } from "./sets/emeryville_alameda_games";
+import { PLACES as ESCAPE_KARAOKE_DANCE } from "./sets/escape_karaoke_dance";
+import { PLACES as GAMES_AND_SKATING } from "./sets/games_and_skating";
 
 export type PlaceTag =
   | "sunsets"

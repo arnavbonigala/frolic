@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { BERKELEY_PLACES, PLACE_BY_SLUG, type BestTime, type Place } from "../../convex/places/data";
-import { PLACES as ANIMALS_NIGHTS_MUSEUMS } from "../../convex/places/sets/animals-nights-museums";
+import { PLACES as ANIMALS_NIGHTS_MUSEUMS } from "../../convex/places/sets/animals_nights_museums";
 import { PLACES as CLASSES } from "../../convex/places/sets/classes";
-import { PLACES as EMERYVILLE_ALAMEDA_GAMES } from "../../convex/places/sets/emeryville-alameda-games";
-import { PLACES as ESCAPE_KARAOKE_DANCE } from "../../convex/places/sets/escape-karaoke-dance";
-import { PLACES as GAMES_AND_SKATING } from "../../convex/places/sets/games-and-skating";
+import { PLACES as EMERYVILLE_ALAMEDA_GAMES } from "../../convex/places/sets/emeryville_alameda_games";
+import { PLACES as ESCAPE_KARAOKE_DANCE } from "../../convex/places/sets/escape_karaoke_dance";
+import { PLACES as GAMES_AND_SKATING } from "../../convex/places/sets/games_and_skating";
 import { EMPTY_MEMORY } from "../../convex/plans/memoryContext";
 import { addDays, localParts, localTimeToMs, solarTimes } from "../../convex/plans/time";
 import { copyOk, generatePlan, isOpenFor, type Attendee, type DropInput, type Plan } from "../../convex/plans/engine";
