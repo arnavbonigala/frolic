@@ -82,7 +82,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `today.plan.card` | the packet: Sunset at Indian Rock plus chips and Why this |
 | `today.plan.why` | Why this: you're into sunsets, it's free, and the sky's clear until dark. |
 | `today.down` | I'm down |
-| `today.onlyIf` | Only with… |
+| `today.onlyIf` | Only if… |
 | `today.hush` | Nobody sees you're down unless they are too |
 | `today.status.down` | You're down, optionally You're down, if Maya |
 | `today.status.downBody` | If a friend says yes too, you'll both bloom at once. If not, it disappears at 4 and nobody ever knows. |
@@ -94,7 +94,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `today.on.directions` | Directions |
 | `today.on.hopInNote` | Jordan and Priya can still hop in. |
 | `today.faded.title` | This one drifted off |
-| `today.faded.body` | Not everyone you picked said yes to Sunset at Indian Rock this time, so it quietly faded. Nobody knows you said yes. Tomorrow's plan arrives at 3. |
+| `today.faded.body` | Nobody knows you said yes. |
 | `today.done.title` | You went. |
 | `today.done.garden` | See the garden |
 | `today.off.title` | Taking the day off |
@@ -108,7 +108,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 
 | Identifier | Visible label |
 | - | - |
-| `onlyIf.title` | I'm down only with… |
+| `onlyIf.title` | I'm down only if… |
 | `onlyIf.body` | Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them. |
 | `onlyIf.friend.<name>` | Maya, Dev, Jordan, Priya |
 | `onlyIf.confirm` | Pick at least one friend, then I'm down if Maya |
@@ -192,6 +192,7 @@ Deep links: `frolic://e2e/<route>` where route is the mock's hash route (`join`,
 | `otw.lockPreview` | Indian Rock at 4:30, Maya's there. Dev is 4 min out. |
 | `otw.here` | I'm here |
 | `otw.bail` | I can't make it |
+| `bail.sheet.body` | Your crew will see a spot open up. |
 | `bail.sheet.yes` | I'll still go |
 | `bail.sheet.no` | Sit this one out |
 | `checkin.card` | You're all here |

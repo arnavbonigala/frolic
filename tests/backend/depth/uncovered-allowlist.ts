@@ -16,7 +16,6 @@ export const UNCOVERED_ALLOWLIST: string[] = [
   "internal.keiki.tools.saveRequest",
   "internal.keiki.tools.snapTarget",
   "internal.keiki.tools.submitSnap",
-  "internal.keiki.tools.tap",
   "internal.plans.drop.openFrolic",
   "internal.qa.matcher.clockFixture.mark",
   "internal.qa.matcher.clockFixture.stampNow",

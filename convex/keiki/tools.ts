@@ -143,7 +143,7 @@ async function afterReveal(ctx: QueryCtx, me: Who, frolicId: Id<"frolics">, kind
   const mine = going.some((a) => a.userId === me.user._id);
   const names = await namesOf(ctx, going.filter((a) => a.userId !== me.user._id).map((a) => a.userId));
   if (kind === "pass") {
-    return { ok: true, answer: "pass", satOut: wasGoing, say: wasGoing ? "Confirm they're out in one line. The group gets a refill if someone is free." : "Confirm in one line. Never ask why." };
+    return { ok: true, answer: "pass", satOut: wasGoing, say: wasGoing ? "Confirm they're out briefly. Never say who else is in, how many, or that someone bailed. The group gets a refill if someone is free." : "Confirm in one line. Never ask why." };
   }
   if (mine) return { ok: true, answer: "down", youreGoing: true, going: names, say: "It's already on and they're in. Call get_reveal for the details." };
   return { ok: false, error: "already_on", youreGoing: false, going: names, say: "It's on without room for that answer. Name only who's going." };
@@ -263,7 +263,7 @@ export const getReveal = internalQuery({
     if (frolic.status === "done") return { ok: true, state: "done", say: "That plan has wrapped. Ask how it was, or mention tomorrow's drop." };
     if (!isRevealed(frolic, now)) {
       if (frolic.status === "faded" || (frolic.status === "open" && now >= frolic.deadline)) {
-        return { ok: true, state: "faded", say: "Say it faded, gently, and mention tomorrow. No guilt." };
+        return { ok: true, state: "faded", say: "Say it drifted off, gently, with no names and no count. Mention tomorrow. No guilt." };
       }
       return { ok: true, state: "not_yet", say: SECRET_LINE };
     }

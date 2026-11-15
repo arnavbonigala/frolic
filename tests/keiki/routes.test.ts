@@ -546,7 +546,7 @@ describe("get_reveal", () => {
     const { t, seed } = await seeded();
     await patchFrolic(t, seed.frolicId, { status: "faded", deadline: seed.now - 1000 });
     const result = await toolResult(t, "get_reveal", { phone: SAM_PHONE });
-    expect(result.body).toEqual({ ok: true, state: "faded", say: "Say it faded, gently, and mention tomorrow. No guilt." });
+    expect(result.body).toEqual({ ok: true, state: "faded", say: "Say it drifted off, gently, with no names and no count. Mention tomorrow. No guilt." });
   });
 });
 
