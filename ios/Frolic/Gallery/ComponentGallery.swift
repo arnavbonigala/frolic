@@ -5,6 +5,7 @@ struct ComponentGallery: View {
     @Environment(\.dismiss) private var dismiss
     @State private var segment = 1
     @State private var activityMessage: String?
+    @State private var showSheet = false
 
     var body: some View {
         NavigationStack {
@@ -18,6 +19,7 @@ struct ComponentGallery: View {
                     packet
                     cards
                     states
+                    polish
                     liveActivity
                 }
                 .padding(.horizontal, 18)
@@ -34,6 +36,19 @@ struct ComponentGallery: View {
             }
         }
         .accessibilityIdentifier("gallery.root")
+        .frolicSheet(isPresented: $showSheet) {
+            VStack(spacing: FrolicSpacing.md) {
+                Text("Sheet with detents")
+                    .frolicFont(.sheetTitle)
+                    .foregroundStyle(FrolicColor.ink)
+                Text("Medium and large, grabber visible.")
+                    .frolicFont(.subheadline)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                Spacer(minLength: 0)
+            }
+            .padding(FrolicSpacing.xl)
+            .accessibilityIdentifier("gallery.polish.sheetContent")
+        }
     }
 
     private var colors: some View {
@@ -217,6 +232,86 @@ struct ComponentGallery: View {
             }
         }
     }
+
+    private var polish: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader(title: "Spacing and radii")
+            HStack(alignment: .bottom, spacing: 6) {
+                ForEach(Self.spacingSamples, id: \.name) { sample in
+                    VStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(FrolicColor.sun)
+                            .frame(width: sample.value, height: 24)
+                        Text(sample.name)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(FrolicColor.secondaryText)
+                    }
+                }
+            }
+            HStack(spacing: 8) {
+                ForEach(Self.radiusSamples, id: \.name) { sample in
+                    VStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: sample.value, style: .continuous)
+                            .fill(FrolicColor.chip)
+                            .frame(height: 44)
+                        Text(sample.name)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(FrolicColor.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.top, 8)
+            SectionHeader(title: "Pressable")
+            Button("I'm down") {}.buttonStyle(.frolicPrimary).buttonStyle(.frolicPressable)
+            Button("See the garden") {
+                showSheet = true
+            }
+            .buttonStyle(.frolicSecondaryWide)
+            .buttonStyle(.frolicPressable)
+            .accessibilityIdentifier("gallery.polish.sheet")
+            SectionHeader(title: "Staggered entrance")
+            VStack(spacing: 8) {
+                ForEach(Array(Self.entranceSamples.enumerated()), id: \.offset) { index, title in
+                    FrolicCard {
+                        Text(title)
+                            .frolicFont(.bodyEmphasis)
+                            .foregroundStyle(FrolicColor.ink)
+                    }
+                    .frolicEntrance(index: index)
+                }
+            }
+            SectionHeader(title: "Skeleton")
+            FrolicCard {
+                HStack(spacing: FrolicSpacing.sm) {
+                    Skeleton(shape: .circle, width: 44, height: 44)
+                    VStack(alignment: .leading, spacing: FrolicSpacing.xs) {
+                        Skeleton(shape: .rounded(FrolicRadius.seed), width: 120, height: 14)
+                        Skeleton(shape: .capsule, width: 82, height: 12)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            FrolicCard {
+                Text("Sunset at Indian Rock")
+                    .frolicFont(.sheetTitle)
+                    .foregroundStyle(FrolicColor.ink)
+                SkeletonLines(count: 2)
+            }
+            .frolicSkeleton()
+        }
+    }
+
+    private static let spacingSamples: [(name: String, value: CGFloat)] = [
+        ("4", FrolicSpacing.xxs), ("8", FrolicSpacing.xs), ("12", FrolicSpacing.sm), ("16", FrolicSpacing.md),
+        ("20", FrolicSpacing.lg), ("24", FrolicSpacing.xl), ("32", FrolicSpacing.xxl), ("40", FrolicSpacing.xxxl),
+    ]
+
+    private static let radiusSamples: [(name: String, value: CGFloat)] = [
+        ("14", FrolicRadius.chip), ("18", FrolicRadius.tile), ("22", FrolicRadius.group), ("28", FrolicRadius.packet),
+    ]
+
+    private static let entranceSamples = ["Maya is free till 8", "Jordan is busy now", "Dev is free till 6"]
 
     private var liveActivity: some View {
         VStack(alignment: .leading, spacing: 12) {

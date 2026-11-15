@@ -113,3 +113,42 @@ extension View {
         modifier(FrolicFontModifier(style: style))
     }
 }
+
+extension Font {
+    static func frolic(_ style: FrolicTextStyle) -> Font {
+        #if canImport(UIKit)
+        let base = UIFont.systemFont(ofSize: style.size, weight: style.uiWeight)
+        let descriptor = base.fontDescriptor.withDesign(style.isRounded ? .rounded : .default) ?? base.fontDescriptor
+        let font = UIFont(descriptor: descriptor, size: style.size)
+        return Font(UIFontMetrics(forTextStyle: style.uiTextStyle).scaledFont(for: font))
+        #else
+        return .system(size: style.size, weight: style.weight, design: style.isRounded ? .rounded : .default)
+        #endif
+    }
+}
+
+extension FrolicTextStyle {
+    var uiWeight: UIFont.Weight {
+        switch weight {
+        case .heavy, .black: .heavy
+        case .bold: .bold
+        case .semibold: .semibold
+        case .medium: .medium
+        default: .regular
+        }
+    }
+
+    var uiTextStyle: UIFont.TextStyle {
+        switch relativeTo {
+        case .largeTitle: .largeTitle
+        case .title: .title1
+        case .title2: .title2
+        case .title3: .title3
+        case .headline: .headline
+        case .subheadline: .subheadline
+        case .footnote: .footnote
+        case .caption, .caption2: .caption1
+        default: .body
+        }
+    }
+}
