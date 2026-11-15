@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  discoverSurface,
   findFunction,
   makeTest,
   matchState,
+  publicQueries,
   seed,
   settle,
   tapById,
@@ -13,9 +13,6 @@ import {
 
 const NOW = Date.UTC(2026, 10, 15, 19, 0, 0);
 const MIN = 60_000;
-
-const QUERY_PATTERN =
-  /today|frolic|crew|group|free|presence|looking|activity|waiting|plan|feed|home|peek|myTap|tap|attendee/i;
 
 function fresh(at: number = NOW) {
   vi.useFakeTimers();
@@ -58,6 +55,12 @@ function argShapes(f: Fixture, observer: string): Record<string, unknown>[] {
     { userId: f.users[observer], frolicId: f.frolicId },
     { userId: f.users[observer] },
     { roomToken: "qa-room-token" },
+    { code: "QACODE01" },
+    { inviteCode: "QACODE01" },
+    { deviceToken: token, groupId: f.groupId, day: "2026-11-15", frolicId: f.frolicId },
+    { deviceToken: token },
+    { userId: f.users[observer], groupId: f.groupId },
+    { userId: f.users[observer], day: "2026-11-15" },
     { groupId: f.groupId, day: "2026-11-15" },
     { frolicId: f.frolicId },
     {},
@@ -67,7 +70,7 @@ function argShapes(f: Fixture, observer: string): Record<string, unknown>[] {
 type Callable = { entry: SurfaceEntry; args: Record<string, unknown> };
 
 async function auditSurface(t: any, f: Fixture, observer: string) {
-  const entries = (await discoverSurface()).filter((e) => QUERY_PATTERN.test(e.name));
+  const entries = await publicQueries();
   const shapes = argShapes(f, observer);
   const resolved: Callable[] = [];
   const unresolved: string[] = [];
@@ -80,11 +83,7 @@ async function auditSurface(t: any, f: Fixture, observer: string) {
         resolved.push({ entry, args });
         ok = true;
         break;
-      } catch (err) {
-        if (/is not a query/.test(String((err as Error)?.message))) {
-          notAQuery = true;
-          break;
-        }
+      } catch {
         continue;
       }
     }

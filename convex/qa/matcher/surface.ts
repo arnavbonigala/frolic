@@ -15,6 +15,57 @@ const rawModules = (import.meta as unknown as {
 
 export const modules: Record<string, () => Promise<Record<string, unknown>>> = rawModules;
 
+const rawSources = (import.meta as unknown as {
+  glob: (
+    pattern: string,
+    options: { query: string; import: string },
+  ) => Record<string, () => Promise<string>>;
+}).glob("/convex/**/*.ts", { query: "?raw", import: "default" });
+
+export type Visibility = "public" | "internal";
+export type ExportKind =
+  | "query"
+  | "mutation"
+  | "action"
+  | "internalQuery"
+  | "internalMutation"
+  | "internalAction";
+
+let visibilityCache: Promise<Map<string, ExportKind>> | null = null;
+
+export function describeExports(): Promise<Map<string, ExportKind>> {
+  if (visibilityCache) return visibilityCache;
+  visibilityCache = (async () => {
+    const map = new Map<string, ExportKind>();
+    for (const path of Object.keys(rawSources)) {
+      if (SKIP.some((s) => path.includes(s))) continue;
+      const source = await rawSources[path]();
+      const module = toModuleName(path);
+      const pattern =
+        /export\s+const\s+([A-Za-z0-9_]+)\s*(?::[^=]+)?=\s*(internalQuery|query|internalMutation|mutation|internalAction|action)\s*\(/g;
+      for (const match of source.matchAll(pattern)) {
+        map.set(`${module}:${match[1]}`, match[2] as ExportKind);
+      }
+    }
+    return map;
+  })();
+  return visibilityCache;
+}
+
+export async function publicQueries(): Promise<SurfaceEntry[]> {
+  const kinds = await describeExports();
+  const all = await discoverSurface();
+  return all.filter((entry) => kinds.get(`${entry.module}:${entry.name}`) === "query");
+}
+
+export async function internalExports(): Promise<SurfaceEntry[]> {
+  const kinds = await describeExports();
+  const all = await discoverSurface();
+  return all.filter((entry) =>
+    String(kinds.get(`${entry.module}:${entry.name}`) ?? "").startsWith("internal"),
+  );
+}
+
 const SKIP = ["_generated", "/qa/", "node_modules", "convex.config", "schema.ts", "http.ts", "crons.ts"];
 
 function toModuleName(path: string): string {
