@@ -1,8 +1,12 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
-import { findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOutAndRefill } from "./lib/core";
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { applyTap, findAttendee, getFrolic, goingAttendees, putAttendee, removeTap, sitOutAndRefill } from "./lib/core";
+import { FREE_ANSWER_MS, openStartedFrolic, startFreeDrop } from "./plans/drop";
+import { localParts } from "./plans/time";
+import { clockTime } from "./keiki/lib";
+import { freeLine } from "./keiki/outbound";
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
 import { rateLimiter } from "./lib/rateLimits";
@@ -27,14 +31,14 @@ export const open = internalMutation({
       .query("frolics")
       .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day))
       .take(10);
-    const same = existing.find((f) => f.kind === args.kind);
+    const same = existing.find((f) => f.kind === args.kind && f.origin !== "free");
     if (same) {
       if (same.status === "open" && args.planId && same.planId !== args.planId) {
         await ctx.db.patch("frolics", same._id, { planId: args.planId });
       }
       return same._id;
     }
-    const frolicId = await ctx.db.insert("frolics", { ...args, status: "open" });
+    const frolicId = await ctx.db.insert("frolics", { ...args, status: "open", origin: "daily" });
     await ctx.scheduler.runAt(args.deadline, internal.reveal.fade, { frolicId });
     await ctx.runMutation(internal.keiki.outbound.onDrop, { frolicId });
     return frolicId;
@@ -95,6 +99,8 @@ export const today = query({
         frolicId: v.id("frolics"),
         day: v.string(),
         kind: v.string(),
+        origin: v.union(v.literal("daily"), v.literal("free")),
+        notice: v.union(v.string(), v.null()),
         deadline: v.number(),
         window: timeWindow,
         durationMinutes: v.number(),
@@ -200,6 +206,11 @@ export async function todayFor(
     frolicId: frolic._id,
     day: frolic.day,
     kind: frolic.kind,
+    origin: frolic.origin ?? ("daily" as const),
+    notice:
+      frolic.origin === "free" && frolic.status === "open" && plan
+        ? freeLine({ title: plan.title, startsAt: clockTime(plan.startsAt, group.timezone) })
+        : null,
     deadline: frolic.deadline,
     window: frolic.window,
     durationMinutes: frolic.durationMinutes,
@@ -330,5 +341,56 @@ export const sitOut = mutation({
     const attendee = await findAttendee(ctx, frolic._id, user._id);
     if (attendee?.status === "going") await sitOutAndRefill(ctx, frolic, attendee, Date.now());
     return null;
+  },
+});
+
+async function startFree(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  args: { groupId: Id<"groups">; forMinutes: number; source: "app" | "imessage" },
+): Promise<{ frolicId: Id<"frolics">; started: boolean }> {
+  await requireMember(ctx, args.groupId, userId);
+  if (!Number.isInteger(args.forMinutes) || args.forMinutes < 60 || args.forMinutes > 240) {
+    throw new ConvexError({ code: "BAD_MINUTES", message: "Free for is 60 to 240 minutes" });
+  }
+  const now = Date.now();
+  const open = await openStartedFrolic(ctx, args.groupId);
+  if (open && now < open.deadline) return { frolicId: open._id, started: false };
+  await rateLimiter.limit(ctx, "imFree", { key: userId, throws: true });
+  const day = localParts(now).day;
+  const window = { start: now, end: now + args.forMinutes * 60 * 1000 };
+  const deadline = Math.min(now + FREE_ANSWER_MS, window.end);
+  const frolicId = await ctx.db.insert("frolics", {
+    groupId: args.groupId,
+    day,
+    kind: "daily",
+    status: "open",
+    window,
+    durationMinutes: 60,
+    deadline,
+    origin: "free",
+    startedBy: userId,
+  });
+  await ctx.scheduler.runAt(deadline, internal.reveal.fade, { frolicId });
+  await applyTap(ctx, userId, { frolicId, kind: "down", source: args.source });
+  await startFreeDrop(ctx, { groupId: args.groupId, day, nowMs: now, free: { frolicId, userId, window } });
+  return { frolicId, started: true };
+}
+
+export const imFree = mutation({
+  args: { deviceToken: v.string(), groupId: v.id("groups"), forMinutes: v.number() },
+  returns: v.object({ frolicId: v.id("frolics"), started: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await userFromToken(ctx, args.deviceToken);
+    return await startFree(ctx, user._id, { groupId: args.groupId, forMinutes: args.forMinutes, source: "app" });
+  },
+});
+
+export const imFreeAs = internalMutation({
+  args: { userId: v.id("users"), groupId: v.id("groups"), forMinutes: v.number() },
+  returns: v.object({ error: v.string() }),
+  handler: async (ctx, args) => {
+    const result = await startFree(ctx, args.userId, { groupId: args.groupId, forMinutes: args.forMinutes, source: "imessage" });
+    return { error: result.started ? "planning" : "already_open" };
   },
 });

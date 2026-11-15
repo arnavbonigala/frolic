@@ -210,12 +210,15 @@ Delivery reads the notice response rather than trusting the status code. `delive
 `results[].outcome`: `ran` and `queued` count as sent (`queued` means the notice sits in the
 conversation's debounce window and runs on its next turn), `unavailable` is a retry. A transport
 failure, a 5xx and a 429 retry with exponential backoff (2 s, 4 s, 8 s, capped at 60 s) up to three
-attempts, then the row records `failed` with the reason. A 400, 404 or 422, and an outcome naming a
-missing identity, is permanent: the row is `failed` at once with a `lost_` prefix, because a
+attempts, then the row records `failed` with the reason. A 200 whose body carries no outcome is a retry, never a send. The retry wait is derived from the
+row's attempt count rather than stored, so any later enqueue cannot send a waiting retry early, and a
+row that has sat queued for six hours is failed as stale instead of delivering old news. A 400, 404
+or 422, and an outcome naming a missing identity, is permanent: the row is `failed` at once with a `lost_` prefix, because a
 contact who has never texted the line cannot be reached by a notice and no retry will change that.
 
-Which plan a texter sees: `currentFrolic` prefers the newest frolic that is `open`, then the newest
-that is `on`, then the newest of any status. A closed plan seeded for a later day therefore cannot
+Which plan a texter sees: `currentFrolic` prefers today's `open` frolic, then any `open` one, then
+today's `on` one, then any `on` one, then today's, then the newest of any status. A weekend drop that
+opens a Saturday and a Sunday plan therefore shows Saturday on Saturday. A closed plan seeded for a later day therefore cannot
 shadow today's open one, and once the next plan opens it becomes the one texts describe, matching
 what the phones show.
 
@@ -223,8 +226,9 @@ what the phones show.
 
 A texter who says they are free can start today's plan: the `im_free` tool calls
 `internal.frolics.imFreeAs({ userId, groupId, forMinutes })` through the same actor path as every
-other tool (requested in handoffs/schema-requests/FROL-9.md). It is inert until `KEIKI_IM_FREE` is
-set on the deployment and the agent sync lists the tool, and it answers "not live yet" rather than
+other tool (requested in handoffs/schema-requests/FROL-9.md). A friend who texts a name that already belongs to an account in the crew joins as their own person;
+the phone is never bound to someone else's account, because an invite code and a first name are not
+proof of identity. `im_free` is inert until `KEIKI_IM_FREE` is set on the deployment and the agent sync lists the tool, and it answers "not live yet" rather than
 failing if the mutation is absent. The reply the starter gets tells the agent to describe the plan
 without naming who started it, and the notice the crew receives names nobody.
 

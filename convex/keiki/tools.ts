@@ -88,7 +88,7 @@ export const getMember = internalQuery({
       member: true,
       name: firstName(me.user.name),
       crew: me.group.name,
-      friends: members.filter((m) => m._id !== me.user._id).map((m) => firstName(m.name)),
+      friends: uniqueFirstNames(members.filter((m) => m._id !== me.user._id)),
       paused: me.link.paused,
       groupId: me.group._id,
       timezone: me.group.timezone,
@@ -114,7 +114,7 @@ export const getToday = internalQuery({
       group = await ctx.db.get("groups", chat.groupId);
     }
     if (!group) return notMember;
-    const frolic = await currentFrolic(ctx, group._id);
+    const frolic = await currentFrolic(ctx, group._id, now, group.timezone);
     if (!frolic) return { ok: true, plan: null, say: "No plan has dropped yet today." };
     const walk = me ? await walkMinutes(ctx, frolic._id, me.user._id) : DEFAULT_WALK_MINUTES;
     const details = await planDetails(ctx, frolic, group.timezone, walk);
@@ -130,7 +130,7 @@ export const getToday = internalQuery({
 });
 
 async function openFrolicFor(ctx: QueryCtx, me: Who, now: number) {
-  const frolic = await currentFrolic(ctx, me.group._id);
+  const frolic = await currentFrolic(ctx, me.group._id, now, me.group.timezone);
   if (!frolic) return { error: { ok: false, error: "no_plan", say: "There is no plan open right now." } } as const;
   if (frolic.status === "done" || frolic.status === "faded" || (!isRevealed(frolic, now) && now >= frolic.deadline)) {
     return { error: { ok: false, error: "closed", say: "Today's plan has closed. Tomorrow's drop is the next chance." } } as const;
@@ -147,6 +147,10 @@ async function afterReveal(ctx: QueryCtx, me: Who, frolicId: Id<"frolics">, kind
   }
   if (mine) return { ok: true, answer: "down", youreGoing: true, going: names, say: "It's already on and they're in. Call get_reveal for the details." };
   return { ok: false, error: "already_on", youreGoing: false, going: names, say: "It's on without room for that answer. Name only who's going." };
+}
+
+function uniqueFirstNames(members: Doc<"users">[]): string[] {
+  return [...new Set(members.map((m) => firstName(m.name)))];
 }
 
 function resolveNames(members: Doc<"users">[], selfId: Id<"users">, names: string[]) {
@@ -258,7 +262,7 @@ export const getReveal = internalQuery({
   handler: async (ctx, { phone, now }) => {
     const me = await who(ctx, phone);
     if (!me) return notMember;
-    const frolic = await currentFrolic(ctx, me.group._id);
+    const frolic = await currentFrolic(ctx, me.group._id, now, me.group.timezone);
     if (!frolic) return { ok: true, state: "no_plan" };
     if (frolic.status === "done") return { ok: true, state: "done", say: "That plan has wrapped. Ask how it was, or mention tomorrow's drop." };
     if (!isRevealed(frolic, now)) {
@@ -291,7 +295,7 @@ export const getReveal = internalQuery({
 });
 
 async function revealedAttendee(ctx: QueryCtx, me: Who, now: number) {
-  const frolic = await currentFrolic(ctx, me.group._id);
+  const frolic = await currentFrolic(ctx, me.group._id, now, me.group.timezone);
   if (!frolic || frolic.status === "done" || !isRevealed(frolic, now)) return null;
   const going = await goingAttendees(ctx, frolic._id);
   if (!going.some((a) => a.userId === me.user._id)) return null;
@@ -402,12 +406,15 @@ export const imFree = internalMutation({
     const me = await who(ctx, phone);
     if (!me) return notMember;
     if (!keikiEnv().imFree) return { ok: false, error: "not_ready", say: "Starting a plan from a text is not on yet. Offer today's plan instead." };
-    const minutes = Math.max(30, Math.min(480, Math.round(forMinutes)));
+    const minutes = Math.max(60, Math.min(240, Math.round(forMinutes)));
     let result: { planTitle?: string; startsAt?: number; error?: string } | null;
     try {
       result = await ctx.runMutation(imFreeAs, { userId: me.user._id, groupId: me.group._id, forMinutes: minutes });
     } catch {
       return { ok: false, error: "not_ready", say: "Starting a plan from a text did not go through. Offer today's plan instead." };
+    }
+    if (result?.error === "planning") {
+      return { ok: true, plan: null, startsAt: null, say: "Say a plan is being made now and goes to the crew in a minute without naming who started it. Tell them they are counted as down and will get the plan by text." };
     }
     if (!result || result.error || result.planTitle === undefined || result.startsAt === undefined) {
       return { ok: false, error: result?.error ?? "not_ready", say: "That did not start. Offer today's plan instead." };
@@ -479,17 +486,7 @@ export const joinCrew = internalMutation({
       .query("users")
       .withIndex("by_phone", (q) => q.eq("phone", phone))
       .first();
-    let userId = existing?._id;
-    if (!userId) {
-      const appTwin = (await crewMembers(ctx, invite.groupId)).filter(
-        (m) => !m.phone && firstName(m.name).toLowerCase() === cleanName.split(/\s+/)[0].toLowerCase(),
-      );
-      if (appTwin.length === 1) {
-        userId = appTwin[0]._id;
-        await ctx.db.patch("users", userId, { phone });
-      }
-    }
-    if (!userId) userId = await ctx.runMutation(createUserAs, { name: cleanName, phone });
+    const userId = existing?._id ?? (await ctx.runMutation(createUserAs, { name: cleanName, phone }));
     const member = await ctx.db
       .query("memberships")
       .withIndex("by_groupId_and_userId", (q) => q.eq("groupId", invite.groupId).eq("userId", userId))
@@ -501,8 +498,8 @@ export const joinCrew = internalMutation({
     return {
       ok: true,
       crew: group?.name ?? null,
-      name: firstName(existing?.name ?? cleanName),
-      friends: members.filter((m) => m._id !== userId).map((m) => firstName(m.name)),
+      name: firstName(cleanName),
+      friends: uniqueFirstNames(members.filter((m) => m._id !== userId)),
       say: "Welcome them in one line, then call get_today.",
     };
   },

@@ -33,7 +33,7 @@ Every failure is a `ConvexError` whose `data` is `{ code, message }`. Branch on 
 | `BAD_ONLY_IF` | an `onlyIf` entry is not a member of the crew, or there are more than 12 |
 | `BAD_WINDOW` | a window ends before it starts, or spans more than 24 hours |
 | `BAD_DAY` | a day is not `YYYY-MM-DD` |
-| `BAD_MINUTES` | minutes away is outside 0 to 600 |
+| `BAD_MINUTES` | minutes away is outside 0 to 600, or `forMinutes` is not a whole number from 60 to 240 |
 | `BAD_LIMIT` | a limit is out of range |
 | `NOT_GOING` | check in, eta or snap from someone not going to an `on` frolic |
 | `NOT_CHECKED_IN` | snapped before checking in |
@@ -47,6 +47,7 @@ Rate limited calls throw a `ConvexError` whose `data` is `{ kind: "RateLimited",
 | `hopIn` | token bucket, 12 per minute, burst 6, per user |
 | `join` | fixed window, 30 per hour, per invite code |
 | `createGroup` | fixed window, 10 per hour, per user |
+| `imFree` | fixed window, 3 per day, per user |
 
 ## Clock
 
@@ -113,7 +114,8 @@ Args: `{ deviceToken, groupId, day?, frolicId? }`. Returns:
   groupName: string,
   memberCount: number,
   frolic: null | {
-    frolicId, day, kind, deadline, window: { start, end }, durationMinutes,
+    frolicId, day, kind, origin: "daily" | "free", notice: string | null,
+    deadline, window: { start, end }, durationMinutes,
     plan: null | {
       title, line, why: string | null, cost: number, startsAt, sunsetAt: number | null,
       place: null | { placeId, name, lat, lng, photoUrl: string | null, neighborhood: string | null }
@@ -142,6 +144,14 @@ Pick the frolic with `frolicId` when you have one, else with `day`, else with th
 - `bloomAt` is their own bloom time, `null` when not going.
 - `hopInWaiting` is true while they sit in the hop-in pool because the frolic was full.
 - `canHopIn` is true while the frolic is `on`, the caller is not going, is not waiting in the hop-in pool, and there is room.
+
+`origin` is `"free"` for a frolic someone started with `frolics.imFree`, else `"daily"`. `notice` is `Someone in your crew is free. <title> at <time>?` while a started frolic is `open` and has its plan, else `null`. It is the same for every member, the starter included, so no screen can tell who started it.
+
+### `frolics.imFree`
+
+Args: `{ deviceToken, groupId, forMinutes }`. Returns `{ frolicId, started: boolean }`.
+
+"I'm free for the next few hours." `forMinutes` is a whole number from 60 to 240. When the crew already has an open started frolic, that one comes back with `started: false` and nothing is written. Otherwise it opens a frolic with `origin: "free"`, window `now` to `now + forMinutes`, and a deadline of 30 minutes or the window end, whichever is first; taps the caller `down` (no own window, so the tap looks like anyone else's); and starts the drop workflow with the caller's window. When the plan lands the deadline moves up to the leave time (10 minutes before the plan starts) if that is sooner, and the rest of the crew gets the notice in `frolics.today` and over Keiki. Matching, the reveal, fades and hop ins are the same as the daily drop. The daily drop skips a crew while a started frolic is open. Who started it is stored server side only and no query returns it. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `BAD_MINUTES`, `RateLimited`.
 
 ### `frolics.hopIn`
 
@@ -293,6 +303,7 @@ Not callable from a client. These exist so the web, iMessage and plans lanes act
 | `snaps.addSnapAs` | `{ userId, frolicId, storageId, takenAt }` | `null` |
 | `limits.forUsers` | `{ userIds }` | `{ userId, budgetCap, energy, maxMinutes, homeBy }[]`, nulls for anyone with none |
 | `frolics.open` | `{ groupId, day, kind: "daily" \| "weekend" \| "solo", planId?, window, durationMinutes, deadline, capacity? }` | `frolicId` |
+| `frolics.imFreeAs` | `{ userId, groupId, forMinutes }` | `{ error: "planning" }` for a new start (the plan lands by text), `{ error: "already_open" }` when the crew has one open |
 | `reveal.flip` | `{ frolicId }` | `null` |
 | `reveal.fade` | `{ frolicId }` | `null` |
 | `reveal.complete` | `{ frolicId }` | `null` |
@@ -313,6 +324,7 @@ The iMessage lane hangs its sending off these, in `convex/keiki/outbound.ts`. Ev
 | hook | fires from | when | args |
 | --- | --- | --- | --- |
 | `onDrop` | `frolics.open` | the moment a new frolic opens | `{ frolicId }` |
+| `onFree` | `plans.drop.attachFreePlan` | a started frolic gets its plan; texts everyone but the starter | `{ frolicId }` |
 | `onReveal` | `reveal.flip` | inside the flip, before the reveal becomes readable | `{ frolicId, userIds, bloomAt }` |
 | `onLeaveNudge` | `reveal.flip` | scheduled at `startsAt - 480000` ms (8 minutes before), only when that is still in the future | `{ frolicId, leaveAt }` |
 | `onSnapWindow` | `snaps.start` | the moment a snap countdown starts | `{ frolicId, snapAt }` |

@@ -357,3 +357,36 @@ describe("onCollage", () => {
     expect(await attendeesOf(t, seed.frolicId)).toHaveLength(0);
   });
 });
+
+describe("delivery honesty", () => {
+  it("retries a 200 it cannot read instead of counting it as sent", async () => {
+    const { t, seed } = await seeded();
+    installFetch({ noticeBody: { ok: true } });
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    await advance(t, 0);
+    expect((await outboxOf(t)).every((row) => row.status === "queued" && row.error === "unreadable_answer")).toBe(true);
+  });
+
+  it("holds a retry back even when another enqueue runs the sender early", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch({ noticeStatus: 500 });
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    await advance(t, 0);
+    const firstRun = fetchMock.stub.mock.calls.length;
+    await t.mutation(internal.keiki.outbound.onReveal, { frolicId: seed.frolicId, userIds: [seed.samId], bloomAt: seed.now });
+    await advance(t, 0);
+    expect(fetchMock.stub.mock.calls.length).toBe(firstRun);
+    await advance(t, 2000);
+    expect(fetchMock.stub.mock.calls.length).toBeGreaterThan(firstRun);
+  });
+
+  it("fails a row that sat queued for longer than six hours", async () => {
+    const { t, seed } = await seeded();
+    const fetchMock = installFetch();
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    await advance(t, 7 * 60 * 60 * 1000);
+    const rows = await outboxOf(t);
+    expect(rows.every((row) => row.status === "failed" && row.error === "stale")).toBe(true);
+    expect(fetchMock.stub).not.toHaveBeenCalled();
+  });
+});
