@@ -1,7 +1,8 @@
 import { BERKELEY_PLACES, PLACE_BY_SLUG, heroKeyFor, type HeroKey, type Place, type PlaceTag, type TimeOfDay, type WeekHours } from "../places/data";
+import { citeWhy, unbackedClaim } from "../memory/why";
 import { crowdWeight } from "./crowd";
 import type { MemoryContext } from "./memoryContext";
-import { addDays, clockLabel, dateLabel, daysBetween, localParts, localTimeToMs, solarTimes } from "./time";
+import { addDays, clockLabel, daysBetween, localParts, localTimeToMs, solarTimes } from "./time";
 import { conditionLabel, hourAt, isClear, isRainy, type DayWeather, type HourWeather } from "./weather";
 import { tripLabel, tripTo, type LatLng, type Trip } from "./travel";
 
@@ -441,13 +442,6 @@ export const copyOk = (s: string) => s.trim().length > 0 && s.length <= 140 && !
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function trimQuote(text: string, max = 80): string {
-  const clean = text.replace(/[\u2014\u2013]/g, ",").replace(/!/g, ".").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
-  if (clean.length <= max) return clean;
-  const cut = clean.slice(0, max);
-  return cut.slice(0, cut.lastIndexOf(" ")).replace(/[,;:\s]+$/, "");
-}
-
 function costPhrase(p: Place): string {
   if (p.costPerPersonCents === 0) return "it's free";
   if (p.costPerPersonCents <= 1000) return "it's " + p.costLabel.charAt(0).toLowerCase() + p.costLabel.slice(1);
@@ -476,10 +470,6 @@ function pickTag(p: Place, tags: PlaceTag[]): PlaceTag | undefined {
   return own.find((t) => t !== "free") ?? own[0];
 }
 
-export function memoryWhy(text: string): string {
-  return "you remembered it like this: \u201c" + trimQuote(text) + ".\u201d";
-}
-
 function dropWhy(c: Candidate): string | null {
   const d = c.place.drop;
   if (!d) return null;
@@ -488,20 +478,14 @@ function dropWhy(c: Candidate): string | null {
   return copyOk(why) ? why : null;
 }
 
+const tagWord = (tag: string) => TAG_LABEL[tag as PlaceTag] ?? tag.replace(/_/g, " ");
+
 function writeWhy(c: Candidate, ctx: Ctx, swap: boolean): { why: string; whySource: WhySource; whyMemoryId: string | null; memory: string | null } {
   const p = c.place;
   const hosted = dropWhy(c);
   if (hosted) return { why: hosted, whySource: "template", whyMemoryId: null, memory: null };
-  const night = ctx.input.memory.pastNights.find((n) => n.placeId === p.slug);
-  if (c.comeback) {
-    const why = cap(p.name) + " was your favorite. Same time?";
-    return { why, whySource: night ? "memory" : "template", whyMemoryId: night?.id ?? null, memory: night?.text ?? null };
-  }
-  if (night) {
-    const when = night.date ? " on " + dateLabel(night.date) : "";
-    const why = "you loved it here" + when + ": \u201c" + trimQuote(night.text, 70) + ".\u201d";
-    if (copyOk(why)) return { why, whySource: "memory", whyMemoryId: night.id, memory: night.text };
-  }
+  const cite = citeWhy({ slug: p.slug, name: p.name, tags: p.tags }, ctx.input.memory, { day: ctx.input.day, comeback: c.comeback, label: tagWord });
+  if (cite && copyOk(cite.why)) return { why: cite.why, whySource: "memory", whyMemoryId: cite.memoryId, memory: cite.memory };
   const likedTag = pickTag(p, ctx.input.memory.likedTags.flatMap(normalizeTag));
   if (likedTag) return { why: tasteWhy("you keep picking ", likedTag, c, swap), whySource: "memory", whyMemoryId: null, memory: null };
   const ranked = [...ctx.weights.entries()].sort((a, b) => b[1] - a[1] || p.tags.indexOf(a[0]) - p.tags.indexOf(b[0])).map(([t]) => t);
@@ -641,7 +625,9 @@ export function generatePlan(input: DropInput, opts: GenerateOptions = {}): Plan
   const dryTop = [...ranked].sort((a, b) => b.dryScore - a.dryScore || (a.place.slug < b.place.slug ? -1 : 1))[0];
   const swap = pick.place.indoor && dryTop.rainy && !dryTop.place.indoor && dryTop !== pick;
   const plan = toPlan(pick, ctx, ranked, preferred ? "model" : "scorer", swap);
-  if (preferred && opts.preferredWhy && copyOk(opts.preferredWhy)) {
+  const place = { slug: pick.place.slug, name: pick.place.name, tags: pick.place.tags };
+  const cited = citeWhy(place, input.memory, { day: input.day, comeback: pick.comeback, label: tagWord }) !== null;
+  if (preferred && opts.preferredWhy && copyOk(opts.preferredWhy) && !cited && !unbackedClaim(opts.preferredWhy, input.memory, place)) {
     plan.why = opts.preferredWhy;
     plan.whySource = "haiku";
   }

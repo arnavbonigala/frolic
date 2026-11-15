@@ -1,4 +1,5 @@
 import type { MemoryClient, SearchResult } from "./client";
+import type { PickRef } from "./why";
 
 export const SUPPRESS_AFTER = 2;
 
@@ -9,9 +10,10 @@ export type MemoryContext = {
   skipped: { tag: string; count: number }[];
   suppressed: string[];
   pastNights: { id: string; text: string; placeId?: string; date?: string }[];
+  picks: PickRef[];
 };
 
-export type WhyThis = { memoryId: string; text: string; because: string[] };
+export type WhyThis = { memoryId: string; text: string; placeId?: string; date?: string; because: string[] };
 
 export const GROUP_CONTEXT =
   "A friend group that meets in person for one plan a day. Remember nights they went on, places, vibes, price feel, time of day, what they loved and what they keep passing on. Ignore chatter.";
@@ -60,6 +62,7 @@ export async function buildContext(client: MemoryClient, namespace: string, stat
         placeId: typeof r.metadata?.placeId === "string" ? r.metadata.placeId : undefined,
         date: typeof r.metadata?.day === "string" ? r.metadata.day : undefined,
       })),
+    picks: [],
   };
 }
 
@@ -68,6 +71,7 @@ export const buildContextFailure = (stats: TagStat[]): MemoryContext => ({
   skipped: stats.filter((s) => s.skipped > 0).sort((a, b) => b.skipped - a.skipped).map((s) => ({ tag: s.tag, count: s.skipped })),
   suppressed: suppressedTags(stats),
   pastNights: [],
+  picks: [],
 });
 
 export async function findWhyThis(client: MemoryClient, namespace: string, tags: string[]): Promise<WhyThis | null> {
@@ -87,7 +91,8 @@ export async function findWhyThis(client: MemoryClient, namespace: string, tags:
       .sort((a, b) => dayOf(b).localeCompare(dayOf(a)))[0] ?? null;
   if (!hit) return null;
   const related = [...(hit.included?.related?.parents ?? []), ...(hit.included?.related?.siblings ?? [])].map((m) => m.memory ?? "").filter(Boolean);
-  return { memoryId: hit.id, text: text(hit), because: related.slice(0, 2) };
+  const placeId = typeof hit.metadata?.placeId === "string" ? hit.metadata.placeId : undefined;
+  return { memoryId: hit.id, text: text(hit), placeId, date: dayOf(hit) || undefined, because: related.slice(0, 2) };
 }
 
 export async function ensureNamespace(client: MemoryClient, namespace: string, kind: "group" | "personal") {

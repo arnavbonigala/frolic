@@ -305,7 +305,7 @@ describe("generatePlan", () => {
       }),
     )!;
     expect(plan.placeSlug).toBe("indian-rock");
-    expect(plan.why).toBe("Indian Rock was your favorite. Same time?");
+    expect(plan.why).toBe("You all went to Indian Rock on Oct 12, so it's time to go back.");
     expect(plan.whySource).toBe("memory");
     expect(plan.whyMemoryId).toBe("m1");
   });
@@ -315,14 +315,16 @@ describe("generatePlan", () => {
       drop({
         weather: weather(false),
         attendees: [person("maya", { taste: ["Sunsets"] }), person("dev", { taste: ["Sunsets"] })],
-        memory: memory({ pastNights: [{ id: "m9", text: "The Marina sunset in October was our best night", placeId: "berkeley-marina", date: "2026-10-03" }, { id: "m8", text: "Indian Rock with Dev", placeId: "indian-rock" }] }),
+        memory: memory({ pastNights: [{ id: "m9", text: "The Marina sunset in October was our best night", placeId: "berkeley-marina", date: "2026-10-03" }, { id: "m8", text: "Indian Rock with Dev", placeId: "indian-rock", date: "2026-11-09" }] }),
       }),
     )!;
     const night = ["berkeley-marina", "indian-rock"].includes(plan.placeSlug);
     expect(night).toBe(true);
     expect(plan.whySource).toBe("memory");
-    expect(plan.why).toMatch(/you loved it here/);
+    const date = plan.placeSlug === "berkeley-marina" ? "Oct 3" : "Nov 9";
+    expect(plan.why).toBe("You all went to " + PLACE_BY_SLUG.get(plan.placeSlug)!.name + " on " + date + ".");
     expect(plan.whyInputs.memory).toBeTruthy();
+    expect(plan.why).not.toMatch(/\u201c|loved it here/);
   });
 
   test("why line names a liked tag in the house voice, never a raw tag list", () => {

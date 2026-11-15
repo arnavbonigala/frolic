@@ -58,6 +58,7 @@ import type * as memory_mapping from "../memory/mapping.js";
 import type * as memory_read from "../memory/read.js";
 import type * as memory_stats from "../memory/stats.js";
 import type * as memory_taste from "../memory/taste.js";
+import type * as memory_why from "../memory/why.js";
 import type * as places_data from "../places/data.js";
 import type * as places_seed from "../places/seed.js";
 import type * as plans_crons from "../plans/crons.js";
@@ -151,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   "memory/read": typeof memory_read;
   "memory/stats": typeof memory_stats;
   "memory/taste": typeof memory_taste;
+  "memory/why": typeof memory_why;
   "places/data": typeof places_data;
   "places/seed": typeof places_seed;
   "plans/crons": typeof plans_crons;

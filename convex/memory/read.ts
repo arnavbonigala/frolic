@@ -5,6 +5,7 @@ import { getClient } from "./ingest";
 import { buildContext, buildContextFailure, buildTaste, findWhyThis, type MemoryContext, type TasteProfile, type WhyThis } from "./context";
 import { templateTaste, validateTasteLine, type TasteLine } from "./taste";
 import { groupNamespace } from "./mapping";
+import { citeWhy, vWhyCitation, type PickRef, type WhyCitation } from "./why";
 
 export const cached = internalQuery({
   args: { groupId: v.id("groups"), day: v.string() },
@@ -28,8 +29,10 @@ export const getMemoryContext = internalAction({
   args: { groupId: v.id("groups"), day: v.string() },
   handler: async (ctx, { groupId, day }): Promise<MemoryContext> => {
     const picks: string[] = await ctx.runQuery(internal.dailyPick.pickTags, { groupId, day });
+    const answers: PickRef[] = await ctx.runQuery(internal.memory.why.pickAnswers, { groupId, day });
     const withPicks = (context: MemoryContext): MemoryContext => ({
       ...context,
+      picks: answers,
       likedTags: [...context.likedTags, ...picks.filter((tag) => !context.likedTags.includes(tag) && !context.suppressed.includes(tag))],
     });
     const hit = await ctx.runQuery(internal.memory.read.cached, { groupId, day });
@@ -50,6 +53,23 @@ export const whyThis = internalAction({
   args: { groupId: v.id("groups"), tags: v.array(v.string()) },
   handler: async (_ctx, { groupId, tags }): Promise<WhyThis | null> =>
     findWhyThis(getClient(), groupNamespace(groupId), tags),
+});
+
+export const whyCite = internalAction({
+  args: {
+    groupId: v.id("groups"),
+    day: v.string(),
+    placeSlug: v.string(),
+    placeName: v.string(),
+    placeTags: v.array(v.string()),
+  },
+  returns: v.union(vWhyCitation, v.null()),
+  handler: async (_ctx, { groupId, day, placeSlug, placeName, placeTags }): Promise<WhyCitation | null> => {
+    const hit = await findWhyThis(getClient(), groupNamespace(groupId), [...placeTags, placeName]);
+    if (!hit) return null;
+    const night = { id: hit.memoryId, text: hit.text, placeId: hit.placeId, date: hit.date };
+    return citeWhy({ slug: placeSlug, name: placeName, tags: placeTags }, { pastNights: [night] }, { day });
+  },
 });
 
 const TASTE_SOURCES = ["device", "template", "haiku"] as const;
