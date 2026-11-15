@@ -38,6 +38,10 @@ What this does not prove: the instant the two screens painted. Trees are polled,
 5. **Low. The deposit sheet covers the reveal.** On the first render after the flip, the tree holds only "Hold $3 to lock it in" and "Not now"; the reveal headline, names and details are behind it until dismissed. A screen reader announces a payment prompt before it says the plan is on.
 6. **Low. Free-row copy differs from the mock on a live backend.** The band reads "TODAY · SUNDAY, Sunset Crew" and the reason line "Why this: You keep saying yes to sunset plans." where the mock has the Saturday band and its own reason line. Worth a decision, not obviously a bug.
 
+## Privacy, re-measured in live mode
+
+The revyl1 privacy result was taken in fixture mode, so it proved nothing. Re-run on seed `revyl4`, one phone, route carrying its token: "Only with…", pick Dev, confirm, then 20 s of silence. The card stayed "Your bud is planted. Waiting for a friend" and "You're down, if Dev is in", no name and no count appeared, `/e2e/reveals?run=revyl4` returned `{"reveals":[]}`, and after reinstalling the app and reopening the route the planted card was still there, which proves the tap went to the server rather than staying local. Privacy holds in live mode.
+
 ## Not run
 
 - Check-in and group snap, because the arrival flow is #40 and not on main.
