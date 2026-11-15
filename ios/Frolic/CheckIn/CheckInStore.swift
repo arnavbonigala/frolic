@@ -47,6 +47,7 @@ final class CheckInStore {
     var snapAt: Double? { reveal?.snapAt }
 
     var title: String { plan?.title ?? "" }
+    var heroKey: String { plan?.heroKey ?? "plan-sunsets" }
     var kicker: String {
         guard let reveal else { return "It's on" }
         return "It's on · \(CheckInClock.time(reveal.startsAt))"

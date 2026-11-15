@@ -46,6 +46,7 @@ struct WirePlan: Codable, Hashable {
     var cost: Double
     var costLabel: String
     var payUpFront: Bool
+    var heroKey: String?
     var startsAt: Double
     var sunsetAt: Double?
     var place: WirePlace?

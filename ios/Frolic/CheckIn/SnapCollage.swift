@@ -8,22 +8,31 @@ final class MotionTilt {
     var pitch: Double = 0
     var roll: Double = 0
     private let manager = CMMotionManager()
+    private var baseline: (pitch: Double, roll: Double)?
 
     func start() {
-        guard manager.isDeviceMotionAvailable else { return }
-        manager.deviceMotionUpdateInterval = 1.0 / 60.0
-        manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
-            guard let self, let motion else { return }
-            MainActor.assumeIsolated {
-                let gravity = motion.gravity
-                self.roll = max(-25, min(25, gravity.x * 55))
-                self.pitch = max(-20, min(20, (gravity.y + 1) * 45))
-            }
+        guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
+        manager.deviceMotionUpdateInterval = 1.0 / 120.0
+        manager.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] motion, _ in
+            guard let motion else { return }
+            MainActor.assumeIsolated { self?.update(motion.attitude) }
         }
+    }
+
+    private func update(_ attitude: CMAttitude) {
+        let p = attitude.pitch * 180 / .pi
+        let r = attitude.roll * 180 / .pi
+        if baseline == nil { baseline = (p, r) }
+        guard let baseline else { return }
+        let targetPitch = max(-20, min(20, (p - baseline.pitch) * 0.6))
+        let targetRoll = max(-25, min(25, (r - baseline.roll) * 0.6))
+        pitch += (targetPitch - pitch) * 0.35
+        roll += (targetRoll - roll) * 0.35
     }
 
     func stop() {
         manager.stopDeviceMotionUpdates()
+        baseline = nil
         pitch = 0
         roll = 0
     }
@@ -31,7 +40,6 @@ final class MotionTilt {
 
 struct SnapCollage: View {
     @Bindable var store: CheckInStore
-    var frolicId: String
     var onPlant: () -> Void
     var onAgain: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -59,11 +67,13 @@ struct SnapCollage: View {
                 .padding(.top, 66)
                 .padding(.horizontal, 18)
                 press
-                Text(motionHint)
-                    .frolicFont(.chip)
-                    .foregroundStyle(FrolicColor.secondaryText)
-                    .padding(.top, 6)
-                    .accessibilityIdentifier("checkin.tiltHint")
+                if !reduceMotion {
+                    Text("Tilt your phone to look around")
+                        .font(.system(.caption, weight: .semibold))
+                        .foregroundStyle(FrolicColor.secondaryText)
+                        .padding(.top, 6)
+                        .accessibilityIdentifier("checkin.tiltHint")
+                }
                 Text(caption)
                     .font(.system(.subheadline, design: .default, weight: .bold))
                     .foregroundStyle(FrolicColor.ink)
@@ -107,10 +117,6 @@ struct SnapCollage: View {
         .onDisappear { motion.stop() }
     }
 
-    private var motionHint: String {
-        reduceMotion ? "Every angle, one moment" : "Tilt your phone to look around"
-    }
-
     private var caption: String {
         let place = store.placeName
         let day = CheckInClock.day(store.reveal?.startsAt ?? Date().timeIntervalSince1970 * 1000)
@@ -126,6 +132,7 @@ struct SnapCollage: View {
                     polaroid(person: person, index: index)
                         .frame(width: width * 0.62)
                         .offset(x: offsetX(index: index, width: width), y: offsetY(index: index))
+                        .offset(x: motion.roll * depth(index), y: -motion.pitch * depth(index))
                         .rotationEffect(.degrees(rotation(index: index)), anchor: .center)
                         .zIndex(Double(3 - index))
                         .opacity(index < revealed ? 1 : 0)
@@ -133,10 +140,8 @@ struct SnapCollage: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .rotation3DEffect(.degrees(motion.pitch), axis: (x: 1, y: 0, z: 0), perspective: 0.55)
-            .rotation3DEffect(.degrees(motion.roll), axis: (x: 0, y: 1, z: 0), perspective: 0.55)
-            .animation(.easeOut(duration: 0.18), value: motion.pitch)
-            .animation(.easeOut(duration: 0.18), value: motion.roll)
+            .rotation3DEffect(.degrees(-motion.pitch), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
+            .rotation3DEffect(.degrees(motion.roll), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
         }
         .frame(height: 372)
         .padding(.horizontal, 30)
@@ -166,6 +171,10 @@ struct SnapCollage: View {
         }
     }
 
+    private func depth(_ index: Int) -> Double {
+        [1.1, 0.35, -0.45][min(index, 2)]
+    }
+
     private func rotation(index: Int) -> Double {
         [-4, 5, -2][min(index, 2)]
     }
@@ -184,8 +193,9 @@ struct SnapCollage: View {
         .shadow(color: FrolicColor.ink.opacity(0.18), radius: 11, y: 8)
         .overlay(alignment: .bottomLeading) {
             HStack(spacing: 4) {
-                SentShotAvatar(name: person.name, flower: person.flower, radius: 5)
-                Text(person.name)
+                FlowerView(state: .bloom, color: person.flower, radius: 6, stem: 0)
+                    .accessibilityHidden(true)
+                Text(store.isMe(person) ? "You" : person.name)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(FrolicColor.ink)
             }
@@ -193,51 +203,39 @@ struct SnapCollage: View {
             .padding(.bottom, 5)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(person.name)'s shot")
+        .accessibilityLabel(store.isMe(person) ? "Your shot" : (snapURL(for: person) == nil ? "\(person.name) is still adding theirs" : "\(person.name)'s shot"))
         .accessibilityIdentifier(index == 0 ? "checkin.shot.you" : "checkin.shot.\(person.name.lowercased())")
     }
 
     @ViewBuilder
     private func photo(for person: WirePerson, index: Int) -> some View {
-        if index == 0, let shot = store.myShot {
-            Image(uiImage: shot)
-                .resizable()
-                .scaledToFill()
+        if store.isMe(person), let shot = store.myShot {
+            Image(uiImage: shot).resizable().scaledToFill()
         } else if let url = snapURL(for: person) {
-            AsyncImage(url: url) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
-                portrait(for: person)
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFill()
+                } else {
+                    waiting(for: person, label: phase.error == nil ? "Developing" : "Couldn't load theirs")
+                }
             }
         } else {
-            portrait(for: person)
+            waiting(for: person, label: "Still adding theirs")
         }
     }
 
     private func snapURL(for person: WirePerson) -> URL? {
-        guard let row = store.snaps.first(where: { $0.userId == person.userId }),
-              let raw = row.url
-        else { return nil }
-        return URL(string: raw)
+        store.snaps.first { $0.userId == person.userId }?.url.flatMap(URL.init(string:))
     }
 
-    private func portrait(for person: WirePerson) -> some View {
+    private func waiting(for person: WirePerson, label: String) -> some View {
         ZStack {
-            LinearGradient(
-                colors: [person.flower.petal, person.flower.deep],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            if let photo = person.photoUrl, let url = URL(string: photo) {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    ProgressView().tint(.white)
-                }
-            } else {
-                Text(String(person.name.prefix(1)).uppercased())
-                    .font(.system(size: 54, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+            FrolicColor.chip
+            VStack(spacing: 8) {
+                FlowerView(state: .bud, color: person.flower, radius: 18, stem: 18)
+                Text(label)
+                    .font(.system(.caption, weight: .semibold))
+                    .foregroundStyle(FrolicColor.secondaryText)
             }
         }
     }

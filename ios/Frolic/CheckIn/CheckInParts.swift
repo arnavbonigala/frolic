@@ -1,54 +1,6 @@
 import SwiftUI
 import UIKit
 
-struct CheckInAvatar: View {
-    var person: WirePerson
-    var radius: CGFloat = 22
-    var ring: Bool = true
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(person.flower.petal)
-            if let photo = person.photoUrl, let url = URL(string: photo) {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Text(String(person.name.prefix(1)).uppercased())
-                        .font(.system(size: radius * 0.8, weight: .heavy, design: .rounded))
-                        .foregroundStyle(person.flower.deep)
-                }
-            } else {
-                Text(String(person.name.prefix(1)).uppercased())
-                    .font(.system(size: radius * 0.8, weight: .heavy, design: .rounded))
-                    .foregroundStyle(person.flower.deep)
-            }
-        }
-        .frame(width: radius * 2, height: radius * 2)
-        .clipShape(Circle())
-        .overlay(Circle().stroke(FrolicColor.paper, lineWidth: ring ? 2 : 0))
-        .accessibilityHidden(true)
-    }
-}
-
-struct SentShotAvatar: View {
-    var name: String
-    var flower: FlowerColor
-    var radius: CGFloat = 11
-
-    var body: some View {
-        Circle()
-            .fill(flower.petal)
-            .frame(width: radius * 2, height: radius * 2)
-            .overlay(
-                Text(String(name.prefix(1)).uppercased())
-                    .font(.system(size: radius, weight: .heavy, design: .rounded))
-                    .foregroundStyle(flower.deep)
-            )
-            .accessibilityHidden(true)
-    }
-}
-
 struct HeroBand: View {
     var imageName: String?
     var fallback: FlowerColor

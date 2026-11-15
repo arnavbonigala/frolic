@@ -1,7 +1,6 @@
 import Combine
 import ConvexMobile
 import Foundation
-import Security
 
 enum CheckInFailure: LocalizedError {
     case noServer
@@ -25,30 +24,9 @@ final class CheckInSession {
 
     private var pending: [UUID: AnyCancellable] = [:]
 
-    var token: String? {
-        if let raw = ProcessInfo.processInfo.environment["FROLIC_DEVICE_TOKEN"], (32...256).contains(raw.count) {
-            return raw
-        }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "com.frolic.app",
-            kSecAttrAccount as String: "deviceToken",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data,
-              let text = String(data: data, encoding: .utf8),
-              (32...256).contains(text.count)
-        else { return nil }
-        return text
-    }
+    var token: String? { FrolicIdentity.validToken(FrolicIdentity.shared.deviceToken) }
 
-    var groupOverride: String? {
-        let raw = ProcessInfo.processInfo.environment["FROLIC_GROUP_ID"]
-        return raw?.isEmpty == false ? raw : nil
-    }
+    var groupOverride: String? { FrolicIdentity.shared.groupId }
 
     func requireToken() throws -> String {
         guard let token else { throw CheckInFailure.noIdentity }

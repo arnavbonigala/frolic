@@ -294,18 +294,18 @@ struct GroupSnapScreen: View {
     }
 
     private func start() {
-        guard canSnap, let (client, token, frolicId) = store.credentials else { return }
-        model.start(client: client, token: token, frolicId: frolicId, clockOffset: store.clockOffset, onDone: onSnapped)
+        guard canSnap, let creds = store.credentials else { return }
+        model.start(client: creds.0, token: creds.1, frolicId: creds.2, clockOffset: store.clockOffset, onDone: onSnapped)
     }
 
     private func retry() {
-        guard let (client, token, frolicId) = store.credentials else { return }
-        model.retryUpload(client: client, token: token, frolicId: frolicId, clockOffset: store.clockOffset, onDone: onSnapped)
+        guard let creds = store.credentials else { return }
+        model.retryUpload(client: creds.0, token: creds.1, frolicId: creds.2, clockOffset: store.clockOffset, onDone: onSnapped)
     }
 
     private func armIfNeeded() {
-        guard canSnap, let snapAt = store.snapAt, let (client, token, frolicId) = store.credentials else { return }
-        model.arm(snapAt: snapAt, client: client, token: token, frolicId: frolicId, clockOffset: store.clockOffset, onDone: onSnapped)
+        guard canSnap, let snapAt = store.snapAt, let creds = store.credentials else { return }
+        model.arm(snapAt: snapAt, client: creds.0, token: creds.1, frolicId: creds.2, clockOffset: store.clockOffset, onDone: onSnapped)
     }
 }
 

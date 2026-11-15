@@ -13,10 +13,6 @@ final class CheckInFlowCoordinator {
         self.frolicId = frolicId
         isPresented = true
     }
-
-    func close() {
-        isPresented = false
-    }
 }
 
 struct CheckInFlowScreen: View {
@@ -25,126 +21,110 @@ struct CheckInFlowScreen: View {
     @Environment(AppRouter.self) private var router
     @Environment(ConnectivityMonitor.self) private var connectivity
     @Environment(FrolicBackend.self) private var backend
-    @State private var store: CheckInStore?
+    @State private var store: CheckInStore
     @State private var watcher = ArrivalWatcher()
     @State private var snapModel = GroupSnapModel()
     @State private var showsBail = false
     @State private var autoSnap = false
-    @State private var seededSnap: String?
+    @State private var prepared = false
+
+    init(frolicId: String?, onClose: @escaping () -> Void) {
+        self.frolicId = frolicId
+        self.onClose = onClose
+        _store = State(initialValue: CheckInStore(frolicId: frolicId))
+    }
 
     private var shown: ScreenPhase {
-        guard let store else { return .loading }
-        return router.resolve(store.phase, isOnline: connectivity.isOnline)
+        router.resolve(store.phase, isOnline: connectivity.isOnline)
     }
 
     var body: some View {
         Group {
-            if let store {
-                switch store.step {
-                case .onTheWay:
-                    OnTheWayScreen(
-                        store: store,
-                        watcher: watcher,
-                        shown: shown,
-                        onBack: onClose,
-                        onBail: { showsBail = true }
-                    )
-                case .snap:
-                    GroupSnapScreen(
-                        store: store,
-                        model: snapModel,
-                        shown: shown,
-                        autoSnap: autoSnap,
-                        onBack: {
-                            store.step = .onTheWay
-                            snapModel.cancel()
-                        },
-                        onSkip: onClose
-                    )
-                case .collage:
-                    SnapCollage(
-                        store: store,
-                        frolicId: frolicId ?? "",
-                        onPlant: onClose,
-                        onAgain: {
-                            store.step = .snap
-                            snapModel.stage = .ready
-                        }
-                    )
-                }
-            } else {
-                PhasePlaceholder(
-                    phase: .loading,
-                    copy: PlaceholderCopy(
-                        loading: "Finding everyone",
-                        emptyTitle: "No plan to walk to",
-                        emptyMessage: "Today's frolic opens here when it's on.",
-                        errorTitle: "Couldn't open the frolic"
-                    ),
-                    color: .marigold
+            switch store.step {
+            case .onTheWay:
+                OnTheWayScreen(store: store, watcher: watcher, shown: shown, onBack: onClose, onRetry: retry, onBail: { showsBail = true })
+            case .snap:
+                GroupSnapScreen(
+                    store: store,
+                    model: snapModel,
+                    shown: shown,
+                    autoSnap: autoSnap,
+                    onBack: {
+                        snapModel.cancel()
+                        store.step = .onTheWay
+                    },
+                    onSkip: onClose,
+                    onSnapped: { store.noteSnapTaken($0) }
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(SkyBackground())
+            case .collage:
+                SnapCollage(store: store, onPlant: onClose, onAgain: {
+                    snapModel.reset()
+                    store.step = .snap
+                })
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: store.step)
         .sheet(isPresented: $showsBail) {
             BailSheet(
-                names: store?.otherNames ?? "",
+                names: store.otherNames,
                 onKeepGoing: { showsBail = false },
                 onSitOut: {
                     showsBail = false
                     Task {
-                        if await store?.bail() == true { onClose() }
+                        if await store.bail() { onClose() }
                     }
                 }
             )
-            .presentationDetents([.height(250)])
-            .presentationDragIndicator(.hidden)
-            .presentationBackground(FrolicColor.cream)
+            .presentationDetents([.height(250), .medium])
+            .presentationCornerRadius(38)
+            .presentationBackground(Color(hex: 0xFFFCF7, opacity: 0.96))
+        }
+        .onChange(of: store.place) { _, place in
+            watcher.begin(place: place, simulation: router.simulatedLocation)
+        }
+        .onChange(of: router.simulatedLocation) { _, location in
+            watcher.begin(place: store.place, simulation: location)
+            Task { await store.refreshRoute() }
+        }
+        .onChange(of: watcher.arrived) { _, arrived in
+            guard arrived, store.phase == .ready, !store.checkedIn else { return }
+            store.checkIn(method: "geofence")
+        }
+        .onChange(of: watcher.currentCoordinate?.latitude) { _, _ in
+            Task { await store.refreshRoute() }
         }
         .task { await prepare() }
         .onDisappear {
-            store?.stop()
+            store.stop()
+            watcher.stop()
             snapModel.cancel()
+            snapModel.camera.stop()
         }
+    }
+
+    private func retry() {
+        Task { await store.load(backend: backend) }
     }
 
     private func prepare() async {
-        guard store == nil else { return }
-        let route = router.e2eRoute
-        let resolved = frolicId ?? (route?.argument?.isEmpty == false ? route?.argument : nil)
-        let created = CheckInStore(frolicId: resolved)
-        created.attach(watcher: watcher)
-        store = created
-        seedE2E(route, store: created)
-        await created.load(backend: backend)
-        if let place = created.place {
-            watcher.begin(place: place, simulation: router.simulatedLocation)
+        guard !prepared else { return }
+        prepared = true
+        store.attach(watcher: watcher)
+        if let route = router.e2eRoute {
+            seed(route)
         }
-        if seededSnap == "count" {
-            autoSnap = true
-        } else if seededSnap == "done" {
-            created.myShot = UIImage(named: "hills_sunset")
-            created.step = .collage
-        }
+        await store.load(backend: backend)
     }
 
-    private func seedE2E(_ route: E2ERoute?, store: CheckInStore) {
-        guard let route else { return }
-        if route.screen == "checkin" {
-            store.step = .snap
-        }
-        seededSnap = route.query["snap"]
-        if route.query["camera"] == "denied" {
-            snapModel.camera.mode = .denied
-        }
-        switch route.query["money"] {
-        case "returned"?: store.money = WireMoney(state: "returned", kind: "hold", amountCents: 300, error: nil, paidNames: [])
-        case "returning"?: store.money = WireMoney(state: "returning", kind: "hold", amountCents: 300, error: nil, paidNames: [])
+    private func seed(_ route: E2ERoute) {
+        if route.screen == "checkin" { store.step = .snap }
+        switch route.query["snap"] {
+        case "count"?: autoSnap = true
         default: break
         }
-        if route.screen == "otw", route.query["arrived"] == "1" {
-            watcher.arrived = true
+        if route.query["camera"] == "denied" { snapModel.camera.mode = .denied }
+        if let state = route.query["money"], ["returned", "returning"].contains(state) {
+            store.money = WireMoney(state: state, kind: "hold", amountCents: 300, error: nil, paidNames: [])
         }
     }
 }
@@ -152,27 +132,25 @@ struct CheckInFlowScreen: View {
 struct CheckInFlowPresenter: ViewModifier {
     @Environment(AppRouter.self) private var router
     @State private var coordinator = CheckInFlowCoordinator.shared
-    @State private var presented = false
-    @State private var e2eFrolicId: String?
 
     func body(content: Content) -> some View {
+        @Bindable var coordinator = coordinator
         content
-            .fullScreenCover(isPresented: $presented, onDismiss: { coordinator.close() }) {
-                CheckInFlowScreen(frolicId: coordinator.frolicId ?? e2eFrolicId) {
-                    presented = false
+            .fullScreenCover(isPresented: $coordinator.isPresented) {
+                CheckInFlowScreen(frolicId: coordinator.frolicId) {
+                    coordinator.isPresented = false
                 }
             }
-            .onAppear { sync() }
-            .onChange(of: coordinator.isPresented) { _, value in
-                if value { presented = true }
-            }
-            .onChange(of: router.e2eRoute) { _, _ in sync() }
+            .onAppear { sync(router.e2eRoute) }
+            .onChange(of: router.e2eRoute) { _, route in sync(route) }
     }
 
-    private func sync() {
-        guard let route = router.e2eRoute, route.screen == "otw" || route.screen == "checkin" else { return }
-        e2eFrolicId = route.argument
-        presented = true
+    private func sync(_ route: E2ERoute?) {
+        guard let route, route.screen == "otw" || route.screen == "checkin" else { return }
+        coordinator.isPresented = false
+        Task { @MainActor in
+            coordinator.open(frolicId: route.argument)
+        }
     }
 }
 
