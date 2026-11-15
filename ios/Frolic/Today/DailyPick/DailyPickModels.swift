@@ -38,6 +38,10 @@ enum DailyPickCopy {
     static let retry = "Try again"
     static let failed = "That didn't go through. Try again."
 
+    static func display(_ option: String) -> String {
+        option.prefix(1).uppercased() + option.dropFirst()
+    }
+
     static func people(_ count: Int) -> String {
         count == 1 ? "1 pick" : "\(count) picks"
     }
