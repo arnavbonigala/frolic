@@ -27,15 +27,15 @@ enum CrewStandIn {
         guard let route, route.screen == "crew", route.query["token"] == nil else { return nil }
         switch route.state {
         case nil, "ready", "friend", "invite":
-            return scene(went: false)
+            return sampleScene(went: false)
         case "went":
-            return scene(went: true)
+            return sampleScene(went: true)
         case "nobody-free":
             return busyCrew()
         case "fund-empty":
-            var scene = scene(went: false)
-            scene.fund = CrewFund(balanceCents: 0, rows: [])
-            return scene
+            var sample = sampleScene(went: false)
+            sample.fund = CrewFund(balanceCents: 0, rows: [])
+            return sample
         default:
             return nil
         }
@@ -43,11 +43,10 @@ enum CrewStandIn {
 
     static func friend(route: E2ERoute?) -> CrewRow? {
         guard let route, route.screen == "crew", route.state == "friend" else { return nil }
-        let scene = CrewStandIn.view(route: route)
-        return scene?.rows.first
+        return CrewStandIn.view(route: route)?.rows.first
     }
 
-    private static func scene(went: Bool) -> CrewView {
+    private static func sampleScene(went: Bool) -> CrewView {
         let me = CrewRow(
             id: "you",
             name: "You",
@@ -118,7 +117,7 @@ enum CrewStandIn {
     }
 
     private static func busyCrew() -> CrewView {
-        var scene = scene(went: false)
+        var scene = sampleScene(went: false)
         scene.nobodyFree = true
         scene.rows = scene.rows.map { row in
             var row = row

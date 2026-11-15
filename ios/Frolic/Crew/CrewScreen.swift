@@ -55,7 +55,10 @@ struct CrewScreen: View {
             store.start(router: router, backend: backend)
             applyRoute()
         }
-        .onChange(of: router.e2eRoute) { _, _ in applyRoute() }
+        .onChange(of: router.e2eRoute) { _, _ in
+            store.routeChanged(router: router, backend: backend)
+            applyRoute()
+        }
         .sheet(isPresented: $store.showsFreeSheet) {
             CrewFreeSheet(
                 current: store.view?.me.detail ?? "",

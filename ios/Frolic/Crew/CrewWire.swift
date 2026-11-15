@@ -31,6 +31,10 @@ struct CrewMemberWire: Decodable, Identifiable, Hashable {
 
     var id: String { userId }
     var flowerColor: FlowerColor { FlowerColor(rawValue: color) ?? .marigold }
+
+    func with(free: CrewFreeWire) -> CrewMemberWire {
+        CrewMemberWire(userId: userId, name: name, color: color, photoUrl: photoUrl, isMe: isMe, free: free)
+    }
 }
 
 struct CrewWire: Decodable {

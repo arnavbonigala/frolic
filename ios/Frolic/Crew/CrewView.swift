@@ -1,6 +1,6 @@
 import Foundation
 
-struct CrewRow: Identifiable {
+struct CrewRow: Identifiable, Equatable {
     enum Status: Equatable {
         case free(String)
         case went
@@ -94,7 +94,7 @@ struct CrewFund: Equatable {
     var rows: [CrewFundRow]
 
     var balanceLine: String { "Frolic Fund \(CrewCopy.money(balanceCents))" }
-    var note: String { rows.isEmpty ? "A no-show tops it up." : "toward the next one" }
+    var note: String { "toward the next one" }
     var isEmpty: Bool { rows.isEmpty && balanceCents == 0 }
 }
 

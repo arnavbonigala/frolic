@@ -1,8 +1,8 @@
-import Combine
 import ConvexMobile
 import Foundation
 import Observation
 import SwiftUI
+import UIKit
 
 @MainActor
 @Observable
@@ -29,9 +29,26 @@ final class CrewStore {
     private var started = false
     private var groupStarted = false
     private var lastError: String?
+    private var siteURL: String?
 
     private static let historyDays = 7
     private static let sessionId = UUID().uuidString
+
+    func routeChanged(router: AppRouter, backend: FrolicBackend) {
+        let route = router.e2eRoute
+        if let standInView = CrewStandIn.view(route: route) {
+            tasks.forEach { $0.cancel() }
+            tasks.removeAll()
+            started = true
+            isStandIn = true
+            view = standInView
+            phase = .ready
+            return
+        }
+        guard route?.screen == "crew", route?.query["token"] != nil else { return }
+        isStandIn = false
+        retry(backend: backend, router: router)
+    }
 
     func start(router: AppRouter, backend: FrolicBackend) {
         guard !started else { return }
@@ -48,6 +65,7 @@ final class CrewStore {
         }
         self.client = client
         identity = CrewIdentity.resolve(route: router.e2eRoute)
+        siteURL = ConvexConfig.siteURL
         guard let token = identity.deviceToken else {
             phase = .error(BackendError.notConfigured.localizedDescription)
             return
@@ -108,30 +126,30 @@ final class CrewStore {
         self.groupId = groupId
         let base: [String: ConvexEncodable?] = ["deviceToken": token, "groupId": groupId]
 
-        subscribe(client: "crew:crew", args: base.merging(["day": CrewDay.today()]) { _, new in new }) { [weak self] (crew: CrewWire) in
+        subscribe("crew:crew", args: base.merging(["day": CrewDay.today()]) { _, new in new }) { [weak self] (crew: CrewWire) in
             self?.crewWire = crew
             self?.rebuild()
         }
 
-        subscribe(client: "frolics:today", args: base) { [weak self] (today: CrewTodayWire) in
+        subscribe("frolics:today", args: base) { [weak self] (today: CrewTodayWire) in
             self?.todayWire = today
             self?.rebuild()
         }
 
-        subscribe(client: "frolics:today", args: base.merging(["day": CrewDay.tomorrow()]) { _, new in new }) { [weak self] (tomorrow: CrewTodayWire) in
+        subscribe("frolics:today", args: base.merging(["day": CrewDay.tomorrow()]) { _, new in new }) { [weak self] (tomorrow: CrewTodayWire) in
             self?.tomorrowWire = tomorrow
             self?.rebuild()
         }
 
         for offset in 1...Self.historyDays {
             let day = CrewDay.today(-offset)
-            subscribe(client: "frolics:today", args: base.merging(["day": day]) { _, new in new }) { [weak self] (past: CrewTodayWire) in
+            subscribe("frolics:today", args: base.merging(["day": day]) { _, new in new }) { [weak self] (past: CrewTodayWire) in
                 self?.historyWire[day] = past
                 self?.rebuild()
             }
         }
 
-        subscribe(client: "whop/pay:fund", args: base) { [weak self] (fund: FundWire) in
+        subscribe("whop/pay:fund", args: base) { [weak self] (fund: FundWire) in
             self?.fundWire = fund
             self?.rebuild()
         }
@@ -139,7 +157,8 @@ final class CrewStore {
         heartbeatLoop(client: client, token: token, groupId: groupId)
     }
 
-    private func subscribe<T: Decodable>(client: ConvexClient, _ name: String, args: [String: ConvexEncodable?], apply: @escaping @MainActor (T) -> Void) {
+    private func subscribe<T: Decodable>(_ name: String, args: [String: ConvexEncodable?], apply: @escaping @MainActor (T) -> Void) {
+        guard let client else { return }
         tasks.append(
             Task { [weak self] in
                 do {
@@ -202,46 +221,52 @@ final class CrewStore {
     }
 
     func setFree(_ option: CrewFreeOption) async {
-        guard let client, let groupId, let token = identity.deviceToken else { return }
+        guard let client, let groupId, let token = identity.deviceToken else {
+            if isStandIn { showsFreeSheet = false }
+            return
+        }
         actionError = nil
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        let nowMs = Date().timeIntervalSince1970 * 1000
+        var args: [String: ConvexEncodable?] = [
+            "deviceToken": token,
+            "groupId": groupId,
+            "day": CrewDay.today(),
+        ]
+        var optimistic: CrewFreeWire
+        switch option {
+        case .tillEight:
+            let window = ["start": nowMs, "end": CrewDay.todayAt(hour: 20)]
+            args["state"] = "window"
+            args["window"] = window as [String: ConvexEncodable?]
+            optimistic = CrewFreeWire(state: "window", window: CrewWindow(start: nowMs, end: CrewDay.todayAt(hour: 20)), minutesAway: nil, updatedAt: nowMs)
+        case .afterFive:
+            let window = ["start": CrewDay.todayAt(hour: 17), "end": CrewDay.todayAt(hour: 20)]
+            args["state"] = "window"
+            args["window"] = window as [String: ConvexEncodable?]
+            optimistic = CrewFreeWire(state: "window", window: CrewWindow(start: CrewDay.todayAt(hour: 17), end: CrewDay.todayAt(hour: 20)), minutesAway: nil, updatedAt: nowMs)
+        case .notToday:
+            args["state"] = "busy"
+            optimistic = CrewFreeWire(state: "busy", window: nil, minutesAway: nil, updatedAt: nowMs)
+        }
+        let previous = crewWire
+        if let crew = crewWire {
+            crewWire = CrewWire(
+                groupName: crew.groupName,
+                members: crew.members.map { $0.isMe ? $0.with(free: optimistic) : $0 },
+                memberCount: crew.memberCount,
+                createdAt: crew.createdAt
+            )
+            rebuild()
+        }
+        showsFreeSheet = false
         do {
-            switch option {
-            case .tillEight:
-                try await client.mutation(
-                    "crew:setFree",
-                    with: [
-                        "deviceToken": token,
-                        "groupId": groupId,
-                        "day": CrewDay.today(),
-                        "state": "window",
-                        "window": ["start": Date().timeIntervalSince1970 * 1000, "end": CrewDay.todayAt(hour: 20)] as [String: ConvexEncodable?],
-                    ]
-                )
-            case .afterFive:
-                try await client.mutation(
-                    "crew:setFree",
-                    with: [
-                        "deviceToken": token,
-                        "groupId": groupId,
-                        "day": CrewDay.today(),
-                        "state": "window",
-                        "window": ["start": CrewDay.todayAt(hour: 17), "end": CrewDay.todayAt(hour: 20)] as [String: ConvexEncodable?],
-                    ]
-                )
-            case .notToday:
-                try await client.mutation(
-                    "crew:setFree",
-                    with: [
-                        "deviceToken": token,
-                        "groupId": groupId,
-                        "day": CrewDay.today(),
-                        "state": "busy",
-                    ]
-                )
-            }
-            showsFreeSheet = false
+            try await client.mutation("crew:setFree", with: args)
         } catch {
+            crewWire = previous
+            rebuild()
             actionError = Self.message(for: error)
+            showsFreeSheet = true
         }
     }
 
@@ -290,6 +315,11 @@ final class CrewStore {
         }
     }
 
+    private func absolutePhoto(_ raw: String?) -> String? {
+        guard let raw, let siteURL, let url = URL(string: raw), url.path.hasPrefix("/p/") else { return raw }
+        return siteURL + url.path
+    }
+
     private func rebuild() {
         guard let crew = crewWire else {
             if view == nil, lastError == nil { phase = .loading }
@@ -322,7 +352,7 @@ final class CrewStore {
                     id: member.userId,
                     name: member.isMe ? "You" : member.name,
                     color: member.flowerColor,
-                    photoURL: member.photoUrl,
+                    photoURL: absolutePhoto(member.photoUrl),
                     photoAsset: nil,
                     isMe: member.isMe,
                     status: status,
