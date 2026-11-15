@@ -7,6 +7,9 @@ import { PLACE_BY_SLUG } from "../places/data";
 import { pickPlace } from "../ai/pick";
 import { pickCacheKey } from "../ai/cache";
 import { rateLimiter } from "../lib/rateLimits";
+import { deleteTaps } from "../lib/core";
+import { DEFAULT_WALK_MINUTES } from "../keiki/lib";
+import { timeWindow } from "../schema";
 import {
   fallbackPlan,
   generatePlan,
@@ -17,6 +20,7 @@ import {
   validatePlan,
   type DropInput,
   type DropKind,
+  type DropOffer,
   type GenerateOptions,
   type Plan,
 } from "./engine";
@@ -30,7 +34,14 @@ declare const process: { env: Record<string, string | undefined> };
 const TWO_HOURS = 2 * 60 * 60 * 1000;
 const GROUP_LIMIT = 500;
 
-const vDropKind = v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo"));
+const vDropKind = v.union(v.literal("daily"), v.literal("weekend"), v.literal("solo"), v.literal("free"));
+
+const vFreeRun = v.object({ frolicId: v.id("frolics"), userId: v.id("users"), window: timeWindow });
+
+type FreeRun = { frolicId: Id<"frolics">; userId: Id<"users">; window: { start: number; end: number } };
+
+export const FREE_ANSWER_MS = 30 * 60 * 1000;
+const FREE_MIN_ANSWER_MS = 5 * 60 * 1000;
 
 const vHourWeather = v.object({
   timeMs: v.number(),
@@ -97,6 +108,7 @@ const vStoredPlan = v.object({
   weatherSwap: v.boolean(),
   favoredUserId: v.union(v.string(), v.null()),
   source: v.union(v.literal("model"), v.literal("scorer"), v.literal("fallback")),
+  dropId: v.optional(v.id("drops")),
 });
 
 type StoredPlan = {
@@ -119,6 +131,7 @@ type StoredPlan = {
   weatherSwap: boolean;
   favoredUserId: string | null;
   source: "model" | "scorer" | "fallback";
+  dropId?: Id<"drops">;
 };
 
 const toStored = (plan: Plan): StoredPlan => ({
@@ -130,7 +143,7 @@ const toStored = (plan: Plan): StoredPlan => ({
   whyMemoryId: plan.whyMemoryId,
   whyInputs: plan.whyInputs,
   chips: plan.chips,
-  cost: plan.costPerPersonCents,
+  cost: plan.costPerPersonCents / 100,
   costLabel: plan.costLabel,
   payUpFront: plan.payUpFront,
   startsAt: plan.startsAt,
@@ -141,6 +154,7 @@ const toStored = (plan: Plan): StoredPlan => ({
   weatherSwap: plan.weatherSwap,
   favoredUserId: plan.favoredUserId,
   source: plan.source,
+  dropId: plan.drop ? (plan.drop.dropId as Id<"drops">) : undefined,
 });
 
 function buildInput(args: {
@@ -150,6 +164,7 @@ function buildInput(args: {
   inputs: DropInputs;
   weather: DayWeather | null;
   memory: MemoryContext;
+  drops?: DropOffer[];
 }): DropInput {
   return {
     day: args.day,
@@ -161,6 +176,7 @@ function buildInput(args: {
     memory: args.memory,
     history: args.inputs.history,
     lastFrolicDay: args.inputs.lastFrolicDay,
+    drops: args.drops ?? [],
   };
 }
 
@@ -314,7 +330,8 @@ export const pickStep = internalAction({
   },
   returns: v.union(vStoredPlan, v.null()),
   handler: async (ctx, args): Promise<StoredPlan | null> => {
-    const input = buildInput(args);
+    const drops: DropOffer[] = await ctx.runQuery(internal.drops.offers, { day: args.day });
+    const input = buildInput({ ...args, drops });
     const key = pickCacheKey(input);
     const cached = process.env.OPENAI_API_KEY
       ? await ctx.runQuery(internal.plans.drop.cachedPick, { groupId: args.groupId, day: args.day, key })
@@ -344,7 +361,7 @@ export const pickStep = internalAction({
       candidates: plan.candidates,
     });
     if (!picked) return null;
-    if (picked.whySource !== "memory") {
+    if (picked.whySource !== "memory" && !picked.drop) {
       const place = PLACE_BY_SLUG.get(picked.placeSlug);
       const hit: { memoryId: string; text: string } | null = place
         ? await ctx.runAction(internal.memory.read.whyThis, { groupId: args.groupId, tags: [place.name.replace(/^the /, ""), ...place.tags.map((t) => TAG_LABEL[t])] }).catch(() => null)
@@ -419,6 +436,7 @@ async function storePlan(
     weatherSwap: args.plan.weatherSwap,
     favoredUserId: args.plan.favoredUserId ? (args.plan.favoredUserId as Id<"users">) : undefined,
     source: args.plan.source,
+    dropId: args.plan.dropId,
     generatedAt: Date.now(),
   });
 }
@@ -456,6 +474,7 @@ export const patchPlan = internalMutation({
       sunsetAt: args.plan.sunsetAt,
       weather: args.plan.weather ?? undefined,
       weatherSwap: args.plan.weatherSwap,
+      dropId: args.plan.dropId,
       weatherCheckedAt: Date.now(),
     });
     return existing._id;
@@ -498,7 +517,8 @@ export const weatherSwapStep = internalAction({
       groupId: args.groupId,
       day: args.day,
     });
-    const input = buildInput({ groupId: args.groupId, day: args.day, kind: args.kind, inputs, weather, memory });
+    const drops: DropOffer[] = await ctx.runQuery(internal.drops.offers, { day: args.day });
+    const input = buildInput({ groupId: args.groupId, day: args.day, kind: args.kind, inputs, weather, memory, drops });
     const plan = generatePlan(input);
     if (!plan || !validatePlan(plan, input)) return null;
     const stored = toStored(plan);
@@ -521,6 +541,7 @@ export const dropWorkflow = workflow
       day: v.string(),
       kind: vDropKind,
       nowMs: v.number(),
+      free: v.optional(vFreeRun),
     },
     returns: v.union(v.id("plans"), v.null()),
   })
@@ -529,6 +550,7 @@ export const dropWorkflow = workflow
       groupId: args.groupId,
       day: args.day,
       nowMs: args.nowMs,
+      free: args.free ? { userId: args.free.userId, window: args.free.window } : undefined,
     });
     const weather: DayWeather | null = await step.runAction(
       internal.plans.drop.fetchWeatherStep,
@@ -552,6 +574,14 @@ export const dropWorkflow = workflow
       { retry: false },
     );
     if (!plan) return null;
+    if (args.free) {
+      return await step.runMutation(internal.plans.drop.attachFreePlan, {
+        groupId: args.groupId,
+        day: args.day,
+        frolicId: args.free.frolicId,
+        plan,
+      });
+    }
     const planId: Id<"plans"> | null = await step.runMutation(internal.plans.drop.writePlan, {
       groupId: args.groupId,
       day: args.day,
@@ -583,20 +613,59 @@ async function existingPlanId(ctx: MutationCtx, groupId: Id<"groups">, day: stri
 
 async function writeFallbackPlan(
   ctx: MutationCtx,
-  args: { groupId: Id<"groups">; day: string; kind: DropKind },
+  args: { groupId: Id<"groups">; day: string; kind: DropKind; free?: FreeRun },
 ): Promise<Id<"plans"> | null> {
-  const existing = await existingPlanId(ctx, args.groupId, args.day, args.kind);
+  const existing = args.free ? null : await existingPlanId(ctx, args.groupId, args.day, args.kind);
   if (existing) return existing;
   const inputs: DropInputs = await ctx.runQuery(internal.plans.inputs.dropInputs, {
     groupId: args.groupId,
     day: args.day,
     nowMs: Date.now(),
+    free: args.free ? { userId: args.free.userId, window: args.free.window } : undefined,
   });
-  const input = buildInput({ ...args, inputs, weather: null, memory: EMPTY_MEMORY });
+  const input = buildInput({ groupId: args.groupId, day: args.day, kind: args.kind, inputs, weather: null, memory: EMPTY_MEMORY });
   const plan = fallbackPlan(input);
+  if (args.free) {
+    if (plan) return await attachFree(ctx, { groupId: args.groupId, day: args.day, frolicId: args.free.frolicId, plan: toStored(plan) });
+    await dropFree(ctx, args.free.frolicId);
+    return null;
+  }
   if (!plan) return null;
-  return await storePlan(ctx, { ...args, plan: toStored(plan) });
+  return await storePlan(ctx, { groupId: args.groupId, day: args.day, kind: args.kind, plan: toStored(plan) });
 }
+
+async function dropFree(ctx: MutationCtx, frolicId: Id<"frolics">): Promise<void> {
+  const frolic = await ctx.db.get("frolics", frolicId);
+  if (!frolic || frolic.status !== "open" || frolic.planId) return;
+  await deleteTaps(ctx, frolicId);
+  await ctx.db.patch("frolics", frolicId, { status: "faded" });
+}
+
+async function attachFree(
+  ctx: MutationCtx,
+  args: { groupId: Id<"groups">; day: string; frolicId: Id<"frolics">; plan: StoredPlan },
+): Promise<Id<"plans"> | null> {
+  const frolic = await ctx.db.get("frolics", args.frolicId);
+  if (!frolic || frolic.status !== "open") return null;
+  if (frolic.planId) return frolic.planId;
+  const planId = await storePlan(ctx, { groupId: args.groupId, day: args.day, kind: "free", plan: args.plan });
+  if (!planId) {
+    await dropFree(ctx, args.frolicId);
+    return null;
+  }
+  const leaveAt = args.plan.startsAt - DEFAULT_WALK_MINUTES * 60 * 1000;
+  const deadline = Math.min(frolic.deadline, Math.max(leaveAt, frolic.window.start + FREE_MIN_ANSWER_MS, Date.now() + 60 * 1000));
+  await ctx.db.patch("frolics", args.frolicId, { planId, durationMinutes: args.plan.durationMinutes, deadline });
+  if (deadline < frolic.deadline) await ctx.scheduler.runAt(deadline, internal.reveal.fade, { frolicId: args.frolicId });
+  await ctx.runMutation(internal.keiki.outbound.onFree, { frolicId: args.frolicId });
+  return planId;
+}
+
+export const attachFreePlan = internalMutation({
+  args: { groupId: v.id("groups"), day: v.string(), frolicId: v.id("frolics"), plan: vStoredPlan },
+  returns: v.union(v.id("plans"), v.null()),
+  handler: async (ctx, args): Promise<Id<"plans"> | null> => await attachFree(ctx, args),
+});
 
 export const writeFallback = internalMutation({
   args: { groupId: v.id("groups"), day: v.string(), kind: vDropKind },
@@ -608,14 +677,16 @@ export const dropComplete = internalMutation({
   args: {
     workflowId: vWorkflowId,
     result: vResultValidator,
-    context: v.object({ groupId: v.id("groups"), day: v.string(), kind: vDropKind }),
+    context: v.object({ groupId: v.id("groups"), day: v.string(), kind: vDropKind, free: v.optional(vFreeRun) }),
   },
   returns: v.union(v.id("plans"), v.null()),
   handler: async (ctx, args): Promise<Id<"plans"> | null> => {
     const failed = args.result.kind !== "success" || args.result.returnValue === null;
     const planId = failed ? await writeFallbackPlan(ctx, args.context) : null;
     await ctx.runMutation(internal.plans.drop.finishRun, {
-      ...args.context,
+      groupId: args.context.groupId,
+      day: args.context.day,
+      kind: args.context.kind,
       status: failed ? "fallback" : "done",
       error: args.result.kind === "success" ? undefined : args.result.kind,
     });
@@ -625,12 +696,12 @@ export const dropComplete = internalMutation({
 
 async function startDropFor(
   ctx: MutationCtx,
-  args: { groupId: Id<"groups">; day: string; kind: DropKind; nowMs: number },
+  args: { groupId: Id<"groups">; day: string; kind: DropKind; nowMs: number; free?: FreeRun },
 ): Promise<WorkflowId | null> {
-  if (await existingPlanId(ctx, args.groupId, args.day, args.kind)) return null;
+  if (!args.free && (await existingPlanId(ctx, args.groupId, args.day, args.kind))) return null;
   const workflowId = await start(ctx, internal.plans.drop.dropWorkflow, args, {
     onComplete: internal.plans.drop.dropComplete,
-    context: { groupId: args.groupId, day: args.day, kind: args.kind },
+    context: { groupId: args.groupId, day: args.day, kind: args.kind, free: args.free },
     startAsync: true,
   });
   await ctx.runMutation(internal.plans.drop.beginRun, {
@@ -641,6 +712,22 @@ async function startDropFor(
     candidates: [],
   });
   return workflowId;
+}
+
+export async function startFreeDrop(
+  ctx: MutationCtx,
+  args: { groupId: Id<"groups">; day: string; nowMs: number; free: FreeRun },
+): Promise<WorkflowId | null> {
+  return await startDropFor(ctx, { ...args, kind: "free" });
+}
+
+export async function openStartedFrolic(ctx: MutationCtx, groupId: Id<"groups">) {
+  const recent = await ctx.db
+    .query("frolics")
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
+    .order("desc")
+    .take(10);
+  return recent.find((f) => f.status === "open" && f.origin === "free") ?? null;
 }
 
 export const startDrop = internalMutation({
@@ -659,6 +746,7 @@ export const dailyDrop = internalMutation({
     const groups = await ctx.db.query("groups").take(GROUP_LIMIT);
     let started = 0;
     for (const group of groups) {
+      if (await openStartedFrolic(ctx, group._id)) continue;
       const workflowId = await startDropFor(ctx, { groupId: group._id, day, kind: "daily", nowMs });
       if (workflowId) started += 1;
     }

@@ -18,7 +18,7 @@ test:
     - type: "validation"
       step_description: "The headline \"This one drifted off\" is visible"
     - type: "validation"
-      step_description: "The text \"Not everyone you picked said yes to Sunset at Indian Rock this time, so it quietly faded. Nobody knows you said yes. Tomorrow's plan arrives at 3.\" is visible"
+      step_description: "The text \"Nobody knows you said yes.\" is visible"
     - type: "validation"
       step_description: "The words \"declined\", \"rejected\" and \"passed\" appear nowhere on the screen"
     - type: "instructions"

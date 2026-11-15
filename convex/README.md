@@ -33,7 +33,7 @@ Every failure is a `ConvexError` whose `data` is `{ code, message }`. Branch on 
 | `BAD_ONLY_IF` | an `onlyIf` entry is not a member of the crew, or there are more than 12 |
 | `BAD_WINDOW` | a window ends before it starts, or spans more than 24 hours |
 | `BAD_DAY` | a day is not `YYYY-MM-DD` |
-| `BAD_MINUTES` | minutes away is outside 0 to 600 |
+| `BAD_MINUTES` | minutes away is outside 0 to 600, or `forMinutes` is not a whole number from 60 to 240 |
 | `BAD_LIMIT` | a limit is out of range |
 | `NOT_GOING` | check in, eta or snap from someone not going to an `on` frolic |
 | `NOT_CHECKED_IN` | snapped before checking in |
@@ -47,6 +47,7 @@ Rate limited calls throw a `ConvexError` whose `data` is `{ kind: "RateLimited",
 | `hopIn` | token bucket, 12 per minute, burst 6, per user |
 | `join` | fixed window, 30 per hour, per invite code |
 | `createGroup` | fixed window, 10 per hour, per user |
+| `imFree` | fixed window, 3 per day, per user |
 
 ## Clock
 
@@ -113,7 +114,8 @@ Args: `{ deviceToken, groupId, day?, frolicId? }`. Returns:
   groupName: string,
   memberCount: number,
   frolic: null | {
-    frolicId, day, kind, deadline, window: { start, end }, durationMinutes,
+    frolicId, day, kind, origin: "daily" | "free", notice: string | null,
+    deadline, window: { start, end }, durationMinutes,
     plan: null | {
       title, line, why: string | null, cost: number, startsAt, sunsetAt: number | null,
       place: null | { placeId, name, lat, lng, photoUrl: string | null, neighborhood: string | null }
@@ -142,6 +144,14 @@ Pick the frolic with `frolicId` when you have one, else with `day`, else with th
 - `bloomAt` is their own bloom time, `null` when not going.
 - `hopInWaiting` is true while they sit in the hop-in pool because the frolic was full.
 - `canHopIn` is true while the frolic is `on`, the caller is not going, is not waiting in the hop-in pool, and there is room.
+
+`origin` is `"free"` for a frolic someone started with `frolics.imFree`, else `"daily"`. `notice` is `Someone in your crew is free. <title> at <time>?` while a started frolic is `open` and has its plan, else `null`. It is the same for every member, the starter included, so no screen can tell who started it.
+
+### `frolics.imFree`
+
+Args: `{ deviceToken, groupId, forMinutes }`. Returns `{ frolicId, started: boolean }`.
+
+"I'm free for the next few hours." `forMinutes` is a whole number from 60 to 240. When the crew already has an open started frolic, that one comes back with `started: false` and nothing is written. Otherwise it opens a frolic with `origin: "free"`, window `now` to `now + forMinutes`, and a deadline of 30 minutes or the window end, whichever is first; taps the caller `down` (no own window, so the tap looks like anyone else's); and starts the drop workflow with the caller's window. When the plan lands the deadline moves up to the leave time (10 minutes before the plan starts) if that is sooner, and the rest of the crew gets the notice in `frolics.today` and over Keiki. Matching, the reveal, fades and hop ins are the same as the daily drop. The daily drop skips a crew while a started frolic is open. Who started it is stored server side only and no query returns it. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `BAD_MINUTES`, `RateLimited`.
 
 ### `frolics.hopIn`
 
@@ -192,7 +202,7 @@ Runs inside the tap mutation for every tap while the frolic is `open`. The same 
 
 ### `crew.crew`
 
-Args: `{ deviceToken, groupId, day }`. Returns `{ groupName, members: Member[] }` where `Member` is `{ userId, name, color, photoUrl, isMe, free }` and `free` is `null` or `{ state: "now" | "window" | "busy", window: { start, end } | null, minutesAway: number | null, updatedAt }`.
+Args: `{ deviceToken, groupId, day }`. Returns `{ groupName, holdEnabled, holdCents, memberCount, createdAt, members: Member[] }`, where `holdEnabled` is absent until a member turns the per-crew deposit on and `holdCents` is the amount in cents (300 by default, `FROLIC_HOLD_CENTS` overrides it), `memberCount` is the number of members and `createdAt` is when the crew was made where `Member` is `{ userId, name, color, photoUrl, isMe, free }` and `free` is `null` or `{ state: "now" | "window" | "busy", window: { start, end } | null, minutesAway: number | null, updatedAt }`.
 
 `day` is `YYYY-MM-DD` in the crew's timezone; availability is stored per day.
 
@@ -260,6 +270,24 @@ Args: `{ deviceToken, frolicId, storageId, takenAt }`. Returns `null`.
 
 Needs a check-in first, else `NOT_CHECKED_IN`. Accepted from 1000 ms before `snapAt` to 120000 ms after it, else `NO_SNAP_WINDOW`. A second upload in the same window replaces the first.
 
+## Drops
+
+Local spots and student clubs sell Frolic experiences as visible Whop products. Each row in `drops` is one of them: seller, title, per-person price, capacity, the place it happens at, tags, and the days and minutes it runs. The daily plan engine scores active drops next to places, with a small boost when a drop matches the crew's taste, and a plan built from one carries `plans.dropId`. When that frolic goes on, each going friend's share is charged against the seller's own Whop product: a full share buys the seller's variant by `variant_id`, and a share the Frolic Fund made smaller is charged as an inline variant under the seller's product. The fund, split, webhook and refund paths are the same ones every paid plan uses.
+
+### `drops.forPlan`
+
+Args: `{ deviceToken, frolicId }`. Returns `null` when the frolic's plan is not a drop, else:
+
+```
+{ dropId, sellerName, hostedBy: "Hosted by Cal Kayak Club", title, priceCents, priceLabel, seatsLeft, imageKey }
+```
+
+`seatsLeft` is capacity minus friends going on any crew's `on` frolic for that drop that day, so a pending match never changes it. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`.
+
+### Seeding
+
+`npx convex run drops:seed` creates the three demo drops in the Whop sandbox company (visible products with one visible variant each) and stores their ids. It reads `WHOP_SANDBOX_API_KEY`, `WHOP_API_BASE` and `WHOP_ACCOUNT_ID`, and is idempotent: a row that already has its ids is skipped, and a missing row finds its product by metadata and its variant by `sku` before creating anything.
+
 ## Internal surface
 
 Not callable from a client. These exist so the web, iMessage and plans lanes act as a user without holding a device token.
@@ -275,9 +303,13 @@ Not callable from a client. These exist so the web, iMessage and plans lanes act
 | `snaps.addSnapAs` | `{ userId, frolicId, storageId, takenAt }` | `null` |
 | `limits.forUsers` | `{ userIds }` | `{ userId, budgetCap, energy, maxMinutes, homeBy }[]`, nulls for anyone with none |
 | `frolics.open` | `{ groupId, day, kind: "daily" \| "weekend" \| "solo", planId?, window, durationMinutes, deadline, capacity? }` | `frolicId` |
+| `frolics.imFreeAs` | `{ userId, groupId, forMinutes }` | `{ error: "planning" }` for a new start (the plan lands by text), `{ error: "already_open" }` when the crew has one open |
 | `reveal.flip` | `{ frolicId }` | `null` |
 | `reveal.fade` | `{ frolicId }` | `null` |
 | `reveal.complete` | `{ frolicId }` | `null` |
+| `drops.seed` | `{}` | `{ key, dropId, productId, planId, purchaseUrl, created }[]` |
+| `drops.offers` | `{ day }` | active drops with Whop ids and `seatsLeft`, as the plan engine reads them |
+| `drops.chargeTarget` | `{ frolicId }` | `{ productId, planId, priceCents, dropId }` or `null` |
 
 `taps.tapAs` and the other `*As` wrappers share the validation of their public counterparts. They differ only in taking `userId` instead of `deviceToken`, so a caller must already have resolved the user.
 
@@ -292,6 +324,7 @@ The iMessage lane hangs its sending off these, in `convex/keiki/outbound.ts`. Ev
 | hook | fires from | when | args |
 | --- | --- | --- | --- |
 | `onDrop` | `frolics.open` | the moment a new frolic opens | `{ frolicId }` |
+| `onFree` | `plans.drop.attachFreePlan` | a started frolic gets its plan; texts everyone but the starter | `{ frolicId }` |
 | `onReveal` | `reveal.flip` | inside the flip, before the reveal becomes readable | `{ frolicId, userIds, bloomAt }` |
 | `onLeaveNudge` | `reveal.flip` | scheduled at `startsAt - 480000` ms (8 minutes before), only when that is still in the future | `{ frolicId, leaveAt }` |
 | `onSnapWindow` | `snaps.start` | the moment a snap countdown starts | `{ frolicId, snapAt }` |
@@ -333,6 +366,7 @@ Triggering the frolics in the demo scenario:
 
 The e2e demo seed sets those four portraits and flower colours, so the app, the web page and Keiki show the same faces.
 
+<<<<<<< HEAD
 ## Garden
 
 `GET`-free public queries in `convex/garden.ts`, membership checked by `deviceToken` like `crew.crew`. Nothing here reads a tap.
@@ -353,3 +387,6 @@ The e2e demo seed sets those four portraits and flower colours, so the app, the 
 **`garden.setMine({ deviceToken, frolicId, storageId?, caption? })`** is how a person adds their own photo memory or caption to a frolic they went to. It writes to `snaps` as that person, so their photo unlocks the crew's photos for them, and the caption replaces the generated one for their snap. Rules: you must be in the crew, the frolic must not have faded, and you must have been going. A caption is 1 to 80 characters with no em dash and no exclamation mark. Calling it again updates the same snap. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `NOT_FOUND`, `NOT_GOING`, `BAD_CAPTION`, `NO_PHOTO`.
 
 **`snaps.forFrolic({ deviceToken, frolicId })`** returns `[{ userId, url, takenAt, mine }]` for the caller's latest snap window, and `[]` until the caller has added their own snap. That empty array is the mock's rule: you see everyone's shot once you add yours. `url` is null for a doc whose file is gone. Errors: `UNKNOWN_DEVICE`, `NOT_FOUND`, `NOT_A_MEMBER`.
+=======
+**`crew.setHold({ deviceToken, groupId, enabled })`** turns the per-crew deposit on or off for everyone in the crew. It is off by default and any member can set it. Returns null. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`.
+>>>>>>> cbc2340 (Add a per-crew deposit toggle, off by default)

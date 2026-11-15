@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../convex/schema";
 import { internal } from "../../convex/_generated/api";
+import { LEASE_MS } from "../../convex/memory/events";
 import { createFake } from "../../convex/memory/fakeSupermemory";
 import { groupNamespace, personalNamespace } from "../../convex/memory/mapping";
 
@@ -35,6 +36,19 @@ async function seed() {
 const flush = (t: Awaited<ReturnType<typeof seed>>["t"], eventId: never) => t.action(internal.memory.ingest.flushEvent, { eventId });
 
 describe("ingest", () => {
+  test("a claimed event whose send dies is retried after the lease without a cron", async () => {
+    const { t, groupId, maya } = await seed();
+    const { eventId } = await t.mutation(internal.memory.events.recordEvent, { eventKey: "tap:lease", kind: "tap", groupId, userId: maya, payload: { title: "Boba" } });
+    const claimedAt = Date.now();
+    expect(await t.mutation(internal.memory.events.claimEvent, { eventId })).not.toBeNull();
+    const pending = await t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter(
+        (s) => s.name.includes("flushEvent") && s.state.kind === "pending" && s.scheduledTime >= claimedAt + LEASE_MS,
+      ),
+    );
+    expect(pending).toHaveLength(1);
+  });
+
   test("recordEvent is idempotent by eventKey", async () => {
     const { t, maya, groupId } = await seed();
     const a = await t.mutation(internal.memory.events.recordEvent, { eventKey: "tap:1", kind: "tap", groupId, userId: maya, payload: { title: "Boba" } });

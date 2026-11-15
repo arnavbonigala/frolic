@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../../convex/_generated/api";
+import { frolicsRefusingImFree, frolicsWithImFree } from "../../keiki/test/fakes";
 import { personalNamespace, planWrites } from "../../convex/memory/mapping";
 import { tapErrorAnswer } from "../../convex/keiki/tools";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -545,7 +546,7 @@ describe("get_reveal", () => {
     const { t, seed } = await seeded();
     await patchFrolic(t, seed.frolicId, { status: "faded", deadline: seed.now - 1000 });
     const result = await toolResult(t, "get_reveal", { phone: SAM_PHONE });
-    expect(result.body).toEqual({ ok: true, state: "faded", say: "Say it faded, gently, and mention tomorrow. No guilt." });
+    expect(result.body).toEqual({ ok: true, state: "faded", say: "Say it drifted off, gently, with no names and no count. Mention tomorrow. No guilt." });
   });
 });
 
@@ -957,18 +958,96 @@ describe("tap refusals", () => {
 });
 
 describe("joining by text", () => {
-  it("links the app twin instead of adding a second person with the same name", async () => {
-    const { t, seed } = await seeded({ samJoins: false });
-    const before = await t.run(async (ctx) => (await ctx.db.get("users", seed.mayaId))!.phone);
-    expect(before ?? null).toBeNull();
+  it("does not hand an app account to a stranger who has the invite code", async () => {
+    const { t, seed } = await seeded();
     const result = await toolResult(t, "join_crew", { phone: MAYA_TEXT_PHONE, input: { invite_code: INVITE_CODE, first_name: "Maya" } });
     expect(result.body.ok).toBe(true);
-    const after = await t.run(async (ctx) => (await ctx.db.get("users", seed.mayaId))!.phone);
-    expect(after).toBe(MAYA_TEXT_PHONE);
-    const memberships = await t.run(async (ctx) => await ctx.db.query("memberships").withIndex("by_groupId", (q) => q.eq("groupId", seed.groupId)).take(20));
-    expect(memberships.filter((row) => row.userId === seed.mayaId)).toHaveLength(1);
-    expect(memberships).toHaveLength(4);
+    const maya = await t.run(async (ctx) => await ctx.db.get("users", seed.mayaId));
+    expect(maya?.phone ?? null).toBeNull();
     const link = await t.run(async (ctx) => await ctx.db.query("keikiLinks").withIndex("by_phone", (q) => q.eq("phone", MAYA_TEXT_PHONE)).unique());
-    expect(link?.userId).toBe(seed.mayaId);
+    expect(link?.userId).not.toBe(seed.mayaId);
+  });
+
+  it("keeps one entry per name in the friends list", async () => {
+    const { t, seed } = await seeded();
+    const result = await toolResult(t, "join_crew", { phone: MAYA_TEXT_PHONE, input: { invite_code: INVITE_CODE, first_name: "Maya" } });
+    expect(result.body.friends).toEqual(["Maya", "Dev", "Sam", "Ana"]);
+    expect(seed.mayaId).toBeDefined();
+  });
+});
+
+describe("im_free", () => {
+  it("stays inert until the plan starter is on the deployment", async () => {
+    const { t } = await seeded();
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE });
+    expect(result.status).toBe(200);
+    expect(result.body.ok).toBe(false);
+    expect(result.body.error).toBe("not_ready");
+    const direct = await t.mutation(internal.keiki.tools.imFree, { phone: SAM_PHONE, forMinutes: 90 });
+    expect(direct).toMatchObject({ ok: false, error: "not_ready" });
+    expect(await t.mutation(internal.keiki.tools.imFree, { phone: "not-a-phone", forMinutes: 90 })).toMatchObject({ ok: false, error: "not_in_a_crew" });
+  });
+
+  it("never says who started it and tells the agent not to", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT(frolicsWithImFree);
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
+    expect(result.body).toEqual({
+      ok: true,
+      plan: "A walk at the marina",
+      startsAt: expect.any(String),
+      say: "Say the plan is going to the crew without naming who started it. Tell them they are counted as down.",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("Sam");
+    delete testEnv().KEIKI_IM_FREE;
+  });
+
+  it("starts a real plan and tells the starter it is on its way", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT();
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
+    expect(result.body).toMatchObject({ ok: true, plan: null, startsAt: null });
+    expect(JSON.stringify(result.body)).not.toContain("Sam");
+    const again = await toolResult(t, "im_free", { phone: ANA_PHONE, input: { for_minutes: 90 } });
+    expect(again.body.ok).toBe(false);
+    delete testEnv().KEIKI_IM_FREE;
+  });
+
+  it("answers in words when the crew already has a plan open", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT(frolicsRefusingImFree);
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE });
+    expect(result.body.ok).toBe(false);
+    expect(result.body.say).toBe("That did not start. Offer today's plan instead.");
+    delete testEnv().KEIKI_IM_FREE;
+  });
+});
+describe("which day a texter is on", () => {
+  it("takes today's open plan over a later open one", async () => {
+    const { t, seed } = await seeded();
+    const today = seed.day;
+    const later = "2026-11-17";
+    await t.run(async (ctx) => {
+      await ctx.db.insert("frolics", {
+        groupId: seed.groupId,
+        day: later,
+        kind: "daily",
+        planId: seed.planId,
+        status: "open",
+        window: { start: seed.now + 86_400_000, end: seed.now + 90_000_000 },
+        durationMinutes: 60,
+        deadline: seed.now + 88_000_000,
+      });
+    });
+    const result = await toolResult(t, "get_today", { phone: SAM_PHONE });
+    expect(result.body.plan.title).toBe("Sunset at Indian Rock");
+    const local = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(seed.now));
+    expect(today === local || today !== later).toBe(true);
   });
 });

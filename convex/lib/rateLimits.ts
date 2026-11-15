@@ -1,4 +1,4 @@
-import { HOUR, MINUTE, RateLimiter } from "@convex-dev/rate-limiter";
+import { DAY, HOUR, MINUTE, RateLimiter } from "@convex-dev/rate-limiter";
 import { components } from "../_generated/api";
 
 export const rateLimiter = new RateLimiter(components.rateLimiter, {
@@ -6,6 +6,7 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   hopIn: { kind: "token bucket", rate: 12, period: MINUTE, capacity: 6 },
   join: { kind: "fixed window", rate: 30, period: HOUR },
   createGroup: { kind: "fixed window", rate: 10, period: HOUR },
+  imFree: { kind: "fixed window", rate: 3, period: DAY },
   aiGroup: { kind: "fixed window", rate: 20, period: HOUR },
   aiGlobal: { kind: "token bucket", rate: 200, period: HOUR, capacity: 40 },
 });

@@ -289,6 +289,7 @@ describe("dead ends", () => {
     const t = makeT();
     const crew = await setupCrew(t, ["Maya", "Dev"], { deadlineIn: -1000 });
     const link = await shareLink(t, crew);
+    await t.mutation(internal.reveal.fade, { frolicId: crew.frolicId });
     const view = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Priya") });
     expect(view.phase).toBe("drifted");
     const result = await t.mutation(api.web.share.join, {

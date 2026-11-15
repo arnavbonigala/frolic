@@ -25,7 +25,7 @@ test:
     - type: "validation"
       step_description: "The card shows \"Why this:\" followed by \"you're into sunsets, it's free, and the sky's clear until dark.\""
     - type: "validation"
-      step_description: "Two buttons are visible: \"I'm down\" and \"Only with…\""
+      step_description: "Two buttons are visible: \"I'm down\" and \"Only if…\""
     - type: "validation"
       step_description: "The line \"Nobody sees you're down unless they are too\" is visible"
     - type: "validation"
