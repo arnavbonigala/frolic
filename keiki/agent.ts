@@ -5,6 +5,7 @@ import { AgentKit, defineTool } from "@onkeiki/agents";
 import type { ToolPolicy } from "@onkeiki/agents";
 
 export const AGENT_ID = process.env.KEIKI_AGENT_ID ?? "44277a5e-b81d-4bb6-92d2-6c9c0eec47b3";
+export const IM_FREE = process.env.KEIKI_IM_FREE === "1" || process.env.KEIKI_IM_FREE === "true";
 export const TOOLS_BASE_URL = (process.env.FROLIC_TOOLS_BASE_URL ?? process.env.SHARED_CONVEX_SITE_URL ?? "").replace(/\/$/, "");
 export const DEDICATED_LINE = ["1", "true"].includes((process.env.KEIKI_DEDICATED_LINE ?? "").trim().toLowerCase());
 
@@ -66,6 +67,9 @@ export const tools = [
   webhook("submit_snap", "Add the photo they just sent (its attachment_id) to the group snap.", Schema.Struct({ attachment_id: Schema.String })),
   webhook("pay_deposit", depositDescription, none, DEDICATED_LINE ? depositPolicy : undefined),
   webhook("remember", "Save a preference they state to their memory.", Schema.Struct({ text: Schema.String })),
+  ...(IM_FREE
+    ? [webhook("im_free", "They are free now and want a plan started today. Never say in a group or to anyone else that they started it.", Schema.Struct({ for_minutes: Schema.optional(Schema.Number) }))]
+    : []),
   webhook("pause", "Stop or restart Frolic texts. paused defaults to true.", Schema.Struct({ paused: Schema.optional(Schema.Boolean) })),
   ...(DEDICATED_LINE
     ? [webhook("link_group_chat", "In a group chat only: connect this chat to a crew with its invite code, so the drop and the reveal post here.", Schema.Struct({ invite_code: Schema.String }))]

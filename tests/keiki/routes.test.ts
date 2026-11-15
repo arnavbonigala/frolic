@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../../convex/_generated/api";
+import { frolicsRefusingImFree, frolicsWithImFree } from "../../keiki/test/fakes";
 import { personalNamespace, planWrites } from "../../convex/memory/mapping";
 import { tapErrorAnswer } from "../../convex/keiki/tools";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -970,5 +971,45 @@ describe("joining by text", () => {
     expect(memberships).toHaveLength(4);
     const link = await t.run(async (ctx) => await ctx.db.query("keikiLinks").withIndex("by_phone", (q) => q.eq("phone", MAYA_TEXT_PHONE)).unique());
     expect(link?.userId).toBe(seed.mayaId);
+  });
+});
+
+describe("im_free", () => {
+  it("stays inert until the plan starter is on the deployment", async () => {
+    const { t } = await seeded();
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE });
+    expect(result.status).toBe(200);
+    expect(result.body.ok).toBe(false);
+    expect(result.body.error).toBe("not_ready");
+    const direct = await t.mutation(internal.keiki.tools.imFree, { phone: SAM_PHONE, forMinutes: 90 });
+    expect(direct).toMatchObject({ ok: false, error: "not_ready" });
+    expect(await t.mutation(internal.keiki.tools.imFree, { phone: "not-a-phone", forMinutes: 90 })).toMatchObject({ ok: false, error: "not_in_a_crew" });
+  });
+
+  it("never says who started it and tells the agent not to", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT(frolicsWithImFree);
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE, input: { for_minutes: 90 } });
+    expect(result.body).toEqual({
+      ok: true,
+      plan: "A walk at the marina",
+      startsAt: expect.any(String),
+      say: "Say the plan is going to the crew without naming who started it. Tell them they are counted as down.",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("Sam");
+    delete testEnv().KEIKI_IM_FREE;
+  });
+
+  it("answers in words when the crew already has a plan open", async () => {
+    testEnv().KEIKI_IM_FREE = "1";
+    vi.setSystemTime(new Date(nowFor()));
+    const t = makeT(frolicsRefusingImFree);
+    await seedCrew(t);
+    const result = await toolResult(t, "im_free", { phone: SAM_PHONE });
+    expect(result.body.ok).toBe(false);
+    expect(result.body.say).toBe("That did not start. Offer today's plan instead.");
+    delete testEnv().KEIKI_IM_FREE;
   });
 });

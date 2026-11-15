@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   CHECKIN_RADIUS_METERS,
+  clockTime,
   DEFAULT_WALK_MINUTES,
   crewMembers,
   crewOf,
@@ -21,6 +22,8 @@ import {
   planDetails,
 } from "./lib";
 import { SNAP_WINDOW_MS } from "../snaps";
+import { keikiEnv } from "./env";
+import { imFreeAs } from "./imFreeCall";
 import {
   addSnapAs,
   checkInAs,
@@ -390,6 +393,31 @@ export const depositTarget = internalQuery({
       return { ok: false as const, body: { ok: false, error: "already_paid", say: "Their deposit is already in." } };
     }
     return { ok: true as const, userId: me.user._id, frolicId: frolic._id, amountCents: plan?.amountCents ?? null };
+  },
+});
+
+export const imFree = internalMutation({
+  args: { phone: v.string(), forMinutes: v.number() },
+  handler: async (ctx, { phone, forMinutes }) => {
+    const me = await who(ctx, phone);
+    if (!me) return notMember;
+    if (!keikiEnv().imFree) return { ok: false, error: "not_ready", say: "Starting a plan from a text is not on yet. Offer today's plan instead." };
+    const minutes = Math.max(30, Math.min(480, Math.round(forMinutes)));
+    let result: { planTitle?: string; startsAt?: number; error?: string } | null;
+    try {
+      result = await ctx.runMutation(imFreeAs, { userId: me.user._id, groupId: me.group._id, forMinutes: minutes });
+    } catch {
+      return { ok: false, error: "not_ready", say: "Starting a plan from a text did not go through. Offer today's plan instead." };
+    }
+    if (!result || result.error || result.planTitle === undefined || result.startsAt === undefined) {
+      return { ok: false, error: result?.error ?? "not_ready", say: "That did not start. Offer today's plan instead." };
+    }
+    return {
+      ok: true,
+      plan: result.planTitle,
+      startsAt: clockTime(result.startsAt, me.group.timezone),
+      say: "Say the plan is going to the crew without naming who started it. Tell them they are counted as down.",
+    };
   },
 });
 

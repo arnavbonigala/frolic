@@ -219,6 +219,15 @@ that is `on`, then the newest of any status. A closed plan seeded for a later da
 shadow today's open one, and once the next plan opens it becomes the one texts describe, matching
 what the phones show.
 
+### Starting a plan from a text
+
+A texter who says they are free can start today's plan: the `im_free` tool calls
+`internal.frolics.imFreeAs({ userId, groupId, forMinutes })` through the same actor path as every
+other tool (requested in handoffs/schema-requests/FROL-9.md). It is inert until `KEIKI_IM_FREE` is
+set on the deployment and the agent sync lists the tool, and it answers "not live yet" rather than
+failing if the mutation is absent. The reply the starter gets tells the agent to describe the plan
+without naming who started it, and the notice the crew receives names nobody.
+
 ## 6. Deep features, ranked for the shared line
 
 Ranked by what the demo and the product get from each one, given that the line carries DMs only.
