@@ -72,8 +72,21 @@ struct GardenScreen: View {
 
     private func ready(_ overview: GardenOverview) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            GardenBed(countLine: overview.countLine, sinceLine: overview.sinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { $0.going.first?.color ?? .lilac })
+            if let card = store.onThisDay {
+                GardenOnThisDayCard(card: card)
+                    .padding(.top, 16)
+            }
+            GardenBed(countLine: overview.countLine, sinceLine: overview.sinceLine, yourFlower: overview.youWent, colors: overview.memories.prefix(14).reversed().map { $0.going.first?.color ?? .lilac }, health: overview.health?.state ?? .fine)
                 .padding(.top, 16)
+            if let health = overview.health {
+                GardenHealthRow(health: health) {
+                    NotificationCenter.default.post(name: .gardenImFree, object: nil)
+                    toast = "Your crew will see you're free"
+                }
+            }
+            if let milestone = overview.milestone {
+                GardenMilestoneRow(milestone: milestone)
+            }
             Button {
                 showsStory = true
             } label: {
@@ -87,6 +100,9 @@ struct GardenScreen: View {
             if let fund = overview.fund {
                 GardenFundRow(title: fund.frolicTitle, line: fund.line)
                     .padding(.top, 12)
+            }
+            if let collection = overview.collection {
+                GardenCollectionShelf(collection: collection)
             }
             SectionHeader(title: "Frolics")
             VStack(spacing: 10) {

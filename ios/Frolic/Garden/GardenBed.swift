@@ -5,6 +5,7 @@ struct GardenBed: View {
     var sinceLine: String
     var yourFlower: Bool
     var colors: [FlowerColor] = []
+    var health: GardenHealthState = .fine
 
     @ScaledMetric(relativeTo: .title3) private var countSize: CGFloat = 20
     @ScaledMetric(relativeTo: .footnote) private var captionSize: CGFloat = 13
@@ -13,7 +14,8 @@ struct GardenBed: View {
         self.init(countLine: "\(count) frolics", sinceLine: caption, yourFlower: false, colors: [.pink, .marigold, .cobalt, .moss, .lilac, .tomato, .pink, .moss, .marigold, .cobalt, .lilac, .tomato])
     }
 
-    init(countLine: String, sinceLine: String, yourFlower: Bool, colors: [FlowerColor]) {
+    init(countLine: String, sinceLine: String, yourFlower: Bool, colors: [FlowerColor], health: GardenHealthState = .fine) {
+        self.health = health
         self.countLine = countLine
         self.sinceLine = sinceLine
         self.yourFlower = yourFlower
@@ -37,6 +39,9 @@ struct GardenBed: View {
             HStack(alignment: .bottom, spacing: -10) {
                 ForEach(colors.indices, id: \.self) { index in
                     FlowerView(color: colors[index], radius: 13, stem: stems[index % stems.count], swayDelay: Double(index) * 0.4)
+                        .scaleEffect(health.flowerScale, anchor: .bottom)
+                        .saturation(health.saturation)
+                        .rotationEffect(.degrees(health.droop * (index.isMultiple(of: 2) ? 1 : -1) * (0.6 + Double(index % 3) * 0.25)), anchor: .bottom)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)

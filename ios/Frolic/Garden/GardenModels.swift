@@ -57,6 +57,42 @@ struct GardenOverview: Decodable, Hashable {
     let taste: GardenTasteLine?
     let fund: GardenFundLine?
     let memories: [GardenMemoryRow]
+    var health: GardenHealth? = nil
+    var collection: GardenCollection? = nil
+    var milestone: GardenMilestone? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case groupName, youWent, count, sinceLine, weekLine, taste, fund, memories, health, collection, milestone
+    }
+
+    init(groupName: String, youWent: Bool, count: Double, sinceLine: String, weekLine: String, taste: GardenTasteLine?, fund: GardenFundLine?, memories: [GardenMemoryRow], health: GardenHealth? = nil, collection: GardenCollection? = nil, milestone: GardenMilestone? = nil) {
+        self.groupName = groupName
+        self.youWent = youWent
+        self.count = count
+        self.sinceLine = sinceLine
+        self.weekLine = weekLine
+        self.taste = taste
+        self.fund = fund
+        self.memories = memories
+        self.health = health
+        self.collection = collection
+        self.milestone = milestone
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        groupName = try c.decode(String.self, forKey: .groupName)
+        youWent = try c.decode(Bool.self, forKey: .youWent)
+        count = try c.decode(Double.self, forKey: .count)
+        sinceLine = try c.decode(String.self, forKey: .sinceLine)
+        weekLine = try c.decode(String.self, forKey: .weekLine)
+        taste = try? c.decodeIfPresent(GardenTasteLine.self, forKey: .taste)
+        fund = try? c.decodeIfPresent(GardenFundLine.self, forKey: .fund)
+        memories = try c.decode([GardenMemoryRow].self, forKey: .memories)
+        health = try? c.decodeIfPresent(GardenHealth.self, forKey: .health)
+        collection = try? c.decodeIfPresent(GardenCollection.self, forKey: .collection)
+        milestone = try? c.decodeIfPresent(GardenMilestone.self, forKey: .milestone)
+    }
 
     var flowerCount: Int { Int(count) }
 

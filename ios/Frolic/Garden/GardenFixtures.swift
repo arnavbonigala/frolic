@@ -41,8 +41,35 @@ enum GardenFixtures {
             weekLine: weekLine,
             taste: nil,
             fund: GardenFundLine(line: "The Frolic Fund covered $8 at Kayaks at the Marina.", frolicTitle: "Kayaks at the Marina"),
-            memories: memories
+            memories: memories,
+            health: health(route: route),
+            collection: collection,
+            milestone: GardenMilestone(line: "Three more frolics until your tenth flower.")
         )
+    }
+
+    private static let collection = GardenCollection(varieties: [
+        GardenVariety(key: "golden-poppy", name: "Golden poppy", count: 3, unlocked: true, hint: nil),
+        GardenVariety(key: "lupine", name: "Lupine", count: 1, unlocked: true, hint: nil),
+        GardenVariety(key: "night-jasmine", name: "Night jasmine", count: 0, unlocked: false, hint: "Grows after a late-night food frolic"),
+        GardenVariety(key: "sweet-pea", name: "Sweet pea", count: 0, unlocked: false, hint: "Grows after a game night"),
+        GardenVariety(key: "daisy", name: "Daisy", count: 2, unlocked: true, hint: nil),
+        GardenVariety(key: "ranunculus", name: "Ranunculus", count: 0, unlocked: false, hint: "Grows after a paid drop"),
+    ])
+
+    private static func health(route: E2ERoute) -> GardenHealth {
+        let state = GardenHealthState(rawValue: route.query["health"] ?? "fine") ?? .fine
+        switch state {
+        case .thriving: return GardenHealth(state: .thriving, daysSince: 1, line: "Your garden is glowing. Two frolics this week.", cta: nil)
+        case .fine: return GardenHealth(state: .fine, daysSince: 3, line: "Your garden is doing well.", cta: nil)
+        case .thirsty: return GardenHealth(state: .thirsty, daysSince: 7, line: "Your garden would love a frolic soon.", cta: "I'm free")
+        case .wilting: return GardenHealth(state: .wilting, daysSince: 14, line: "It has been a while. The flowers are resting, and they never wilt for good.", cta: "I'm free")
+        }
+    }
+
+    static func onThisDay(route: E2ERoute?) -> GardenOnThisDay? {
+        guard route?.query["otd"] != nil else { return nil }
+        return GardenOnThisDay(frolicId: "fixture-1", title: "Cheese Board pizza", line: "Maya, Dev and Jordan, one week ago today.", dateLine: "1 WEEK AGO TODAY", heroKey: "plan-late-night-food", photoUrl: nil)
     }
 
     static func memory(row: GardenMemoryRow, route: E2ERoute?) -> GardenMemory? {
