@@ -194,7 +194,7 @@ struct MemoryDetailScreen: View {
                                 Image(systemName: "plus")
                                     .font(.system(size: 22, weight: .bold))
                             }
-                            Text("Add a photo")
+                            Text("Add your photo")
                                 .font(.system(size: 13, weight: .semibold))
                         }
                         .foregroundStyle(FrolicColor.ink)
@@ -203,7 +203,7 @@ struct MemoryDetailScreen: View {
                     }
                     .disabled(uploading)
                     .accessibilityIdentifier("memory.addPhoto")
-                    .accessibilityLabel("Add a photo")
+                    .accessibilityLabel("Add your photo")
                 }
                 ForEach(memory.photos) { photo in
                     GardenRemoteImage(url: photo.url, heroKey: photo.heroKey ?? memory.heroKey)
@@ -249,6 +249,7 @@ struct MemoryDetailScreen: View {
                 "frolicId": row.frolicId,
                 "storageId": uploaded.storageId,
             ])
+            toast = "Your photo is in. Your crew sees it now."
         } catch {
             toast = "Couldn't add that photo. Try again."
         }
