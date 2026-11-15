@@ -462,8 +462,8 @@ final class TodayStore {
     func openPayPage() {
         guard let frolicId = frolic?.frolicId else { return }
         if isFixture {
-            sheet = nil
             payPage = TodayWebPage(url: URL(string: "https://whop.com")!)
+            sheet = nil
             return
         }
         guard let client, let token = identity.deviceToken as String? else { return }
@@ -477,8 +477,8 @@ final class TodayStore {
                     self.sheet = nil
                     return
                 }
-                self.sheet = nil
                 self.payPage = TodayWebPage(url: url)
+                self.sheet = nil
             } catch {
                 self?.payBusy = false
                 self?.fail(error)
@@ -486,8 +486,13 @@ final class TodayStore {
         })
     }
 
-    func closePayPage() {
+    var presenting: Bool {
+        payPage != nil || sheet != nil
+    }
+
+    func closePresentation() {
         payPage = nil
+        sheet = nil
     }
 
     func closeShare() {
@@ -769,6 +774,12 @@ final class TodayStore {
                 try? await Task.sleep(nanoseconds: 450_000_000)
                 self?.sheet = sheet
                 if sheet == .share { self?.prepareShare() }
+            })
+        }
+        if let page = fixture.payPage {
+            tasks.append(Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 450_000_000)
+                self?.payPage = page
             })
         }
     }

@@ -6,6 +6,7 @@ struct TodayFixture {
     var crew: CrewView
     var payment: TodayPayment?
     var sheet: TodayStore.Sheet?
+    var payPage: TodayWebPage?
 
     init?(route: E2ERoute) {
         guard route.screen == "today" else { return nil }
@@ -91,6 +92,7 @@ struct TodayFixture {
         crew = CrewView(groupName: "Sunset Crew", members: members, holdEnabled: query["hold"] != "off")
         payment = Self.payment(query["pay"])
         sheet = Self.sheet(query["sheet"])
+        payPage = query["paypage"] == nil ? nil : TodayWebPage(url: URL(string: "https://whop.com")!)
     }
 
     static func tomorrow() -> TodayView {
