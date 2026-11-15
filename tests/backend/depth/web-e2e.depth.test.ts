@@ -726,7 +726,7 @@ describe("the e2e admin surface", () => {
       cost: 8,
       payUpFront: true,
       duration: 90,
-      day: "2026-11-16",
+      day: "2026-11-15",
     });
 
     for (const who of ["dev", "priya"] as const) {
@@ -754,9 +754,13 @@ describe("the e2e admin surface", () => {
     const rock = await t.query(api.frolics.today, {
       deviceToken: body.users.jordan.deviceToken,
       groupId: body.groupId,
-      frolicId: body.frolicId,
+      frolicId: advanced,
     });
-    expect({ phase: rock.phase, reveal: rock.reveal }).toEqual({ phase: "open", reveal: null });
+    expect({ phase: rock.phase, me: rock.reveal?.me.going, going: rock.reveal?.going.length }).toEqual({
+      phase: "on",
+      me: false,
+      going: 2,
+    });
     expect(await t.mutation(internal.e2e.admin.advance, { run: "run-1" })).toBe(advanced);
   });
 
