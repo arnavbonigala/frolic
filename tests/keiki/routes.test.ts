@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../../convex/_generated/api";
+import { personalNamespace, planWrites } from "../../convex/memory/mapping";
 import { tapErrorAnswer } from "../../convex/keiki/tools";
 import type { Id } from "../../convex/_generated/dataModel";
 import { ANA_PHONE, INVITE_CODE, SAM_PHONE, linkChat, linkPhone, nowFor, seedCrew } from "../../keiki/test/seed";
@@ -328,6 +329,7 @@ describe("get_member", () => {
       crew: "Sunset Crew",
       friends: ["Maya", "Dev", "Ana"],
       paused: false,
+      crewTaste: { loves: [], keepsPassingOn: [] },
     });
   });
 
@@ -774,6 +776,26 @@ describe("remember", () => {
     const { t } = await seeded();
     const result = await toolResult(t, "remember", { phone: SAM_PHONE, input: { text: "  Maya hates hikes.  " } });
     expect(result.body).toEqual({ ok: true, remembered: "Maya hates hikes." });
+  });
+
+  it("writes the note to the same personal memory the app uses", async () => {
+    const { t, seed } = await seeded();
+    await toolResult(t, "remember", { phone: SAM_PHONE, input: { text: "Sam is vegetarian." } });
+    const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ kind: "limit", userId: seed.samId, source: "imessage", payload: { text: "Sam is vegetarian." } });
+    const writes = planWrites(events[0].eventKey, { kind: events[0].kind, groupId: events[0].groupId, userId: events[0].userId, payload: events[0].payload });
+    expect(writes.writes.map((w) => w.namespace)).toEqual([personalNamespace(seed.samId)]);
+  });
+
+  it("records an iMessage pass as a personal skip in the same namespace", async () => {
+    const { t, seed } = await seeded();
+    await toolResult(t, "tap_pass", { phone: SAM_PHONE });
+    const events = await t.run(async (ctx) => await ctx.db.query("memoryEvents").collect());
+    const skip = events.find((e) => e.kind === "skip");
+    expect(skip).toMatchObject({ userId: seed.samId, source: "imessage" });
+    const writes = planWrites(skip!.eventKey, { kind: skip!.kind, groupId: skip!.groupId, userId: skip!.userId, payload: skip!.payload });
+    expect(writes.writes.map((w) => w.namespace)).toEqual([personalNamespace(seed.samId)]);
   });
 
   it("refuses an empty note", async () => {

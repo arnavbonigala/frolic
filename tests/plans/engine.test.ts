@@ -244,6 +244,18 @@ describe("generatePlan", () => {
     expect(slugs).not.toContain("plentea");
   });
 
+  test("a suppressed tag blocks places led by it, not every place that mentions it", () => {
+    const fans = [person("maya", { taste: ["boba"] }), person("dev", { taste: ["boba"] })];
+    const input = drop({ attendees: fans, memory: memory({ suppressed: ["boba"] }) });
+    const slugs = rankCandidates(input).map((c) => c.place.slug);
+    expect(slugs).not.toContain("plentea");
+    expect(slugs).not.toContain("asha-tea-house");
+    const lateNight = rankCandidates(input).filter((c) => c.place.tags.includes("late_night_food"));
+    expect(lateNight.length).toBeGreaterThan(0);
+    const lateOnly = rankCandidates(drop({ attendees: fans, memory: memory({ suppressed: ["late_night_food"] }) }));
+    expect(lateOnly.some((c) => c.place.tags.includes("late_night_food") && c.place.tags[0] !== "late_night_food")).toBe(true);
+  });
+
   test("works without weather, using the computed sunset", () => {
     const plan = generatePlan(drop({ weather: null }))!;
     expect(plan.weather).toBeNull();

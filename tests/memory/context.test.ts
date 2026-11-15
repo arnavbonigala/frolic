@@ -33,11 +33,9 @@ describe("context", () => {
     expect(ctx.pastNights).toEqual([{ id: "m1", text: "Two friends went to Indian Rock (sunset).", placeId: "p1", date: "2026-10-12" }]);
   });
 
-  test("buildContext survives a Supermemory failure with empty nights", async () => {
+  test("buildContext lets a Supermemory failure through so the caller can fall back", async () => {
     const client = fake({ search: vi.fn().mockRejectedValue(new Error("down")) });
-    const ctx = await buildContext(client, "n", [{ tag: "sunset", liked: 1, skipped: 0 }]);
-    expect(ctx.pastNights).toEqual([]);
-    expect(ctx.likedTags).toEqual(["sunset"]);
+    await expect(buildContext(client, "n", [{ tag: "sunset", liked: 1, skipped: 0 }])).rejects.toThrow("down");
   });
 
   test("findWhyThis quotes a real memory that mentions the tag", async () => {
@@ -49,6 +47,16 @@ describe("context", () => {
     });
     const why = await findWhyThis(client, "n", ["sunset"]);
     expect(why).toEqual({ memoryId: "b", text: "Two friends went to Marina (sunset).", because: ["Sunset is the crew's favorite."] });
+  });
+
+  test("findWhyThis prefers the most recent matching night", async () => {
+    const client = fake({
+      search: vi.fn().mockResolvedValue([
+        { id: "old", memory: "Two friends went to Marina (sunset).", metadata: { day: "2026-10-01" } },
+        { id: "new", memory: "Two friends went to Indian Rock (sunset).", metadata: { day: "2026-11-08" } },
+      ]),
+    });
+    expect((await findWhyThis(client, "n", ["sunset"]))?.memoryId).toBe("new");
   });
 
   test("findWhyThis returns null when nothing matches", async () => {

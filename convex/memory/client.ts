@@ -54,11 +54,15 @@ export class SupermemoryError extends Error {
 }
 
 const BASE = "https://api.supermemory.ai";
+export const READ_TIMEOUT_MS = 1500;
+export const WRITE_TIMEOUT_MS = 8000;
 
 export function createClient(apiKey: string, fetchImpl: typeof fetch = fetch, inlineRetries = 2, sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))): MemoryClient {
-  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function call<T>(method: string, path: string, body?: unknown, read = false): Promise<T> {
     let last: SupermemoryError | undefined;
-    for (let attempt = 0; attempt <= inlineRetries; attempt++) {
+    const retries = read ? 0 : inlineRetries;
+    const timeoutMs = read ? READ_TIMEOUT_MS : WRITE_TIMEOUT_MS;
+    for (let attempt = 0; attempt <= retries; attempt++) {
       if (attempt > 0) await sleep(250 * 2 ** (attempt - 1));
       let res: Response;
       try {
@@ -66,6 +70,7 @@ export function createClient(apiKey: string, fetchImpl: typeof fetch = fetch, in
           method,
           headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
           body: body === undefined ? undefined : JSON.stringify(body),
+          signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (e) {
         last = new SupermemoryError(0, "network: " + (e as Error).message);
@@ -89,10 +94,10 @@ export function createClient(apiKey: string, fetchImpl: typeof fetch = fetch, in
         threshold: 0.3,
         ...rest,
         ...(includeRelated ? { include: { related: true } } : {}),
-      });
+      }, true);
       return res.results;
     },
-    profile: async (ns) => (await call<{ profile: Profile }>("POST", "/ns/" + ns + "/profile", {})).profile,
+    profile: async (ns) => (await call<{ profile: Profile }>("POST", "/ns/" + ns + "/profile", {}, true)).profile,
     setBuckets: async (ns, buckets) => {
       await call("PUT", "/ns/" + ns + "/profile/buckets", { buckets });
     },
