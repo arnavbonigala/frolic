@@ -281,6 +281,12 @@ export const onMoney = internalMutation({
   },
 });
 
+export const STALE_MS = 6 * 60 * 60 * 1000;
+
+export function retryWait(attempts: number): number {
+  return attempts === 0 ? 0 : Math.min(60_000, 2_000 * 2 ** (attempts - 1));
+}
+
 export const due = internalQuery({
   args: { frolicId: v.id("frolics"), now: v.number() },
   handler: async (ctx, { frolicId, now }) => {
@@ -289,15 +295,15 @@ export const due = internalQuery({
       .query("keikiOutbox")
       .withIndex("by_frolicId", (q) => q.eq("frolicId", frolicId))
       .take(256);
-    const open = rows.filter((row) => row.status === "queued" && row.notBefore <= now);
-    const sendable: { id: Id<"keikiOutbox">; kind: Kind; target: string; text: string; attempts: number }[] = [];
+    const open = rows.filter((row) => row.status === "queued" && row.notBefore + retryWait(row.attempts) <= now);
+    const sendable: { id: Id<"keikiOutbox">; kind: Kind; target: string; text: string; attempts: number; stale: boolean }[] = [];
     for (const row of open) {
       if (row.userId) {
         const link = await linkOf(ctx, row.userId);
         if (!link || link.paused) continue;
       }
       if ((row.kind === "reveal" || row.kind === "hopIn") && !(frolic?.revealAt !== undefined && now >= frolic.revealAt)) continue;
-      sendable.push({ id: row._id, kind: row.kind, target: row.target, text: row.text, attempts: row.attempts });
+      sendable.push({ id: row._id, kind: row.kind, target: row.target, text: row.text, attempts: row.attempts, stale: now - row.notBefore > STALE_MS });
     }
     return sendable;
   },
@@ -331,8 +337,7 @@ export const settle = internalMutation({
         continue;
       }
       await ctx.db.patch("keikiOutbox", row._id, { attempts, error: result.error });
-      const delay = Math.min(60_000, 2_000 * 2 ** (attempts - 1));
-      retryDelay = Math.max(retryDelay ?? 0, delay);
+      retryDelay = Math.max(retryDelay ?? 0, retryWait(attempts));
     }
     if (retryDelay !== null) await ctx.scheduler.runAfter(retryDelay, internal.keiki.outbound.deliver, { frolicId });
     return null;
@@ -356,6 +361,7 @@ export const deliver = internalAction({
     const token = noticeToken(apiKey ?? "");
     const results = await Promise.all(
       rows.map(async (row) => {
+        if (row.stale) return { id: row.id, ok: false, error: "stale", permanent: true };
         if (!apiKey) return { id: row.id, ok: false, error: "not_configured" };
         try {
           const res = await fetch(KEIKI_BASE_URL + "/api/v1/developer/agents/" + agentId + "/notice", {
@@ -368,8 +374,9 @@ export const deliver = internalAction({
             return { id: row.id, ok: false, error: (permanent ? "lost_" : "http_") + res.status, permanent };
           }
           const body = (await res.json().catch(() => null)) as NoticeBody | null;
-          const outcome = body?.results?.[0]?.outcome ?? (body?.ran === false ? "unavailable" : "ran");
+          const outcome = body?.results?.[0]?.outcome ?? (body?.ran === false ? "unavailable" : null);
           if (outcome === "ran" || outcome === "queued") return { id: row.id, ok: true };
+          if (outcome === null) return { id: row.id, ok: false, error: "unreadable_answer" };
           const permanent = outcome === "unknown_person" || outcome === "not_found";
           return { id: row.id, ok: false, error: outcome, permanent };
         } catch {

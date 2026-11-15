@@ -114,13 +114,28 @@ export async function crewMembers(ctx: QueryCtx, groupId: Id<"groups">) {
   return users.filter((u): u is Doc<"users"> => u !== null);
 }
 
-export async function currentFrolic(ctx: QueryCtx, groupId: Id<"groups">) {
+export function localDay(ms: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+}
+
+export async function currentFrolic(ctx: QueryCtx, groupId: Id<"groups">, now: number, timeZone: string) {
   const frolics = await ctx.db
     .query("frolics")
     .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId))
     .order("desc")
     .take(8);
-  return frolics.find((f) => f.status === "open") ?? frolics.find((f) => f.status === "on") ?? frolics[0] ?? null;
+  const today = localDay(now, timeZone);
+  const find = (status: Doc<"frolics">["status"], day?: string) =>
+    frolics.find((f) => f.status === status && (day === undefined || f.day === day));
+  return (
+    find("open", today) ??
+    find("open") ??
+    find("on", today) ??
+    find("on") ??
+    frolics.find((f) => f.day === today) ??
+    frolics[0] ??
+    null
+  );
 }
 
 export function isRevealed(frolic: Doc<"frolics">, now: number): boolean {

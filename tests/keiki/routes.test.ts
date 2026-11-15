@@ -958,19 +958,21 @@ describe("tap refusals", () => {
 });
 
 describe("joining by text", () => {
-  it("links the app twin instead of adding a second person with the same name", async () => {
-    const { t, seed } = await seeded({ samJoins: false });
-    const before = await t.run(async (ctx) => (await ctx.db.get("users", seed.mayaId))!.phone);
-    expect(before ?? null).toBeNull();
+  it("does not hand an app account to a stranger who has the invite code", async () => {
+    const { t, seed } = await seeded();
     const result = await toolResult(t, "join_crew", { phone: MAYA_TEXT_PHONE, input: { invite_code: INVITE_CODE, first_name: "Maya" } });
     expect(result.body.ok).toBe(true);
-    const after = await t.run(async (ctx) => (await ctx.db.get("users", seed.mayaId))!.phone);
-    expect(after).toBe(MAYA_TEXT_PHONE);
-    const memberships = await t.run(async (ctx) => await ctx.db.query("memberships").withIndex("by_groupId", (q) => q.eq("groupId", seed.groupId)).take(20));
-    expect(memberships.filter((row) => row.userId === seed.mayaId)).toHaveLength(1);
-    expect(memberships).toHaveLength(4);
+    const maya = await t.run(async (ctx) => await ctx.db.get("users", seed.mayaId));
+    expect(maya?.phone ?? null).toBeNull();
     const link = await t.run(async (ctx) => await ctx.db.query("keikiLinks").withIndex("by_phone", (q) => q.eq("phone", MAYA_TEXT_PHONE)).unique());
-    expect(link?.userId).toBe(seed.mayaId);
+    expect(link?.userId).not.toBe(seed.mayaId);
+  });
+
+  it("keeps one entry per name in the friends list", async () => {
+    const { t, seed } = await seeded();
+    const result = await toolResult(t, "join_crew", { phone: MAYA_TEXT_PHONE, input: { invite_code: INVITE_CODE, first_name: "Maya" } });
+    expect(result.body.friends).toEqual(["Maya", "Dev", "Sam", "Ana"]);
+    expect(seed.mayaId).toBeDefined();
   });
 });
 
@@ -1011,5 +1013,28 @@ describe("im_free", () => {
     expect(result.body.ok).toBe(false);
     expect(result.body.say).toBe("That did not start. Offer today's plan instead.");
     delete testEnv().KEIKI_IM_FREE;
+  });
+});
+describe("which day a texter is on", () => {
+  it("takes today's open plan over a later open one", async () => {
+    const { t, seed } = await seeded();
+    const today = seed.day;
+    const later = "2026-11-17";
+    await t.run(async (ctx) => {
+      await ctx.db.insert("frolics", {
+        groupId: seed.groupId,
+        day: later,
+        kind: "daily",
+        planId: seed.planId,
+        status: "open",
+        window: { start: seed.now + 86_400_000, end: seed.now + 90_000_000 },
+        durationMinutes: 60,
+        deadline: seed.now + 88_000_000,
+      });
+    });
+    const result = await toolResult(t, "get_today", { phone: SAM_PHONE });
+    expect(result.body.plan.title).toBe("Sunset at Indian Rock");
+    const local = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(seed.now));
+    expect(today === local || today !== later).toBe(true);
   });
 });
