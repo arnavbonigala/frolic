@@ -26,6 +26,7 @@ struct TodayScreen: View {
         switch store.scene {
         case .open, .waiting, .solo: return store.plan != nil
         case .none: return !(store.startingPlan || (store.frolic != nil && store.plan == nil))
+        case .on: return store.plan != nil
         default: return false
         }
     }
@@ -465,27 +466,32 @@ private struct TodayWaitingView: View {
                 onFriends: { router.tab = .crew },
                 buds: [store.mePerson]
             )
-            TodayStatusCard(
-                title: TodayCopy.downLine(onlyIf),
-                message: TodayCopy.downBody(onlyIf, deadline: store.frolic?.deadline),
-                identifier: "today.status.down",
-                bodyIdentifier: "today.status.downBody"
-            )
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            Button("Take it back") { store.takeBack() }
-                .buttonStyle(.frolicSecondaryWide)
-                .disabled(!online)
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .accessibilityIdentifier("today.takeBack")
-            Text("We'll tell you the moment it's on.")
-                .todayFont(13, relativeTo: .footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 8)
-                .accessibilityIdentifier("today.next")
+            VStack(spacing: 4) {
+                Label(TodayCopy.downLine(onlyIf), systemImage: "lock.fill")
+                    .todayFont(17, .bold, rounded: true, relativeTo: .headline)
+                    .foregroundStyle(StoryColor.ink)
+                    .accessibilityIdentifier("today.status.down")
+                Text(TodayCopy.downBody(onlyIf, deadline: store.frolic?.deadline))
+                    .todayFont(15, relativeTo: .subheadline)
+                    .foregroundStyle(StoryColor.muted)
+                    .accessibilityIdentifier("today.status.downBody")
+            }
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 24)
+            .padding(.top, 22)
+            Button { store.takeBack() } label: {
+                Text("Take it back")
+                    .todayFont(17, .semibold, rounded: true, relativeTo: .headline)
+                    .foregroundStyle(StoryColor.ink)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+            .disabled(!online)
+            .padding(.horizontal, 24)
+            .padding(.top, 18)
+            .accessibilityIdentifier("today.takeBack")
             TodayAnsweredSlot(store: store)
-            TodayTomorrowRow(store: store)
         }
     }
 }
@@ -629,67 +635,62 @@ private struct TodayOnView: View {
     var body: some View {
         let people = store.goingPeople
         let plan = store.plan
-        VStack(alignment: .leading, spacing: 0) {
-            TodayBunch(people: people, radius: 50, stems: [70, 120, 90, 104], height: 290, animatesIn: store.bloomID > 0)
-                .id(store.bloomID)
-            VStack(alignment: .leading, spacing: 0) {
-                Text((["You"] + store.goingFriendNames).count > 1 ? TodayCopy.names(["You"] + store.goingFriendNames) : "You")
-                    .todayFont(15, .bold, relativeTo: .subheadline)
-                    .foregroundStyle(FrolicColor.ink)
-                    .accessibilityIdentifier("today.on.who")
+        VStack(spacing: 0) {
+            StoryHero(asset: TodayCopy.heroAsset(plan), remote: plan?.place?.photoUrl, height: 400) {
+                TodayBunch(people: people, radius: 44, stems: [60, 100, 76, 90], height: 250, animatesIn: store.bloomID > 0)
+                    .id(store.bloomID)
+            }
+            VStack(spacing: 8) {
+                Text(plan?.title ?? "Today")
+                    .todayFont(14, .bold, rounded: true, relativeTo: .subheadline)
+                    .foregroundStyle(StoryColor.accent)
                 Text("It's on.")
-                    .todayFont(58, .heavy, rounded: true, relativeTo: .largeTitle)
-                    .tracking(-1)
-                    .foregroundStyle(FrolicColor.ink)
+                    .storyFont(54)
+                    .foregroundStyle(StoryColor.ink)
                     .minimumScaleFactor(0.6)
-                    .scaleEffect(cheered || store.bloomID == 0 || reduceMotion ? 1 : 0.55, anchor: .bottomLeading)
-                    .rotationEffect(.degrees(cheered || store.bloomID == 0 || reduceMotion ? 0 : -6), anchor: .bottomLeading)
+                    .scaleEffect(cheered || store.bloomID == 0 || reduceMotion ? 1 : 0.55, anchor: .bottom)
+                    .rotationEffect(.degrees(cheered || store.bloomID == 0 || reduceMotion ? 0 : -6), anchor: .bottom)
                     .onAppear {
                         withAnimation(.spring(response: 0.55, dampingFraction: 0.55).delay(1.15)) { cheered = true }
                     }
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.on.title")
+                Text((["You"] + store.goingFriendNames).count > 1 ? TodayCopy.names(["You"] + store.goingFriendNames) : "You")
+                    .todayFont(15, .semibold, rounded: true, relativeTo: .subheadline)
+                    .foregroundStyle(StoryColor.ink)
+                    .accessibilityIdentifier("today.on.who")
                 meetLine(plan)
                     .todayFont(17, relativeTo: .body)
-                    .foregroundStyle(FrolicColor.secondaryText)
+                    .foregroundStyle(StoryColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 10)
+                    .padding(.top, 4)
                     .accessibilityIdentifier("today.on.details")
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 16)
-            HStack(spacing: 10) {
-                Button("I'm on my way") { store.onMyWay() }
-                    .buttonStyle(.frolicPrimary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 24)
+            .padding(.top, 6)
+            VStack(spacing: 12) {
+                StoryPrimaryButton(title: "I'm on my way", systemImage: "figure.walk") { store.onMyWay() }
                     .accessibilityIdentifier("today.on.otw")
-                Button("Directions") { directions(plan) }
-                    .buttonStyle(.frolicSecondary)
-                    .accessibilityIdentifier("today.on.directions")
+                Button { directions(plan) } label: {
+                    Label("Directions", systemImage: "map.fill")
+                        .todayFont(17, .semibold, rounded: true, relativeTo: .headline)
+                        .foregroundStyle(StoryColor.ink)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+                .accessibilityIdentifier("today.on.directions")
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 20)
-            if let plan {
-                TodayRowLink(
-                    thumb: TodayCopy.heroAsset(plan),
-                    thumbRemote: plan.place?.photoUrl,
-                    prefix: plan.title,
-                    text: [plan.place?.name, plan.place?.neighborhood, store.walkMinutes.map { "\(Int($0)) min walk" }].compactMap { $0 }.joined(separator: " · "),
-                    identifier: "today.on.plan",
-                    action: { directions(plan) }
-                )
-                .padding(.horizontal, 16)
-                .padding(.top, 18)
-            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
             TodayMoneyCard(store: store)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
-            TodayPainting(name: "state-its-on", height: 170)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 14)
             Button("I can't make it") { store.sheet = .bail }
                 .buttonStyle(.frolicText)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 6)
+                .padding(.top, 8)
                 .accessibilityIdentifier("today.on.bail")
         }
     }
