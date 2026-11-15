@@ -42,6 +42,7 @@ beforeEach(() => {
   testEnv().KEIKI_API_KEY = API_KEY;
   delete testEnv().KEIKI_TOOL_SIGNING_SECRET;
   delete testEnv().KEIKI_AGENT_ID;
+  delete testEnv().KEIKI_DEDICATED_LINE;
 });
 
 afterEach(() => {
@@ -50,6 +51,7 @@ afterEach(() => {
   delete testEnv().KEIKI_API_KEY;
   delete testEnv().KEIKI_TOOL_SIGNING_SECRET;
   delete testEnv().KEIKI_AGENT_ID;
+  delete testEnv().KEIKI_DEDICATED_LINE;
 });
 
 async function seeded(options: SeedOptions = {}): Promise<{ t: T; seed: Seed }> {
@@ -190,6 +192,10 @@ describe("replay", () => {
 });
 
 describe("secrecy", () => {
+  beforeEach(() => {
+    testEnv().KEIKI_DEDICATED_LINE = "1";
+  });
+
   it("sends nothing before revealAt and keeps the match out of every answer", async () => {
     const { t, seed, fetchMock } = await matched();
     await linkPhone(t, seed.devId, "+15105550105");
@@ -688,6 +694,10 @@ async function shareOf(t: T, frolicId: Id<"frolics">, userId: Id<"users">) {
 }
 
 describe("pay_deposit", () => {
+  beforeEach(() => {
+    testEnv().KEIKI_DEDICATED_LINE = "1";
+  });
+
   it("states the amount before asking for approval", async () => {
     const { t } = await onNow({ variant: "kayaks" });
     const preflight = await toolResult(t, "pay_deposit", { phone: SAM_PHONE, context: { preflight: true } });
@@ -810,6 +820,10 @@ describe("steered turns", () => {
 });
 
 describe("link_group_chat", () => {
+  beforeEach(() => {
+    testEnv().KEIKI_DEDICATED_LINE = "1";
+  });
+
   it("links a chat and refuses a bad invite", async () => {
     const { t, seed } = await seeded();
     const bad = await toolResult(t, "link_group_chat", { phone: CHAT, input: { invite_code: "SUNRISE" } });
@@ -844,6 +858,19 @@ describe("link_group_chat", () => {
     const chats = await t.run(async (ctx) => await ctx.db.query("keikiGroupChats").withIndex("by_chatId", (q) => q.eq("chatId", CHAT)).take(4));
     expect(chats).toHaveLength(1);
     expect(chats[0].groupId).toBe(other);
+  });
+});
+
+describe("shared line", () => {
+  it("refuses to link a group chat and says to text directly", async () => {
+    const { t } = await seeded();
+    const result = await toolResult(t, "link_group_chat", { phone: CHAT, input: { invite_code: "SUNSET" } });
+    expect(result.body).toEqual({
+      ok: false,
+      error: "needs_dedicated_line",
+      say: "Group chats need a dedicated line. Text me directly instead.",
+    });
+    expect(await t.run(async (ctx) => await ctx.db.query("keikiGroupChats").take(4))).toHaveLength(0);
   });
 });
 

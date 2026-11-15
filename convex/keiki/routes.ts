@@ -195,6 +195,7 @@ async function run(ctx: ActionCtx, tool: ToolName, call: Call): Promise<unknown>
       return await ctx.runMutation(internal.keiki.tools.pause, { phone: phoneOf(call), paused });
     }
     case "link_group_chat":
+      if (!keikiEnv().dedicatedLine) return { ok: false, error: "needs_dedicated_line", say: "Group chats need a dedicated line. Text me directly instead." };
       if (call.identity.kind !== "group") return { ok: false, error: "group_only", say: "Add Frolic to the crew's group chat and ask there." };
       return await ctx.runMutation(internal.keiki.tools.linkGroupChat, { chatId: call.identity.chatId, code: str(input, "invite_code", 64)!, now });
   }

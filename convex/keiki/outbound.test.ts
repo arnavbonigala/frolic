@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
-import { ANA_PHONE, SAM_PHONE, linkChat, nowFor, seedCrew, seat } from "../../keiki/test/seed";
+import { ANA_PHONE, SAM_PHONE, linkChat, linkPhone, nowFor, seedCrew, seat } from "../../keiki/test/seed";
 import type { Seed, SeedOptions, T } from "../../keiki/test/seed";
 import {
   API_KEY,
@@ -9,17 +9,20 @@ import {
   installFetch,
   makeT,
   outboxOf,
+  patchFrolic,
   storeBlob,
   testEnv,
 } from "../../keiki/test/harness";
 
 const CHAT = "imsg:chat:abc";
+const MAYA_PHONE = "+15105550106";
 const STORAGE_URL = "https://some-deployment.convex.cloud/api/storage/";
 
 beforeEach(() => {
   vi.useFakeTimers();
   testEnv().KEIKI_API_KEY = API_KEY;
   delete testEnv().KEIKI_AGENT_ID;
+  delete testEnv().KEIKI_DEDICATED_LINE;
 });
 
 afterEach(() => {
@@ -27,6 +30,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete testEnv().KEIKI_API_KEY;
   delete testEnv().KEIKI_AGENT_ID;
+  delete testEnv().KEIKI_DEDICATED_LINE;
 });
 
 async function seeded(options: SeedOptions = {}): Promise<{ t: T; seed: Seed }> {
@@ -38,6 +42,7 @@ async function seeded(options: SeedOptions = {}): Promise<{ t: T; seed: Seed }> 
 
 describe("onDrop", () => {
   it("queues one notice per linked member and one per linked chat, once", async () => {
+    testEnv().KEIKI_DEDICATED_LINE = "1";
     const { t, seed } = await seeded();
     await linkChat(t, seed.groupId, CHAT);
     const fetchMock = installFetch();
@@ -206,6 +211,48 @@ describe("onMoney", () => {
   });
 });
 
+describe("shared line", () => {
+  it("drops to direct messages only, even when a chat is linked", async () => {
+    const { t, seed } = await seeded();
+    await linkChat(t, seed.groupId, CHAT);
+    const fetchMock = installFetch();
+
+    await t.mutation(internal.keiki.outbound.onDrop, { frolicId: seed.frolicId });
+    const rows = await outboxOf(t);
+    expect(rows.map((row) => row.target).sort()).toEqual([SAM_PHONE, ANA_PHONE].sort());
+    expect(rows.every((row) => row.userId !== undefined)).toBe(true);
+
+    await advance(t, 0);
+    expect(fetchMock.notices.map((notice) => notice.phone).sort()).toEqual([SAM_PHONE, ANA_PHONE].sort());
+  });
+
+  it("reveals by direct message and asks the rest of the crew to hop in", async () => {
+    const { t, seed } = await seeded();
+    await linkChat(t, seed.groupId, CHAT);
+    await linkPhone(t, seed.mayaId, MAYA_PHONE);
+    await seat(t, seed.frolicId, seed.groupId, [seed.samId, seed.anaId], seed.now);
+    await patchFrolic(t, seed.frolicId, { revealAt: seed.now - 1_000, status: "on" });
+    const fetchMock = installFetch();
+
+    await t.mutation(internal.keiki.outbound.onReveal, {
+      frolicId: seed.frolicId,
+      userIds: [seed.samId, seed.anaId],
+      bloomAt: seed.now,
+    });
+    const rows = await outboxOf(t);
+    expect(rows.some((row) => row.target === CHAT)).toBe(false);
+    const reveal = rows.find((row) => row.kind === "reveal" && row.userId === seed.samId)!;
+    expect(reveal).toMatchObject({ target: SAM_PHONE, notBefore: seed.now - 1_000 });
+    expect(reveal.text).toContain("It's on. You, Ana.");
+    const hopIn = rows.find((row) => row.kind === "hopIn")!;
+    expect(hopIn).toMatchObject({ userId: seed.mayaId, target: MAYA_PHONE });
+    expect(hopIn.text).toContain("Room for one more?");
+
+    await advance(t, 0);
+    expect(fetchMock.notices.map((notice) => notice.phone).sort()).toEqual([SAM_PHONE, ANA_PHONE, MAYA_PHONE].sort());
+  });
+});
+
 describe("due", () => {
   it("holds a queued notice once the person pauses", async () => {
     const { t, seed } = await seeded();
@@ -243,6 +290,7 @@ describe("onFaded", () => {
 
 describe("onCollage", () => {
   it("sends the collage to the people in it and to the linked chat", async () => {
+    testEnv().KEIKI_DEDICATED_LINE = "1";
     const { t, seed } = await seeded();
     await linkChat(t, seed.groupId, CHAT);
     const storageId = await storeBlob(t, [255, 216, 255, 224], "image/jpeg");

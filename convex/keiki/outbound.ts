@@ -28,6 +28,7 @@ async function linkOf(ctx: QueryCtx, userId: Id<"users">) {
 }
 
 async function chatsOf(ctx: MutationCtx, groupId: Id<"groups">) {
+  if (!keikiEnv().dedicatedLine) return [];
   return await ctx.db
     .query("keikiGroupChats")
     .withIndex("by_groupId", (q) => q.eq("groupId", groupId))

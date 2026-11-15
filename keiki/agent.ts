@@ -5,9 +5,12 @@ import type { ToolPolicy } from "@onkeiki/agents";
 
 export const AGENT_ID = process.env.KEIKI_AGENT_ID ?? "44277a5e-b81d-4bb6-92d2-6c9c0eec47b3";
 export const TOOLS_BASE_URL = (process.env.FROLIC_TOOLS_BASE_URL ?? process.env.SHARED_CONVEX_SITE_URL ?? "").replace(/\/$/, "");
+export const DEDICATED_LINE = ["1", "true"].includes((process.env.KEIKI_DEDICATED_LINE ?? "").trim().toLowerCase());
 
 const basePrompt = readFileSync(new URL("../docs/keiki-system-prompt.md", import.meta.url), "utf8").trim();
 const addendum = readFileSync(new URL("./prompt-addendum.md", import.meta.url), "utf8").trim();
+const groupAddendum = readFileSync(new URL("./prompt-group.md", import.meta.url), "utf8").trim();
+const systemPrompt = DEDICATED_LINE ? basePrompt + "\n\n" + addendum + "\n\n" + groupAddendum : basePrompt + "\n\n" + addendum;
 
 const depositPolicy = {
   approval: "ask",
@@ -23,6 +26,10 @@ const depositPolicy = {
     theme: { approveLabel: "Hold it", declineLabel: "Not now" },
   },
 } as unknown as ToolPolicy;
+
+const depositDescription = DEDICATED_LINE
+  ? "Get the Whop checkout link for the commitment deposit. Asks for a Face ID approval first."
+  : "Get the Whop checkout link for the commitment deposit. Send them that link as one text and say plainly what it is.";
 
 function webhook<A, I>(name: string, description: string, input: Schema.Schema<A, I>, policy?: ToolPolicy) {
   return defineTool({
@@ -55,10 +62,12 @@ export const tools = [
   webhook("on_my_way", "Share their ETA in minutes with the matched group.", Schema.Struct({ minutes: Schema.Number })),
   webhook("check_in", "Mark them arrived. Pass attachment_id when they share their location, or lat and lng if known.", Schema.Struct({ attachment_id: Schema.optional(Schema.String), lat: Schema.optional(Schema.Number), lng: Schema.optional(Schema.Number) })),
   webhook("submit_snap", "Add the photo they just sent (its attachment_id) to the group snap.", Schema.Struct({ attachment_id: Schema.String })),
-  webhook("pay_deposit", "Get the Whop checkout link for the commitment deposit. Asks for a Face ID approval first.", none, depositPolicy),
+  webhook("pay_deposit", depositDescription, none, DEDICATED_LINE ? depositPolicy : undefined),
   webhook("remember", "Save a preference they state to their memory.", Schema.Struct({ text: Schema.String })),
   webhook("pause", "Stop or restart Frolic texts. paused defaults to true.", Schema.Struct({ paused: Schema.optional(Schema.Boolean) })),
-  webhook("link_group_chat", "In a group chat only: connect this chat to a crew with its invite code, so the drop and the reveal post here.", Schema.Struct({ invite_code: Schema.String })),
+  ...(DEDICATED_LINE
+    ? [webhook("link_group_chat", "In a group chat only: connect this chat to a crew with its invite code, so the drop and the reveal post here.", Schema.Struct({ invite_code: Schema.String }))]
+    : []),
 ];
 
 export const kit = AgentKit.create({
@@ -70,7 +79,7 @@ export const kit = AgentKit.create({
     reasoningEffort: "low",
     maxSteps: 10,
     historyLimit: 16,
-    systemPrompt: () => basePrompt + "\n\n" + addendum,
+    systemPrompt: () => systemPrompt,
     tools,
     memory: { enabled: true, provider: "supermemory", autoRetrieve: true, categories: ["preference", "context"] },
     sandbox: { enabled: true, persistent: false, maxExecTime: "1 minute" },

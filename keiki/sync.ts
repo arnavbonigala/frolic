@@ -1,4 +1,4 @@
-import { AGENT_ID, TOOLS_BASE_URL, kit } from "./agent";
+import { AGENT_ID, DEDICATED_LINE, TOOLS_BASE_URL, kit } from "./agent";
 
 const KEIKI = "https://onkeiki.com/api/v1/developer";
 const apiKey = process.env.KEIKI_API_KEY;
@@ -47,7 +47,7 @@ const config = {
   max_steps: body.max_steps,
   history_limit: body.history_limit,
   system_prompt: body.system_prompt,
-  features: { ...body.features, groupChats: true },
+  features: { ...body.features, groupChats: DEDICATED_LINE },
 };
 
 if (dryRun) {

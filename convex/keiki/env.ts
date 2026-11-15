@@ -1,5 +1,10 @@
 type Env = Record<string, string | undefined>;
 
+function flag(value: string | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return normalized === "1" || normalized === "true";
+}
+
 export function keikiEnv() {
   const env: Env = (globalThis as { process?: { env: Env } }).process?.env ?? {};
   return {
@@ -7,5 +12,6 @@ export function keikiEnv() {
     signingSecret: env.KEIKI_TOOL_SIGNING_SECRET,
     agentId: env.KEIKI_AGENT_ID,
     heroBaseUrl: env.FROLIC_HERO_BASE_URL?.replace(/\/$/, ""),
+    dedicatedLine: flag(env.KEIKI_DEDICATED_LINE),
   };
 }
