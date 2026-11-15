@@ -20,10 +20,7 @@ enum GardenNames {
         default: "\(names.dropLast().joined(separator: ", ")) and \(names[names.count - 1])"
         }
     }
-
-    static func withYou(_ names: [String]) -> String {
-        names.isEmpty ? "you" : "you and \(line(names))"
-    }
+}
 }
 
 struct GardenMemoryRow: Decodable, Hashable, Identifiable {
@@ -37,10 +34,7 @@ struct GardenMemoryRow: Decodable, Hashable, Identifiable {
 
     var id: String { frolicId }
 
-    var namesLine: String {
-        let names = going.map(\.name)
-        return youWent ? GardenNames.withYou(names) : GardenNames.line(names)
-    }
+    var namesLine: String { GardenNames.line(going.map(\.name)) }
 
     var subtitle: String { "\(dateLine) · \(namesLine)" }
 }
