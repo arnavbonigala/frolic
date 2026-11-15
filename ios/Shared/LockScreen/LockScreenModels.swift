@@ -80,6 +80,7 @@ struct TodayResponse: Decodable {
 struct CrewResponse: Decodable {
     struct Free: Decodable {
         var state: String
+        var window: APIWindow?
     }
 
     struct Member: Decodable {

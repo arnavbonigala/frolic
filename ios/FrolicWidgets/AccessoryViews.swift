@@ -39,7 +39,7 @@ struct AccessoryRectangularView: View {
                 }
             }
         case .waiting(let s):
-            lines(s.onlyIf.isEmpty ? LockScreenCopy.planted : LockScreenCopy.onlyIfLine(s.onlyIf), LockScreenCopy.waitingLine)
+            lines(LockScreenCopy.planted, s.onlyIf.isEmpty ? LockScreenCopy.hush : LockScreenCopy.onlyIfLine(s.onlyIf))
         case .on(let s):
             lines("\(LockScreenCopy.itsOn) \(s.startsAt.map(LockScreenCopy.time) ?? "")", LockScreenCopy.goingLine(s.going.map(\.name), meName: s.me?.name, amGoing: s.amGoing))
         case .dayOff:
@@ -47,7 +47,7 @@ struct AccessoryRectangularView: View {
         case .faded:
             lines(LockScreenCopy.drifted, LockScreenCopy.nextDrop)
         case .done(let s):
-            lines(s.placeName ?? "Frolic", s.amGoing ? "You went" : LockScreenCopy.nextDrop)
+            lines(s.amGoing ? "You went." : LockScreenCopy.noPlanYet, s.amGoing ? (s.placeName ?? "") : LockScreenCopy.nextDrop)
         case .none:
             lines(LockScreenCopy.noPlanYet, LockScreenCopy.todayArrives)
         case .signedOut:
