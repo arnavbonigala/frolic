@@ -231,7 +231,7 @@ private struct OnTheWayRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            FlowerView(state: .bloom, person: FlowerPerson(id: person.userId, name: person.name, color: person.flower, photoUrl: person.photoUrl), radius: 22, stem: 0)
+            FlowerView(state: .bloom, person: FlowerPerson(id: person.userId, name: person.name, color: person.flower, avatarURL: ReachableURL.from(person.photoUrl)), radius: 22, stem: 0)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)

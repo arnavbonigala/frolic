@@ -143,7 +143,7 @@ final class GroupSnapModel {
             throw CheckInFailure.message("Your shot didn't upload. Try again.")
         }
         let raw: String = try await client.mutation("users:generateUploadUrl", with: ["deviceToken": token])
-        guard let url = URL(string: raw) else { throw CheckInFailure.message("Your shot didn't upload. Try again.") }
+        guard let url = ReachableURL.from(raw) else { throw CheckInFailure.message("Your shot didn't upload. Try again.") }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")

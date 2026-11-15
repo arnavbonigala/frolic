@@ -225,7 +225,7 @@ struct SnapCollage: View {
     }
 
     private func snapURL(for person: WirePerson) -> URL? {
-        store.snaps.first { $0.userId == person.userId }?.url.flatMap(URL.init(string:))
+        ReachableURL.from(store.snaps.first { $0.userId == person.userId }?.url)
     }
 
     private func waiting(for person: WirePerson, label: String) -> some View {
