@@ -11,7 +11,7 @@ struct InvitePreview: Decodable, Equatable {
     var groupName: String
     var invitedBy: String
     var members: [Member]
-    var memberCount: Int
+    var memberCount: Double
 }
 
 struct JoinOutcome: Decodable, Equatable {

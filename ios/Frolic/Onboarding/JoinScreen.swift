@@ -4,11 +4,14 @@ struct JoinScreen: View {
     @Bindable var model: OnboardingModel
 
     var body: some View {
-        ScrollView {
-            content
+        GeometryReader { geo in
+            ScrollView {
+                content
+                    .frame(minHeight: geo.size.height - 120, alignment: .top)
+            }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .background(SkyBackground().ignoresSafeArea())
+        .background(backdrop.ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) {
             OnboardingBottomBar { bar }
         }
@@ -17,10 +20,23 @@ struct JoinScreen: View {
         }
     }
 
+    private var backdrop: some View {
+        ZStack(alignment: .bottom) {
+            SkyBackground()
+            if let painting = UIImage(named: "launch-meadow") {
+                Image(uiImage: painting)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .clipped()
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
     private var content: some View {
         VStack(spacing: 0) {
             header
-            meadow
             switch model.invitePhase {
             case .ready:
                 if model.isSolo {
@@ -28,58 +44,49 @@ struct JoinScreen: View {
                 } else {
                     inviteCopy
                 }
+                Spacer(minLength: 24)
                 captionCard
                     .padding(.horizontal, 18)
-                    .padding(.top, 18)
+                    .padding(.bottom, 8)
             case .loading:
-                VStack(spacing: 12) {
-                    HStack(spacing: 10) {
-                        OnboardingSpinner()
-                        Text("Looking for your crew")
-                            .frolicFont(.subheadline)
-                            .foregroundStyle(FrolicColor.secondaryText)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Looking for your crew")
+                HStack(spacing: 10) {
+                    OnboardingSpinner()
+                    Text("Looking for your crew")
+                        .frolicFont(.subheadline)
+                        .foregroundStyle(FrolicColor.secondaryText)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 42)
-                .accessibilityElement(children: .contain)
+                .padding(.top, 120)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Looking for your crew")
                 .accessibilityIdentifier("state.loading")
             case .offline:
-                PhasePlaceholder(
-                    phase: .offline,
-                    copy: PlaceholderCopy(
-                        loading: "Looking for your crew",
-                        emptyTitle: "No crew yet",
-                        emptyMessage: "Start on your own and invite friends later.",
-                        emptyAction: "Start on your own",
-                        errorTitle: "Something got in the way."
-                    ),
-                    color: .pink,
-                    onRetry: { model.retryInvite() }
+                OnboardingStateCard(
+                    title: OnboardingFailure.offline.title,
+                    detail: OnboardingFailure.offline.detail,
+                    actionTitle: "Try again",
+                    onAction: { model.retryInvite() },
+                    identifier: "state.offline"
                 )
+                .padding(.horizontal, 18)
+                .padding(.top, 120)
             case .expired:
                 OnboardingStateCard(title: OnboardingFailure.inviteExpired.title, detail: OnboardingFailure.inviteExpired.detail, identifier: "state.error")
                     .padding(.horizontal, 18)
-                    .padding(.top, 24)
+                    .padding(.top, 120)
             case .invalid:
                 OnboardingStateCard(title: OnboardingFailure.inviteUnknown.title, detail: OnboardingFailure.inviteUnknown.detail, identifier: "state.error")
                     .padding(.horizontal, 18)
-                    .padding(.top, 24)
+                    .padding(.top, 120)
             case .failed(let message):
-                PhasePlaceholder(
-                    phase: .error(message),
-                    copy: PlaceholderCopy(
-                        loading: "Looking for your crew",
-                        emptyTitle: "No crew yet",
-                        emptyMessage: "Start on your own and invite friends later.",
-                        emptyAction: "Start on your own",
-                        errorTitle: "Something got in the way."
-                    ),
-                    color: .pink,
-                    onRetry: { model.retryInvite() }
+                OnboardingStateCard(
+                    title: message,
+                    detail: OnboardingFailure.message(message).detail,
+                    actionTitle: "Try again",
+                    onAction: { model.retryInvite() },
+                    identifier: "state.error"
                 )
+                .padding(.horizontal, 18)
+                .padding(.top, 120)
             }
         }
     }
@@ -91,60 +98,7 @@ struct JoinScreen: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, 6)
-    }
-
-    private var members: [InvitePreview.Member] {
-        if let preview = model.preview, !preview.members.isEmpty { return preview.members }
-        return [
-            .init(name: "Maya", color: "pink"),
-            .init(name: "Dev", color: "cobalt"),
-            .init(name: "Jordan", color: "moss"),
-            .init(name: "Priya", color: "marigold"),
-        ]
-    }
-
-    private var meadow: some View {
-        ZStack(alignment: .bottom) {
-            if let painting = UIImage(named: "launch-meadow") {
-                Image(uiImage: painting)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 250)
-                    .clipped()
-                    .accessibilityHidden(true)
-                HStack(spacing: 0) {
-                    ForEach(Array(members.enumerated()), id: \.offset) { _, member in
-                        Text(member.name)
-                            .frolicFont(.flowerName)
-                            .foregroundStyle(FrolicColor.secondaryText)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 4)
-            } else {
-                HStack(alignment: .bottom, spacing: 0) {
-                    ForEach(Array(members.enumerated()), id: \.offset) { index, member in
-                        FlowerView(
-                            state: .bloom,
-                            person: FlowerPerson(name: member.name, color: FlowerColor(rawValue: member.color) ?? .pink),
-                            radius: 34,
-                            stem: [110, 66, 130, 86][index % 4],
-                            showsName: true,
-                            swayDelay: Double(index) * 0.5,
-                            animatesIn: true
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .frame(height: 250, alignment: .bottom)
-                .padding(.horizontal, 14)
-            }
-        }
-        .frame(height: 250)
-        .frame(maxWidth: .infinity)
-        .clipped()
+        .padding(.bottom, 28)
     }
 
     private var inviteCopy: some View {

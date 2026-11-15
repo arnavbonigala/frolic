@@ -438,7 +438,7 @@ final class OnboardingModel {
             case .none:
                 OnboardingIdentity.lastFreeState = "Free till 8"
             }
-            OnboardingIdentity.groupId = groupId
+            OnboardingIdentity.commit(groupId: groupId)
         }
         OnboardingIdentity.isComplete = true
         OnboardingSessionRelay.store(deviceToken: OnboardingIdentity.deviceToken, groupId: groupId)

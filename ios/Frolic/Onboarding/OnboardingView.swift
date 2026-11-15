@@ -16,12 +16,13 @@ struct OnboardingView: View {
         }
         .transition(.opacity)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: model.step)
-        .task { model.start() }
+        .task(id: ObjectIdentifier(model)) { model.start() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("onboarding.screen")
     }
 }
 
+@MainActor
 struct OnboardingGate<Content: View>: View {
     @Environment(AppRouter.self) private var router
     @Environment(FrolicBackend.self) private var backend

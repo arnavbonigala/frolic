@@ -1,49 +1,27 @@
 import Foundation
-import Security
 
+@MainActor
 enum OnboardingIdentity {
-    private static let keychainService = "com.frolic.app"
-    private static let tokenAccount = "deviceToken"
-    private static let tokenEnvironmentKey = "FROLIC_DEVICE_TOKEN"
-    private static let groupEnvironmentKey = "FROLIC_GROUP_ID"
-
     private enum Keys {
         static let complete = "frolic.onboarding.complete"
         static let groupId = "frolic.onboarding.groupId"
         static let firstName = "frolic.onboarding.firstName"
         static let inviteCode = "frolic.onboarding.inviteCode"
-        static let photo = "frolic.onboarding.photo"
         static let freeState = "frolic.onboarding.freeState"
     }
 
-    static var deviceToken: String {
-        if let override = ProcessInfo.processInfo.environment[tokenEnvironmentKey],
-           (32...256).contains(override.count) {
-            return override
-        }
-        if let stored = readKeychain(tokenAccount), (32...256).contains(stored.count) {
-            return stored
-        }
-        let token = makeToken()
-        writeKeychain(token, account: tokenAccount)
-        return token
-    }
+    static var deviceToken: String { FrolicIdentity.shared.deviceToken }
 
     static var isComplete: Bool {
         get {
-            guard UserDefaults.standard.bool(forKey: Keys.complete), let groupId else { return false }
-            return !groupId.isEmpty
+            if UserDefaults.standard.bool(forKey: Keys.complete), FrolicIdentity.shared.groupId != nil { return true }
+            return UserDefaults.standard.string(forKey: Keys.groupId) == nil && FrolicIdentity.shared.groupId != nil
         }
         set { UserDefaults.standard.set(newValue, forKey: Keys.complete) }
     }
 
     static var groupId: String? {
-        get {
-            if let override = ProcessInfo.processInfo.environment[groupEnvironmentKey], !override.isEmpty {
-                return override
-            }
-            return UserDefaults.standard.string(forKey: Keys.groupId)
-        }
+        get { UserDefaults.standard.string(forKey: Keys.groupId) ?? FrolicIdentity.shared.groupId }
         set { UserDefaults.standard.set(newValue, forKey: Keys.groupId) }
     }
 
@@ -57,57 +35,22 @@ enum OnboardingIdentity {
         set { UserDefaults.standard.set(newValue, forKey: Keys.inviteCode) }
     }
 
-    static var photo: Data? {
-        get { UserDefaults.standard.data(forKey: Keys.photo) }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.photo) }
-    }
-
     static var lastFreeState: String? {
         get { UserDefaults.standard.string(forKey: Keys.freeState) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.freeState) }
     }
 
+    static func commit(groupId: String) {
+        FrolicIdentity.shared.setGroup(groupId)
+        UserDefaults.standard.removeObject(forKey: Keys.groupId)
+        UserDefaults.standard.set(true, forKey: Keys.complete)
+    }
+
     static func reset() {
-        for key in [Keys.complete, Keys.groupId, Keys.firstName, Keys.inviteCode, Keys.photo, Keys.freeState] {
+        for key in [Keys.complete, Keys.groupId, Keys.firstName, Keys.inviteCode, Keys.freeState] {
             UserDefaults.standard.removeObject(forKey: key)
         }
-    }
-
-    private static func makeToken() -> String {
-        var bytes = [UInt8](repeating: 0, count: 24)
-        if SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess {
-            return bytes.map { String(format: "%02x", $0) }.joined()
-        }
-        return (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased()
-    }
-
-    private static func readKeychain(_ account: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data,
-              let value = String(data: data, encoding: .utf8)
-        else { return nil }
-        return value
-    }
-
-    private static func writeKeychain(_ value: String, account: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: account,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
-        SecItemDelete(query as CFDictionary)
-        var attributes = query
-        attributes[kSecValueData as String] = Data(value.utf8)
-        SecItemAdd(attributes as CFDictionary, nil)
+        FrolicIdentity.shared.setGroup(nil)
     }
 }
 
