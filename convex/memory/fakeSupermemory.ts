@@ -23,6 +23,7 @@ export function createFake() {
     const ns = m[1];
     const rest = m[2] ?? "";
     const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
+    if (method === "POST" && rest === "/document" && body!.id === "frolic_init") return json({ id: "frolic_init", status: "queued" });
     if (method === "POST" && rest === "/document") {
       const store = docs.get(ns) ?? new Map<string, FakeDoc>();
       docs.set(ns, store);
