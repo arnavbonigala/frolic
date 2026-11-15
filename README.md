@@ -18,7 +18,7 @@
 
 Your group chat says "we should hang out" every week, and you never do. Nobody wants to be the one who asks. Nobody can pick what to do. When a plan does happen, someone drops out an hour before.
 
-We read 1,446 TikTok comments about making plans with friends and grouped them. Those three pains came up again and again.
+We interviewed 100 people about making plans with friends, and read 1,446 TikTok comments on the same topic. Those three pains came up again and again.
 
 ## How it works
 
