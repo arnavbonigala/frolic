@@ -38,7 +38,7 @@ const tools = body.tools.map((tool) => ({
   inputSchema: normalize(tool.inputSchema),
   executionType: "webhook",
   webhookUrl: TOOLS_BASE_URL + "/keiki/tools/" + tool.name,
-  ...(tool.policy ? { policy: tool.policy } : {}),
+  policy: tool.policy ?? { approval: "allow" },
 }));
 const config = {
   agent_id: AGENT_ID,
