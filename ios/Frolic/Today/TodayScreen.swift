@@ -764,7 +764,9 @@ private struct TodayNoPlanStart: View {
             }
         } else {
             VStack(spacing: 0) {
-                TodayNoPlan(title: "No plan yet", message: "Today's plan arrives at 3.")
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    TodayNoPlan(title: "No plan yet", message: TodayCopy.dropCountdown(context.date))
+                }
                 if let line = store.gardenHealth?.line, !line.isEmpty {
                     Text(line)
                         .todayFont(15, .semibold, relativeTo: .subheadline)
