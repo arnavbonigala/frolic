@@ -16,12 +16,12 @@ struct TodayPacket<Content: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(label)
-                    .font(.system(size: 12, weight: .bold))
+                    .todayFont(12, .bold, relativeTo: .caption)
                     .tracking(0.3)
                 Spacer(minLength: 8)
                 if let number {
                     Text(number)
-                        .font(.system(size: 12, weight: .semibold))
+                        .todayFont(12, .semibold, relativeTo: .caption)
                         .opacity(0.7)
                 }
             }
@@ -150,11 +150,8 @@ struct TodayMeadow: View {
     }
 
     private var label: String {
-        let names = TodayCopy.names(people.map(\.name))
-        if waiting {
-            return "\(names) are free. Your bud is planted. See your crew"
-        }
-        return "\(names) are free. See your crew"
+        let free = people.isEmpty ? "Nobody's free yet" : TodayCopy.names(people.map(\.name)) + (people.count == 1 ? " is free" : " are free")
+        return free + (waiting ? ". Your bud is planted. See your crew" : ". See your crew")
     }
 }
 

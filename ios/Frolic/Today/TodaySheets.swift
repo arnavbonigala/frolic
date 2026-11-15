@@ -230,7 +230,7 @@ private struct TodayHoldSheet: View {
                     TodayPainting(name: share ? "whop-fund-jar" : "whop-deposit-back", height: 120)
                     Spacer()
                 }
-                TodaySheetTitle(text: share ? "Chip in for " + TodayMoneyCard.shortTitle(store.plan) : "Hold \(amount) to lock it in", identifier: "hold.sheet.title")
+                TodaySheetTitle(text: share ? "Chip in for " + TodayMoneyCard.shortTitle(store.plan) : "Hold \(amount) to lock it in", identifier: share ? "chip.sheet.title" : "hold.sheet.title")
                     .padding(.top, 8)
                 if share {
                     FrolicGroup {
@@ -280,7 +280,7 @@ private struct TodayHoldSheet: View {
                 .buttonStyle(.frolicPrimary)
                 .disabled(store.payBusy)
                 .padding(.top, 16)
-                .accessibilityIdentifier("hold.sheet.pay")
+                .accessibilityIdentifier(share ? "chip.sheet.pay" : "hold.sheet.pay")
                 Button("Not now") { store.sheet = nil }
                     .buttonStyle(.frolicText)
                     .frame(maxWidth: .infinity)

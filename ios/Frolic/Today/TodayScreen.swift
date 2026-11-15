@@ -6,6 +6,7 @@ struct TodayScreen: View {
     @Environment(FrolicBackend.self) private var backend
     @Environment(FrolicIdentity.self) private var identity
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var store = TodayStore()
 
     private var route: E2ERoute? {
@@ -44,10 +45,13 @@ struct TodayScreen: View {
                     .padding(.bottom, 16)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .onTapGesture { store.dismissNotice() }
+                    .accessibilityLabel(notice)
+                    .accessibilityAction(named: "Dismiss") { store.dismissNotice() }
                     .accessibilityIdentifier("today.notice")
             }
         }
-        .animation(.easeOut(duration: 0.25), value: store.notice)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: store.notice)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: connectivity.isOnline)
         .background(SkyBackground())
         .accessibilityIdentifier("today.screen")
         .environment(\.todayOnline, connectivity.isOnline)
@@ -156,6 +160,7 @@ private struct TodayOfflineBanner: View {
 private struct TodayPhaseView: View {
     var store: TodayStore
     var router: AppRouter
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -180,8 +185,8 @@ private struct TodayPhaseView: View {
                 TodayDoneView(store: store, router: router)
             }
         }
-        .transition(.opacity.combined(with: .offset(y: 8)))
-        .animation(.easeOut(duration: 0.35), value: store.scene)
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 8)))
+        .animation(.easeOut(duration: reduceMotion ? 0.2 : 0.35), value: store.scene)
     }
 }
 
@@ -190,6 +195,7 @@ private struct TodayPlanPacket: View {
     var label: String?
     var number: String?
     var showsWhy = true
+    var hostedBy: String?
 
     var body: some View {
         let plan = store.plan
@@ -210,6 +216,12 @@ private struct TodayPlanPacket: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             ChipRow(chips: TodayCopy.chips(plan: plan, minutesAway: store.myFree?.minutesAway))
+            if let hostedBy {
+                Text("Hosted by \(hostedBy)")
+                    .todayFont(13, .semibold, relativeTo: .footnote)
+                    .foregroundStyle(FrolicColor.chipText)
+                    .accessibilityIdentifier("today.plan.hostedBy")
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)
@@ -543,6 +555,7 @@ private struct TodayHopInView: View {
                     action: {}
                 )
                 .allowsHitTesting(false)
+                .accessibilityRemoveTraits(.isButton)
                 .padding(.horizontal, 16)
                 .padding(.top, 18)
             }
@@ -562,7 +575,6 @@ private struct TodayHopInView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .accessibilityIdentifier("hopin.cta")
-                TodayHush(text: "They'll see one more flower. Nobody sees who passed.", identifier: "hopin.hush")
             } else {
                 TodayStatusCard(
                     title: "It's full this time",
@@ -614,7 +626,7 @@ private struct TodayDoneView: View {
                     .foregroundStyle(FrolicColor.ink)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.done.title")
-                Text("Your flower is in the garden, and the crew saw it bloom.")
+                Text("Your first flower is in the garden, and the crew saw it bloom.")
                     .todayFont(17, relativeTo: .body)
                     .foregroundStyle(FrolicColor.secondaryText)
             }
