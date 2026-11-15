@@ -8,11 +8,23 @@
  * @module
  */
 
+import type * as checkins from "../checkins.js";
+import type * as clock from "../clock.js";
+import type * as crew from "../crew.js";
 import type * as crons from "../crons.js";
+import type * as frolics from "../frolics.js";
 import type * as http from "../http.js";
 import type * as keiki_outbound from "../keiki/outbound.js";
 import type * as keiki_routes from "../keiki/routes.js";
+import type * as lib_core from "../lib/core.js";
+import type * as lib_identity from "../lib/identity.js";
+import type * as lib_matcher from "../lib/matcher.js";
+import type * as lib_rateLimits from "../lib/rateLimits.js";
+import type * as limits from "../limits.js";
 import type * as plans_crons from "../plans/crons.js";
+import type * as reveal from "../reveal.js";
+import type * as taps from "../taps.js";
+import type * as users from "../users.js";
 import type * as web_routes from "../web/routes.js";
 import type * as whop_routes from "../whop/routes.js";
 
@@ -23,11 +35,23 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  checkins: typeof checkins;
+  clock: typeof clock;
+  crew: typeof crew;
   crons: typeof crons;
+  frolics: typeof frolics;
   http: typeof http;
   "keiki/outbound": typeof keiki_outbound;
   "keiki/routes": typeof keiki_routes;
+  "lib/core": typeof lib_core;
+  "lib/identity": typeof lib_identity;
+  "lib/matcher": typeof lib_matcher;
+  "lib/rateLimits": typeof lib_rateLimits;
+  limits: typeof limits;
   "plans/crons": typeof plans_crons;
+  reveal: typeof reveal;
+  taps: typeof taps;
+  users: typeof users;
   "web/routes": typeof web_routes;
   "whop/routes": typeof whop_routes;
 }>;

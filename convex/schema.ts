@@ -16,7 +16,6 @@ export const timeWindow = v.object({ start: v.number(), end: v.number() });
 
 export const frolicStatus = v.union(
   v.literal("open"),
-  v.literal("matched"),
   v.literal("on"),
   v.literal("faded"),
   v.literal("done"),
@@ -46,7 +45,8 @@ export default defineSchema({
     name: v.string(),
     createdBy: v.id("users"),
     timezone: v.string(),
-  }),
+    e2eRun: v.optional(v.string()),
+  }).index("by_e2eRun", ["e2eRun"]),
 
   memberships: defineTable({
     groupId: v.id("groups"),
@@ -169,6 +169,27 @@ export default defineSchema({
   })
     .index("by_groupId_and_day", ["groupId", "day"])
     .index("by_status_and_deadline", ["status", "deadline"]),
+
+  reveals: defineTable({
+    frolicId: v.id("frolics"),
+    scheduledId: v.id("_scheduled_functions"),
+    userIds: v.array(v.id("users")),
+    revealAt: v.number(),
+    bloomAt: v.number(),
+    startsAt: v.number(),
+    matchedAt: v.number(),
+  }).index("by_frolicId", ["frolicId"]),
+
+  revealLog: defineTable({
+    frolicId: v.id("frolics"),
+    groupId: v.id("groups"),
+    userId: v.id("users"),
+    revealAt: v.number(),
+    bloomAt: v.number(),
+    flippedAt: v.number(),
+  })
+    .index("by_frolicId", ["frolicId"])
+    .index("by_groupId", ["groupId"]),
 
   taps: defineTable({
     frolicId: v.id("frolics"),
