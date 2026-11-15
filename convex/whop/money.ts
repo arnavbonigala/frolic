@@ -227,6 +227,10 @@ export async function applySignal(
       }
     }
   }
+  if (next === "paid") {
+    const attendee = await findAttendee(ctx, share.frolicId, share.userId);
+    if (attendee?.status !== "going" || (await calledOff(ctx, share.frolicId))) await beginRefund(ctx, fresh);
+  }
   if (next === "forfeited") {
     const rows = await ledgerFor(ctx, share);
     if (!rows.some((r) => r.entry === "forfeit")) {
@@ -418,6 +422,7 @@ export const payView = internalQuery({
       return { ok: false as const, message: "This one is not happening right now." };
     }
     if ((await findAttendee(ctx, share.frolicId, share.userId))?.status !== "going") return { ok: false as const, message: LET_GO };
+    if (await calledOff(ctx, share.frolicId)) return { ok: false as const, message: "This one is not happening right now." };
     if (share.status !== "due" && share.status !== "failed") {
       return { ok: false as const, message: "You're already set for this one.", art: share.kind === "deposit" ? ("released" as const) : undefined };
     }
@@ -487,8 +492,9 @@ export const beginCharge = internalMutation({
       return { ok: false as const, message: "This one is not happening right now." };
     }
     if ((await findAttendee(ctx, share.frolicId, share.userId))?.status !== "going") return { ok: false as const, message: LET_GO };
+    if (await calledOff(ctx, share.frolicId)) return { ok: false as const, message: "This one is not happening right now." };
     if (share.status !== "due" && share.status !== "failed") return { ok: false as const, message: "You're already set for this one." };
-    await setStatus(ctx, share, "pending", { lastError: undefined });
+    await setStatus(ctx, share, "pending", { lastError: undefined, whopPaymentId: undefined });
     const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
     return {
       ok: true as const,
