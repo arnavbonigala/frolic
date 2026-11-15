@@ -606,7 +606,8 @@ private struct TodayBunch: View {
                     name: person.name,
                     status: "going",
                     swayDelay: Double(index) * 0.5,
-                    animatesIn: animatesIn
+                    animatesIn: animatesIn,
+                    appearDelay: 0.2 + Double(index) * 0.14
                 )
                 .zIndex(index == 1 ? 1 : 0)
             }
@@ -621,6 +622,8 @@ private struct TodayBunch: View {
 private struct TodayOnView: View {
     var store: TodayStore
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var cheered = false
 
     var body: some View {
         let people = store.goingPeople
@@ -638,6 +641,11 @@ private struct TodayOnView: View {
                     .tracking(-1)
                     .foregroundStyle(FrolicColor.ink)
                     .minimumScaleFactor(0.6)
+                    .scaleEffect(cheered || store.bloomID == 0 || reduceMotion ? 1 : 0.55, anchor: .bottomLeading)
+                    .rotationEffect(.degrees(cheered || store.bloomID == 0 || reduceMotion ? 0 : -6), anchor: .bottomLeading)
+                    .onAppear {
+                        withAnimation(.spring(response: 0.55, dampingFraction: 0.55).delay(1.15)) { cheered = true }
+                    }
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.on.title")
                 meetLine(plan)
