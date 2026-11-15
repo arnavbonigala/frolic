@@ -30,7 +30,12 @@ export const getMemoryContext = internalAction({
     const hit = await ctx.runQuery(internal.memory.read.cached, { groupId, day });
     if (hit) return hit;
     const stats = await ctx.runQuery(internal.memory.stats.tagStats, { groupId });
-    const context = await buildContext(getClient(), groupNamespace(groupId), stats).catch(() => buildContextFailure(stats));
+    let context: MemoryContext;
+    try {
+      context = await buildContext(getClient(), groupNamespace(groupId), stats);
+    } catch {
+      return buildContextFailure(stats);
+    }
     await ctx.runMutation(internal.memory.read.saveCache, { groupId, day, context });
     return context;
   },
