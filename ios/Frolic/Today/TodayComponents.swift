@@ -37,11 +37,15 @@ struct TodayPacket<Content: View>: View {
                     .offset(y: -pull)
             }
             .frame(height: heroHeight)
-            .overlay(alignment: .bottom) { meadow }
             .mask(alignment: .bottom) {
-                DeckleEdge()
-                    .frame(height: heroHeight + 600)
+                VStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 90)
+                }
+                .frame(height: heroHeight + 600)
             }
+            .overlay(alignment: .bottom) { meadow }
             ticket
                 .padding(.top, flickable ? 12 : 6)
         }

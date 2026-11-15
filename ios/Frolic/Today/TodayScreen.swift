@@ -75,7 +75,16 @@ struct TodayScreen: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: connectivity.isOnline)
         .background {
             if bleeds {
-                FrolicColor.cream.overlay(PaperGrain()).ignoresSafeArea()
+                ZStack {
+                    FrolicColor.cream
+                    TodayHeroImage(asset: TodayCopy.heroAsset(store.plan), remote: store.plan?.place?.photoUrl, description: nil)
+                        .scaleEffect(1.4)
+                        .blur(radius: 46)
+                        .opacity(0.85)
+                    LinearGradient(colors: [FrolicColor.cream.opacity(0.15), FrolicColor.cream.opacity(0.55)], startPoint: .top, endPoint: .bottom)
+                }
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
             } else {
                 SkyBackground()
             }
