@@ -27,13 +27,15 @@ struct OnboardingView: View {
 struct OnboardingGate<Content: View>: View {
     @Environment(AppRouter.self) private var router
     @Environment(FrolicBackend.self) private var backend
+    @Environment(FrolicIdentity.self) private var identity
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model: OnboardingModel?
     @State private var finished = OnboardingIdentity.isComplete
     @ViewBuilder var content: Content
 
     var body: some View {
         Group {
-            if finished && !forcesOnboarding {
+            if showsContent {
                 content
             } else if let model {
                 OnboardingView(model: model)
@@ -42,8 +44,12 @@ struct OnboardingGate<Content: View>: View {
             }
         }
         .onChange(of: router.e2eRoute) { _, _ in rebuild() }
-        .onChange(of: FrolicIdentity.shared.groupId) { _, group in
-            if group != nil, OnboardingIdentity.isComplete { finished = true }
+        .onChange(of: identity.groupId) { _, group in
+            if group != nil, !(model?.isMidFlow ?? false) { finished = true }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, !showsContent, router.e2eRoute == nil else { return }
+            Task { await adoptMembership() }
         }
         .onOpenURL { url in
             guard url.scheme == "frolic", url.host == "join", let link = InviteLink(url: url) else { return }
@@ -53,12 +59,19 @@ struct OnboardingGate<Content: View>: View {
         }
         .task {
             if model == nil { rebuild() }
-            guard !finished, router.e2eRoute == nil else { return }
-            if let group = await OnboardingBackend(client: backend.client).existingMembership() {
-                OnboardingIdentity.commit(groupId: group)
-                finished = true
-            }
+            guard !showsContent, router.e2eRoute == nil else { return }
+            await adoptMembership()
         }
+    }
+
+    private var showsContent: Bool {
+        (finished || identity.groupId != nil) && !forcesOnboarding && !(model?.isMidFlow ?? false)
+    }
+
+    private func adoptMembership() async {
+        guard let group = await OnboardingBackend(client: backend.client).existingMembership(), !(model?.isMidFlow ?? false) else { return }
+        OnboardingIdentity.commit(groupId: group)
+        finished = true
     }
 
     private var forcesOnboarding: Bool {

@@ -74,6 +74,9 @@ final class OnboardingModel {
     var showsInviteEntry = false
     var groupId: String?
     var createdInviteCode: String?
+    private(set) var isFinished = false
+
+    var isMidFlow: Bool { groupId != nil && !isFinished }
 
     var shareURL: URL? {
         guard let code = createdInviteCode else { return nil }
@@ -442,6 +445,7 @@ final class OnboardingModel {
             OnboardingIdentity.commit(groupId: groupId)
         }
         OnboardingIdentity.isComplete = true
+        isFinished = true
         OnboardingSessionRelay.store(deviceToken: OnboardingIdentity.deviceToken, groupId: groupId)
         isSubmitting = false
         onFinish()
