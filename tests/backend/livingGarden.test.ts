@@ -21,7 +21,7 @@ async function plant(
   t: T,
   crew: Crew,
   day: string,
-  opts: { tags?: string[]; drop?: boolean; going?: string[]; cost?: number } = {},
+  opts: { tags?: string[]; drop?: boolean; going?: string[]; cost?: number; upcoming?: boolean } = {},
 ): Promise<Id<"frolics">> {
   return await t.run(async (ctx) => {
     const placeId = await ctx.db.insert("places", {
@@ -90,7 +90,8 @@ async function plant(
       day,
       kind: "daily",
       planId,
-      status: "done",
+      status: opts.upcoming ? "on" : "done",
+      ...(opts.upcoming ? { startsAt: NOON + 2 * 60 * 60 * 1000, endsAt: NOON + 3 * 60 * 60 * 1000 } : {}),
       window: { start: NOON, end: NOON + 1 },
       durationMinutes: 60,
       deadline: NOON,
@@ -108,6 +109,12 @@ async function plant(
     }
     return frolicId;
   });
+}
+
+async function checkIn(t: T, crew: Crew, frolicId: Id<"frolics">, name: string) {
+  await t.run(async (ctx) =>
+    ctx.db.insert("checkins", { frolicId, userId: crew.ids[name], method: "manual", at: Date.now() }),
+  );
 }
 
 async function overview(t: T, crew: Crew, name = "Maya", day = TODAY) {
@@ -179,6 +186,13 @@ describe("collection and milestones", () => {
     expect(view.collection.flowers.find((f) => f.frolicId === drop)?.variety).toBe("ranunculus");
     expect(view.collection.flowers.find((f) => f.frolicId === sunset)?.variety).toBe("goldenPoppy");
     expect(view.milestone).toEqual({ reached: "bench", next: "path", nextAt: 10, line: "10 frolics: the garden gets a winding path" });
+  });
+
+  test("a sunset place unlocks the golden poppy, singular or plural", () => {
+    const place = (tags: string[]) => ({ tags }) as never;
+    const plan = (cost: number) => ({ cost }) as never;
+    expect(varietyOf({ plan: plan(0), place: place(["sunset", "views", "outdoors"]) })).toBe("goldenPoppy");
+    expect(varietyOf({ plan: plan(0), place: place(["sunsets", "views", "outdoors"]) })).toBe("goldenPoppy");
   });
 
   test("varieties for the other categories", () => {
@@ -308,5 +322,60 @@ describe("garden nudge", () => {
       for (const name of NAMES) expect(line).not.toContain(name);
       expect(line).not.toMatch(/[—!]/);
     }
+  });
+});
+
+describe("only frolics that happened count", () => {
+  test("today's matched plan counts nowhere until someone checks in", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, NAMES);
+    const today = await plant(t, crew, TODAY, { tags: ["sunset"], upcoming: true });
+    const before = await overview(t, crew);
+    expect(before.youWent).toBe(false);
+    expect(before.count).toBe(0);
+    expect(before.yourCount).toBe(0);
+    expect(before.memories).toEqual([]);
+    expect(before.collection.flowers).toEqual([]);
+    expect(before.collection.varieties.every((x) => x.count === 0)).toBe(true);
+    expect(before.milestone.reached).toBeNull();
+    expect(before.health.line).toBe("Your first frolic plants the first flower");
+    const crewBefore = await t.query(api.crew.crew, { deviceToken: token("Maya"), groupId: crew.groupId, day: TODAY });
+    expect(crewBefore.members.every((m) => m.together.count === 0)).toBe(true);
+
+    await checkIn(t, crew, today, "Dev");
+    const after = await overview(t, crew);
+    expect(after.youWent).toBe(true);
+    expect(after.count).toBe(1);
+    expect(after.yourCount).toBe(1);
+    expect(after.collection.flowers).toEqual([{ frolicId: today, variety: "goldenPoppy" }]);
+    expect(after.health.line).toBe("Your garden is thriving");
+  });
+
+  test("a plan whose end has passed counts without a check-in", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, NAMES);
+    await plant(t, crew, TODAY, { upcoming: true });
+    expect((await overview(t, crew)).yourCount).toBe(0);
+    vi.setSystemTime(NOON + 3 * 60 * 60 * 1000);
+    const later = await overview(t, crew);
+    expect(later.yourCount).toBe(1);
+    expect(later.collection.flowers).toHaveLength(1);
+  });
+
+  test("each friend carries how many frolics you went on together", async () => {
+    const t = makeT();
+    const crew = await setupCrew(t, NAMES);
+    await plant(t, crew, "2026-11-12", { going: ["Maya", "Dev"] });
+    await plant(t, crew, "2026-11-13", { going: ["Maya", "Dev", "Jordan"] });
+    await plant(t, crew, "2026-11-14", { going: ["Dev", "Jordan"] });
+    await plant(t, crew, TODAY, { going: ["Maya", "Jordan"], upcoming: true });
+    const view = await t.query(api.crew.crew, { deviceToken: token("Maya"), groupId: crew.groupId, day: TODAY });
+    const byName = Object.fromEntries(view.members.map((m) => [m.name, m.together]));
+    expect(byName.Dev).toEqual({ count: 2, lastPlace: "A spot", lastDateLine: "Nov 13" });
+    expect(byName.Jordan).toEqual({ count: 1, lastPlace: "A spot", lastDateLine: "Nov 13" });
+    expect(byName.Maya.count).toBe(2);
+    expect((await overview(t, crew)).yourCount).toBe(2);
+    const jordan = await t.query(api.crew.crew, { deviceToken: token("Jordan"), groupId: crew.groupId, day: TODAY });
+    expect(jordan.members.find((m) => m.name === "Maya")?.together.count).toBe(1);
   });
 });

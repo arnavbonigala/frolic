@@ -21,7 +21,7 @@ test:
     - type: "validation"
       step_description: "The line \"Maya, Dev, Jordan and Priya are free\" is visible under a row of four flowers"
     - type: "validation"
-      step_description: "A plan card titled \"Sunset at Indian Rock\" shows chips \"Free\", \"12 min walk\" and \"Golden hour 4:28\""
+      step_description: "A plan card titled \"Sunset at Indian Rock\" shows chips \"Free\", \"12 min walk\" and \"Starts 4:30\""
     - type: "validation"
       step_description: "The card shows \"Why this:\" followed by \"you're into sunsets, it's free, and the sky's clear until dark.\""
     - type: "validation"

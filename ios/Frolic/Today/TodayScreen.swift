@@ -187,6 +187,8 @@ private struct TodayPhaseView: View {
                 TodayWaitingView(store: store, onlyIf: onlyIf, router: router)
             case .on:
                 TodayOnView(store: store)
+            case .arrived:
+                TodayArrivedView(store: store)
             case .hopIn:
                 TodayHopInView(store: store)
             case .faded:
@@ -356,7 +358,7 @@ private struct TodayWaitingView: View {
         VStack(spacing: 0) {
             TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson]) { router.tab = .crew }
                 .accessibilityIdentifier("today.meadow")
-            TodayCaption(text: "Waiting for a friend", identifier: "today.caption.waiting", showsDots: true)
+            TodayCaption(text: onlyIf.isEmpty ? "Waiting for a friend" : "Waiting for " + TodayCopy.names(onlyIf), identifier: "today.caption.waiting", showsDots: true)
             TodayPlanPacket(store: store, showsWhy: false)
             TodayStatusCard(
                 title: TodayCopy.downLine(onlyIf),
@@ -518,7 +520,6 @@ private struct TodayBunch: View {
 private struct TodayOnView: View {
     var store: TodayStore
     @Environment(\.openURL) private var openURL
-    @State private var heldPrompted: String?
 
     var body: some View {
         let people = store.goingPeople
@@ -581,14 +582,6 @@ private struct TodayOnView: View {
                 .padding(.top, 6)
                 .accessibilityIdentifier("today.on.bail")
         }
-        .task(id: store.visiblePayment?.state) {
-            guard let payment = store.visiblePayment, payment.state == "due", payment.kind == "hold",
-                  let frolicId = store.frolic?.frolicId, heldPrompted != frolicId, store.bloomID > 0 || store.isFixture
-            else { return }
-            heldPrompted = frolicId
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            if store.bloomed, store.sheet == nil, store.visiblePayment?.state == "due" { store.sheet = .hold }
-        }
     }
 
     private func meetLine(_ plan: TodayPlan?) -> Text {
@@ -610,6 +603,49 @@ private struct TodayOnView: View {
         let name = place.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         if let url = URL(string: "https://maps.apple.com/?daddr=\(place.lat),\(place.lng)&q=\(name)&dirflg=w") {
             openURL(url)
+        }
+    }
+}
+
+private struct TodayArrivedView: View {
+    var store: TodayStore
+
+    var body: some View {
+        let here = store.arrivedFriendNames
+        VStack(alignment: .leading, spacing: 0) {
+            TodayBunch(people: store.goingPeople.filter { store.arrivedIds.contains($0.userId) }, radius: 50, stems: [70, 120, 90, 104], height: 290, animatesIn: false)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("You made it.")
+                    .todayFont(52, .heavy, rounded: true, relativeTo: .largeTitle)
+                    .tracking(-1)
+                    .foregroundStyle(FrolicColor.ink)
+                    .minimumScaleFactor(0.6)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("today.arrived.title")
+                Text(here.isEmpty ? "You're the first one here." : TodayCopy.names(here) + (here.count == 1 ? " is" : " are") + " here too.")
+                    .todayFont(17, relativeTo: .body)
+                    .foregroundStyle(FrolicColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
+                    .accessibilityIdentifier("today.arrived.who")
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 16)
+            Button("Take the group snap") {
+                CheckInFlowCoordinator.shared.open(frolicId: store.frolic?.frolicId)
+            }
+            .buttonStyle(.frolicPrimary)
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
+            .accessibilityIdentifier("today.arrived.snap")
+            Text("Everyone's shot unlocks when you add yours.")
+                .todayFont(13, relativeTo: .footnote)
+                .foregroundStyle(FrolicColor.secondaryText)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 8)
+            TodayMoneyCard(store: store)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
         }
     }
 }
