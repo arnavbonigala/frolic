@@ -349,7 +349,20 @@ export const seed = internalMutation({
       updatedAt: now,
     });
 
-    if (args.scenario === "demo") await seedDemo(ctx, groupId, today, now);
+    if (args.scenario === "demo") {
+      if (ids.Dev) await ctx.db.insert("availability", { groupId, userId: ids.Dev, day: today, state: "now", minutesAway: 12, updatedAt: now });
+      if (ids.Jordan) {
+        await ctx.db.insert("availability", {
+          groupId,
+          userId: ids.Jordan,
+          day: today,
+          state: "window",
+          window: { start: instantInZone(today, 16, 0, ZONE), end: instantInZone(today, 21, 0, ZONE) },
+          updatedAt: now,
+        });
+      }
+      await seedDemo(ctx, groupId, today, now);
+    }
 
     const link = (name: string) =>
       `frolic://signin?deviceToken=${tokens[name]}&groupId=${groupId}`;
@@ -403,7 +416,7 @@ async function seedDemo(
     capacity: 6,
     source: "e2e",
   });
-  await upsertPlan(ctx, groupId, day, {
+  const kayakPlanId = await upsertPlan(ctx, groupId, day, {
     kind: "daily",
     placeId: kayaks,
     title: "Kayaks at the Marina",
@@ -432,6 +445,77 @@ async function seedDemo(
     weatherSwap: false,
     weatherCheckedAt: now,
   });
+  await seedPast(ctx, groupId, today, kayakPlanId);
+}
+
+const PAST = [
+  { slug: "indian-rock", ago: 2, hour: 16, title: "Sunset at Indian Rock", line: "The whole bay lit up from the top of the rock.", going: 4 },
+  { slug: "codornices-slide", ago: 5, hour: 14, title: "The Codornices slide", line: "Cardboard makes it twice as fast.", going: 3 },
+  { slug: "kingpin-donuts", ago: 9, hour: 22, title: "Late donuts at Kingpin", line: "Warm glazed, straight from the rack.", going: 2 },
+];
+
+async function seedPast(ctx: MutationCtx, groupId: Id<"groups">, today: string, templateId: Id<"plans">): Promise<void> {
+  const template = await ctx.db.get("plans", templateId);
+  if (!template) return;
+  const members = await ctx.db
+    .query("memberships")
+    .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
+    .take(10);
+  const { _id, _creationTime, groupId: _g, day: _d, ...base } = template;
+  for (const past of PAST) {
+    const day = addDays(today, -past.ago);
+    const existing = await ctx.db
+      .query("frolics")
+      .withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).eq("day", day))
+      .first();
+    if (existing) continue;
+    const place = await ctx.db
+      .query("places")
+      .withIndex("by_slug", (q) => q.eq("slug", past.slug))
+      .unique();
+    if (!place) continue;
+    const start = instantInZone(day, past.hour, 0, ZONE);
+    const planId = await upsertPlan(ctx, groupId, day, {
+      ...base,
+      placeId: place._id,
+      title: past.title,
+      line: past.line,
+      cost: 0,
+      costLabel: "Free",
+      payUpFront: false,
+      chips: ["Free"],
+      startsAt: start,
+      durationMinutes: 60,
+    });
+    const revealAt = start - 3 * HOUR;
+    const frolicId = await ctx.db.insert("frolics", {
+      groupId,
+      day,
+      kind: "daily",
+      planId,
+      status: "done",
+      window: { start, end: start + 2 * HOUR },
+      durationMinutes: 60,
+      deadline: revealAt,
+      matchedAt: revealAt,
+      revealAt,
+      bloomAt: revealAt,
+      startsAt: start,
+      endsAt: start + HOUR,
+      origin: "daily",
+    });
+    for (const member of members.slice(0, past.going)) {
+      await ctx.db.insert("attendees", {
+        frolicId,
+        groupId,
+        userId: member.userId,
+        role: "matched",
+        status: "going",
+        revealAt,
+        bloomAt: revealAt,
+      });
+    }
+  }
 }
 
 export const advance = internalMutation({
