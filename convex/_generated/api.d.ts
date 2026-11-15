@@ -43,6 +43,7 @@ import type * as limits from "../limits.js";
 import type * as memory_account from "../memory/account.js";
 import type * as memory_client from "../memory/client.js";
 import type * as memory_context from "../memory/context.js";
+import type * as memory_e2eBeat from "../memory/e2eBeat.js";
 import type * as memory_events from "../memory/events.js";
 import type * as memory_fakeSupermemory from "../memory/fakeSupermemory.js";
 import type * as memory_ingest from "../memory/ingest.js";
@@ -126,6 +127,7 @@ declare const fullApi: ApiFromModules<{
   "memory/account": typeof memory_account;
   "memory/client": typeof memory_client;
   "memory/context": typeof memory_context;
+  "memory/e2eBeat": typeof memory_e2eBeat;
   "memory/events": typeof memory_events;
   "memory/fakeSupermemory": typeof memory_fakeSupermemory;
   "memory/ingest": typeof memory_ingest;

@@ -430,12 +430,13 @@ describe("demo beat", () => {
   const memoryOf = (t: ReturnType<typeof makeT>, groupId: Id<"groups">) =>
     t.action(internal.plans.drop.memoryStep, { groupId, day: DAY });
 
-  test("memoryStep falls back to an empty context when Supermemory is not there", async () => {
+  test("memoryStep falls back to the Convex counters when Supermemory is not there", async () => {
     const { t, groupId } = await crew();
     delete process.env.SUPERMEMORY_API_KEY;
     await bobaSkips(t, groupId);
     const memory = await memoryOf(t, groupId);
-    expect(memory).toEqual(EMPTY_MEMORY);
+    expect(memory.pastNights).toEqual([]);
+    expect(memory.suppressed).toContain("boba");
   });
 
   test("a crew that keeps passing on boba never gets a boba place", async () => {

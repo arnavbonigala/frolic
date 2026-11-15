@@ -5,13 +5,16 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
 const skippedBy = async (ctx: MutationCtx, groupId: Id<"groups">, day: string): Promise<Set<string>> => {
-  const frolics = await ctx.db.query("frolics").withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).eq("day", day)).take(10);
-  const out = new Set<string>();
-  for (const frolic of frolics) {
-    const taps = await ctx.db.query("taps").withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id)).take(100);
-    for (const tap of taps) if (tap.kind === "notToday") out.add(tap.userId);
+  const latest = new Map<string, { at: number; skipped: boolean }>();
+  for (const kind of ["skip", "tap", "only_if"] as const) {
+    const events = await ctx.db.query("memoryEvents").withIndex("by_groupId_and_kind", (q) => q.eq("groupId", groupId).eq("kind", kind)).order("desc").take(500);
+    for (const e of events) {
+      if (e.payload?.day !== day || !e.userId) continue;
+      const seen = latest.get(e.userId);
+      if (!seen || e._creationTime >= seen.at) latest.set(e.userId, { at: e._creationTime, skipped: kind === "skip" });
+    }
   }
-  return out;
+  return new Set([...latest].filter(([, v]) => v.skipped).map(([userId]) => userId));
 };
 
 const dayTags = async (ctx: MutationCtx, groupId: Id<"groups">, day: string): Promise<{ tags: string[]; revealed: boolean }> => {
@@ -23,13 +26,13 @@ const dayTags = async (ctx: MutationCtx, groupId: Id<"groups">, day: string): Pr
     const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
     if (!plan) continue;
     const place = await ctx.db.get("places", plan.placeId);
-    for (const tag of place?.tags ?? []) tags.add(tag.toLowerCase());
+    if (place?.tags[0]) tags.add(place.tags[0].toLowerCase());
   }
   if (tags.size === 0) {
     const plans = await ctx.db.query("plans").withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).eq("day", day)).take(10);
     for (const plan of plans) {
       const place = await ctx.db.get("places", plan.placeId);
-      for (const tag of place?.tags ?? []) tags.add(tag.toLowerCase());
+      if (place?.tags[0]) tags.add(place.tags[0].toLowerCase());
     }
   }
   return { tags: [...tags], revealed };

@@ -1,0 +1,35 @@
+test:
+  metadata:
+    name: "frolic-memory-skip-boba-twice"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "today"
+      - "memory"
+      - "feature-4"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/today:open"
+    - type: "code_execution"
+      script: "skip-boba-twice"
+      timeout_seconds: 60
+    - type: "manual"
+      step_type: "wait"
+      step_description: "3"
+    - type: "instructions"
+      step_description: "Pull down on Today to refresh"
+    - type: "validation"
+      step_description: "A plan card is visible and its title does not contain \"Boba\" or \"Plentea\" or \"Asha\""
+    - type: "validation"
+      step_description: "The card shows \"Why this:\" followed by a line that is not empty"
+    - type: "extraction"
+      step_description: "Read the full Why this line on the plan card"
+      variable_name: "why_line"
+    - type: "validation"
+      step_description: "The Crew tab shows nobody is told who passed: no row names a person as having skipped"
