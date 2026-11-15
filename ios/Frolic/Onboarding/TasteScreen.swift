@@ -8,7 +8,7 @@ struct TasteScreen: View {
         OnboardingPage {
             OnboardingTitle(
                 title: "Pick a few nights you loved",
-                subcopy: "From your camera roll. Frolic learns what you're into so plans fit you. Pick at least 3.",
+                subcopy: "Pick at least 3",
                 identifier: "taste.title"
             )
             switch model.photoPhase {

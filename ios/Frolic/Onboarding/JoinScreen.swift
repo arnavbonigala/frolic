@@ -44,10 +44,6 @@ struct JoinScreen: View {
                 } else {
                     inviteCopy
                 }
-                Spacer(minLength: 24)
-                captionCard
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 8)
             case .loading:
                 HStack(spacing: 10) {
                     OnboardingSpinner()
@@ -115,12 +111,6 @@ struct JoinScreen: View {
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("join.title")
                 .fixedSize(horizontal: false, vertical: true)
-            Text(Self.blurb)
-                .frolicFont(.body)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 12)
-                .accessibilityIdentifier("join.blurb")
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 22)
         .padding(.top, 14)
@@ -142,12 +132,6 @@ struct JoinScreen: View {
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("join.title")
                 .fixedSize(horizontal: false, vertical: true)
-            Text(Self.blurb)
-                .frolicFont(.body)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 12)
-                .accessibilityIdentifier("join.blurb")
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 22)
         .padding(.top, 14)
@@ -157,56 +141,6 @@ struct JoinScreen: View {
 
     private var invitedByLine: String {
         "\(model.preview?.invitedBy ?? "Maya") invited you to"
-    }
-
-    private var captionCard: some View {
-        HStack(alignment: .top, spacing: 4) {
-            caption(
-                identifier: "join.caption.free",
-                text: "Friends who are free bloom"
-            ) {
-                FlowerView(state: .bloom, color: .pink, radius: 17, stem: 0)
-            }
-            caption(
-                identifier: "join.caption.bud",
-                text: "Your yes is a secret bud"
-            ) {
-                FlowerView(state: .bud, color: .tomato, radius: 15, stem: 22)
-            }
-            caption(
-                identifier: "join.caption.on",
-                text: "Both yes: it's on"
-            ) {
-                HStack(spacing: -8) {
-                    FlowerView(state: .bloom, color: .tomato, radius: 14, stem: 0)
-                    FlowerView(state: .bloom, color: .cobalt, radius: 14, stem: 0)
-                }
-            }
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 6)
-        .frame(maxWidth: .infinity)
-        .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(FrolicColor.hairline, lineWidth: 0.5))
-        .shadow(color: Color(hex: 0x78501E, opacity: 0.08), radius: 13, y: 10)
-    }
-
-    private func caption<Icon: View>(
-        identifier: String,
-        text: String,
-        @ViewBuilder icon: () -> Icon
-    ) -> some View {
-        VStack(spacing: 4) {
-            icon()
-                .frame(minHeight: 60, alignment: .bottom)
-            Text(text)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(FrolicColor.ink)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier(identifier)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -230,7 +164,6 @@ struct JoinScreen: View {
         }
     }
 
-    static let blurb = "Every afternoon, one plan for whoever's free. Say you're down in secret. It only happens if a friend is down too."
 }
 
 struct InviteEntrySheet: View {

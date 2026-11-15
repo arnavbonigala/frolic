@@ -17,12 +17,6 @@ struct ReadingScreen: View {
                 }
             }
             .padding(.top, 20)
-            Text("Your crew's plans blend everyone's picks. It keeps learning from what you say yes to.")
-                .frolicFont(.footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 18)
-                .padding(.horizontal, 4)
-                .fixedSize(horizontal: false, vertical: true)
         } bar: {
             Button("Sounds like me") {
                 Task { await model.confirmTaste() }
