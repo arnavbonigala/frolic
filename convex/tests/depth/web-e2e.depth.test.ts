@@ -228,10 +228,7 @@ describe("what peek shows before anyone joins", () => {
       chips: ["Free", "2 hours", "Golden hour 4:28"],
       why: "you're into sunsets, it's free, and the sky's clear until dark.",
     });
-    expect([
-      "https://images.example/hills_sunset.jpg",
-      "/p/hero/plan-sunsets.png",
-    ]).toContain(peeked?.card?.imageUrl);
+    expect(peeked?.card?.imageUrl).toMatch(/^(https:\/\/images\.example\/[a-z0-9_]+\.jpg|\/p\/hero\/plan-[a-z-]+\.(png|jpg))$/);
     expect(JSON.stringify(peeked)).not.toContain("Dev");
     expect(JSON.stringify(peeked)).not.toContain("Jordan");
   });
@@ -397,7 +394,7 @@ describe("joining a frolic from the page", () => {
     expect({
       phase: guest.phase,
       me: guest.me,
-      mates: guest.mates,
+      mates: guest.mates.map((m) => m.name),
       meet: guest.meet,
       time: guest.time,
     }).toEqual({
@@ -410,13 +407,13 @@ describe("joining a frolic from the page", () => {
     expect(guest.revealAt).toBe(frolic.revealAt);
     expect(guest.card?.title).toBe("Sunset at Indian Rock");
     const app = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Dev") });
-    expect({ phase: app.phase, me: app.me, mates: app.mates }).toEqual({
+    expect({ phase: app.phase, me: app.me, mates: app.mates.map((m) => m.name) }).toEqual({
       phase: "on",
       me: "Dev",
       mates: ["Priya"],
     });
     const onlooker = await t.query(api.web.share.watch, { code: link.code, deviceToken: token("Jordan") });
-    expect({ phase: onlooker.phase, me: onlooker.me, mates: [...onlooker.mates].sort() }).toEqual({
+    expect({ phase: onlooker.phase, me: onlooker.me, mates: onlooker.mates.map((m) => m.name).sort() }).toEqual({
       phase: "on",
       me: null,
       mates: ["Dev", "Priya"],

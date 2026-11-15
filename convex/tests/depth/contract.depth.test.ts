@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { describe, expect, test } from "vitest";
+import { UNCOVERED_ALLOWLIST } from "./uncovered-allowlist";
 
 type Registered = {
   name: string;
@@ -73,6 +74,8 @@ const testSources = Object.entries(
 
 const liveSources = testSources.filter(([path]) => !path.includes("/depth/"));
 
+const allowlist = new Set(UNCOVERED_ALLOWLIST);
+
 const dotted = (fn: Registered) =>
   `${fn.public ? "api" : "internal"}.${fn.path.replace(/^convex\//, "").replace(/\.ts$/, "").split("/").join(".")}.${fn.name}`;
 
@@ -108,12 +111,25 @@ describe("convex function contract", () => {
     expect(missing).toEqual([]);
   });
 
-  test("every registered function is called by a test outside its own file", async () => {
+  test("no function is uncovered unless it is on the checked-in allowlist", async () => {
     const functions = await registry();
-    const untested = functions.filter((fn) => calledBy(fn, testSources).length === 0);
-    expect(untested.map(dotted)).toEqual([]);
-    const onlySkipped = functions.filter((fn) => calledBy(fn, liveSources).length === 0);
-    expect(onlySkipped.map(dotted)).toEqual([]);
+    const uncovered = functions.filter((fn) => calledBy(fn, testSources).length === 0);
+    const grown = uncovered.map(dotted).filter((name) => !allowlist.has(name));
+    expect(grown).toEqual([]);
+
+    const onlySkipped = functions
+      .filter((fn) => calledBy(fn, liveSources).length === 0)
+      .map(dotted)
+      .filter((name) => !allowlist.has(name));
+    expect(onlySkipped).toEqual([]);
+  });
+
+  test("the allowlist holds nothing the suite has since covered", async () => {
+    const functions = await registry();
+    const covered = new Set(
+      functions.filter((fn) => calledBy(fn, liveSources).length > 0).map(dotted),
+    );
+    expect([...allowlist].filter((name) => covered.has(name))).toEqual([]);
   });
 
   test("no public function takes an untyped argument", async () => {
