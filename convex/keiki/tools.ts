@@ -49,7 +49,10 @@ async function who(ctx: QueryCtx, phone: string): Promise<Who | null> {
   return { user, link, group: crew.group };
 }
 
-const notMember = { ok: false, error: "not_in_a_crew", say: "Ask for their first name and the invite code from their first message, then call join_crew." };
+const notMember = { ok: false, error: "not_in_a_crew", say: "Ask for their first name and the invite code from their first message, then call join_crew. If they have no code, say a friend in the crew sends the link, in one line." };
+
+const FADED_SAY = "Say it drifted off, gently, with no names and no count. Mention tomorrow. No guilt.";
+const DONE_SAY = "That plan has wrapped. Ask how it was, or mention tomorrow's drop.";
 
 async function walkMinutes(ctx: QueryCtx, frolicId: Id<"frolics">, userId: Id<"users">) {
   const eta = await ctx.db
@@ -116,7 +119,7 @@ export const getToday = internalQuery({
     }
     if (!group) return notMember;
     const frolic = await currentFrolic(ctx, group._id, now, group.timezone);
-    if (!frolic) return { ok: true, plan: null, say: "No plan has dropped yet today." };
+    if (!frolic) return { ok: true, plan: null, say: "Today's plan has not dropped yet. Say it comes in the morning, in one line." };
     const walk = me ? await walkMinutes(ctx, frolic._id, me.user._id) : DEFAULT_WALK_MINUTES;
     const details = await planDetails(ctx, frolic, group.timezone, walk);
     const revealed = isRevealed(frolic, now);
@@ -126,13 +129,14 @@ export const getToday = internalQuery({
       return { ok: true, plan: details.view, phase, groupChat: true, say: "This is the group chat. Answers here are not secret. Tell people to DM you their answer." };
     }
     const mine = await ownAnswer(ctx, frolic._id, me.user._id);
-    return { ok: true, plan: details.view, phase, yourAnswer: mine.answer, onlyWith: mine.onlyWith };
+    const say = phase === "faded" ? FADED_SAY : phase === "done" ? DONE_SAY : undefined;
+    return { ok: true, plan: details.view, phase, yourAnswer: mine.answer, onlyWith: mine.onlyWith, ...(say ? { say } : {}) };
   },
 });
 
 async function openFrolicFor(ctx: QueryCtx, me: Who, now: number) {
   const frolic = await currentFrolic(ctx, me.group._id, now, me.group.timezone);
-  if (!frolic) return { error: { ok: false, error: "no_plan", say: "There is no plan open right now." } } as const;
+  if (!frolic) return { error: { ok: false, error: "no_plan", say: "No plan has dropped yet today, so nothing was saved. Say today's plan comes in the morning, in one line." } } as const;
   if (frolic.status === "done" || frolic.status === "faded" || (!isRevealed(frolic, now) && now >= frolic.deadline)) {
     return { error: { ok: false, error: "closed", say: "Today's plan has closed. Tomorrow's drop is the next chance." } } as const;
   }
@@ -264,11 +268,11 @@ export const getReveal = internalQuery({
     const me = await who(ctx, phone);
     if (!me) return notMember;
     const frolic = await currentFrolic(ctx, me.group._id, now, me.group.timezone);
-    if (!frolic) return { ok: true, state: "no_plan" };
-    if (frolic.status === "done") return { ok: true, state: "done", say: "That plan has wrapped. Ask how it was, or mention tomorrow's drop." };
+    if (!frolic) return { ok: true, state: "no_plan", say: "Today's plan has not dropped yet. Say the plan comes in the morning, in one line." };
+    if (frolic.status === "done") return { ok: true, state: "done", say: DONE_SAY };
     if (!isRevealed(frolic, now)) {
       if (frolic.status === "faded" || (frolic.status === "open" && now >= frolic.deadline)) {
-        return { ok: true, state: "faded", say: "Say it drifted off, gently, with no names and no count. Mention tomorrow. No guilt." };
+        return { ok: true, state: "faded", say: FADED_SAY };
       }
       return { ok: true, state: "not_yet", say: SECRET_LINE };
     }
@@ -517,7 +521,7 @@ export const joinCrew = internalMutation({
   args: { phone: v.string(), code: v.string(), name: v.string(), now: v.number() },
   handler: async (ctx, { phone, code, name, now }) => {
     const invite = await validInvite(ctx, code, now);
-    if (!invite) return { ok: false, error: "bad_invite", say: "That invite code didn't work. Ask them to check the link they got." };
+    if (!invite) return { ok: false, error: "bad_invite", say: "That invite code didn't work. Ask them to check the link they got, and if they have no code, say a friend in the crew sends the link. Ask once." };
     const cleanName = name.trim().slice(0, 40);
     if (!cleanName) return { ok: false, error: "no_name", say: "Ask their first name first." };
     const existing = await ctx.db
