@@ -63,7 +63,7 @@ function dollars(cents: number): string {
 const BLOOM_SCAN = 200;
 const NUDGE_HOUR = 17;
 
-const VARIETIES = [
+export const VARIETIES = [
   { key: "goldenPoppy", name: "Golden poppy", hint: "Catch a sunset together", tags: ["sunsets", "sunset"] },
   { key: "wildLupine", name: "Wild lupine", hint: "Get outside together", tags: ["outdoors", "hiking", "picnic", "nature", "water", "views"] },
   { key: "nightJasmine", name: "Night jasmine", hint: "Grab late-night food together", tags: ["late_night_food"] },

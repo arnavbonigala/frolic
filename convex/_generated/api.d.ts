@@ -17,6 +17,7 @@ import type * as avatars_routes from "../avatars/routes.js";
 import type * as checkins from "../checkins.js";
 import type * as clock from "../clock.js";
 import type * as crew from "../crew.js";
+import type * as crews from "../crews.js";
 import type * as crons from "../crons.js";
 import type * as daily from "../daily.js";
 import type * as dailyPick from "../dailyPick.js";
@@ -39,6 +40,7 @@ import type * as keiki_routes from "../keiki/routes.js";
 import type * as keiki_tools from "../keiki/tools.js";
 import type * as lib_copy from "../lib/copy.js";
 import type * as lib_core from "../lib/core.js";
+import type * as lib_crews from "../lib/crews.js";
 import type * as lib_heroArt from "../lib/heroArt.js";
 import type * as lib_hold from "../lib/hold.js";
 import type * as lib_hooks from "../lib/hooks.js";
@@ -94,6 +96,7 @@ import type * as whop_routes from "../whop/routes.js";
 import type * as whop_signature from "../whop/signature.js";
 import type * as whop_split from "../whop/split.js";
 import type * as whop_webhooks from "../whop/webhooks.js";
+import type * as you from "../you.js";
 
 import type {
   ApiFromModules,
@@ -111,6 +114,7 @@ declare const fullApi: ApiFromModules<{
   checkins: typeof checkins;
   clock: typeof clock;
   crew: typeof crew;
+  crews: typeof crews;
   crons: typeof crons;
   daily: typeof daily;
   dailyPick: typeof dailyPick;
@@ -133,6 +137,7 @@ declare const fullApi: ApiFromModules<{
   "keiki/tools": typeof keiki_tools;
   "lib/copy": typeof lib_copy;
   "lib/core": typeof lib_core;
+  "lib/crews": typeof lib_crews;
   "lib/heroArt": typeof lib_heroArt;
   "lib/hold": typeof lib_hold;
   "lib/hooks": typeof lib_hooks;
@@ -188,6 +193,7 @@ declare const fullApi: ApiFromModules<{
   "whop/signature": typeof whop_signature;
   "whop/split": typeof whop_split;
   "whop/webhooks": typeof whop_webhooks;
+  you: typeof you;
 }>;
 
 /**

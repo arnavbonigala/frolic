@@ -4,6 +4,7 @@ import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { togetherWith } from "./garden";
+import { face } from "./lib/crews";
 import { holdCents } from "./lib/hold";
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
@@ -22,12 +23,7 @@ export const crew = query({
     memberCount: v.number(),
     createdAt: v.number(),
     members: v.array(
-      v.object({
-        userId: v.id("users"),
-        name: v.string(),
-        color: v.string(),
-        photoUrl: v.union(v.string(), v.null()),
-        isMe: v.boolean(),
+      face.extend({
         together: v.object({
           count: v.number(),
           lastPlace: v.union(v.string(), v.null()),

@@ -58,6 +58,8 @@ const QUERY_REGISTRY: Record<string, ArgsFor> = {
     day: "2026-11-15",
   }),
   "crew:looking": () => ({ roomToken: "qa-room-token" }),
+  "crews:mine": (f, observer) => ({ deviceToken: f.tokens[observer] }),
+  "you:totals": (f, observer) => ({ deviceToken: f.tokens[observer] }),
   "etas:forFrolic": (f, observer) => ({
     deviceToken: f.tokens[observer],
     frolicId: f.frolicId,
