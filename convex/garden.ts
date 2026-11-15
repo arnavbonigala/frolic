@@ -63,7 +63,7 @@ const BLOOM_SCAN = 200;
 const NUDGE_HOUR = 17;
 
 const VARIETIES = [
-  { key: "goldenPoppy", name: "Golden poppy", hint: "Catch a sunset together", tags: ["sunsets"] },
+  { key: "goldenPoppy", name: "Golden poppy", hint: "Catch a sunset together", tags: ["sunsets", "sunset"] },
   { key: "wildLupine", name: "Wild lupine", hint: "Get outside together", tags: ["outdoors", "hiking", "picnic", "nature", "water", "views"] },
   { key: "nightJasmine", name: "Night jasmine", hint: "Grab late-night food together", tags: ["late_night_food"] },
   { key: "sweetPea", name: "Sweet pea", hint: "Play a game together", tags: ["games", "play"] },
@@ -114,13 +114,60 @@ const milestone = v.object({
 
 type Bloom = { frolic: Doc<"frolics">; plan: Doc<"plans"> | null; place: Doc<"places"> | null };
 
-async function bloomOf(ctx: QueryCtx, frolic: Doc<"frolics">): Promise<Bloom | null> {
+export async function happened(ctx: QueryCtx, frolic: Doc<"frolics">, now: number): Promise<boolean> {
+  if (frolic.status === "done") return true;
+  if (frolic.status !== "on") return false;
+  if (frolic.endsAt !== undefined && frolic.endsAt <= now) return true;
+  const checkin = await ctx.db
+    .query("checkins")
+    .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+    .first();
+  return checkin !== null;
+}
+
+export async function togetherWith(ctx: QueryCtx, group: Doc<"groups">, userId: Id<"users">) {
+  const frolics = await ctx.db
+    .query("frolics")
+    .withIndex("by_groupId_and_day", (q) => q.eq("groupId", group._id))
+    .order("desc")
+    .take(60);
+  const now = Date.now();
+  const out = new Map<Id<"users">, { count: number; lastPlace: string | null; lastDateLine: string | null }>();
+  for (const frolic of frolics) {
+    if (frolic.status !== "on" && frolic.status !== "done") continue;
+    const attendees = await ctx.db
+      .query("attendees")
+      .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
+      .take(50);
+    const going = attendees.filter((a) => a.status === "going").map((a) => a.userId);
+    if (!going.includes(userId)) continue;
+    if (!(await happened(ctx, frolic, now))) continue;
+    const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
+    const place = plan ? await ctx.db.get("places", plan.placeId) : null;
+    for (const friend of going) {
+      const prior = out.get(friend);
+      if (prior) {
+        prior.count++;
+        continue;
+      }
+      out.set(friend, {
+        count: 1,
+        lastPlace: place?.name ?? null,
+        lastDateLine: dateLineFor(frolic.day, group.timezone, now),
+      });
+    }
+  }
+  return out;
+}
+
+async function bloomOf(ctx: QueryCtx, frolic: Doc<"frolics">, now = Date.now()): Promise<Bloom | null> {
   if (frolic.status !== "on" && frolic.status !== "done") return null;
   const attendees = await ctx.db
     .query("attendees")
     .withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id))
     .take(50);
   if (attendees.filter((a) => a.status === "going").length < 2) return null;
+  if (!(await happened(ctx, frolic, now))) return null;
   const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
   const place = plan ? await ctx.db.get("places", plan.placeId) : null;
   return { frolic, plan, place };
@@ -225,6 +272,7 @@ async function memoryRows(
     .order("desc")
     .take(60);
   const rows: MemoryRow[] = [];
+  const now = Date.now();
   for (const frolic of frolics) {
     if (frolic.status !== "on" && frolic.status !== "done") continue;
     const attendees = await ctx.db
@@ -233,6 +281,7 @@ async function memoryRows(
       .take(50);
     const going = attendees.filter((a) => a.status === "going");
     if (going.length === 0) continue;
+    if (!(await happened(ctx, frolic, now))) continue;
     const plan = frolic.planId ? await ctx.db.get("plans", frolic.planId) : null;
     const place = plan ? await ctx.db.get("places", plan.placeId) : null;
     const snaps = await ctx.db
@@ -279,6 +328,7 @@ export const overview = query({
     groupName: v.string(),
     youWent: v.boolean(),
     count: v.number(),
+    yourCount: v.number(),
     sinceLine: v.string(),
     weekLine: v.string(),
     taste: v.union(v.object({ headline: v.string(), why: v.string() }), v.null()),
@@ -364,6 +414,7 @@ export const overview = query({
       groupName: group.name,
       youWent: mine > 0,
       count,
+      yourCount: mine,
       sinceLine: mine === 0 ? "all before you joined" : `${count - mine} before you, ${mine} with you`,
       weekLine,
       taste,

@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { togetherWith } from "./garden";
 import { holdCents } from "./lib/hold";
 import { requireMember, userFromToken } from "./lib/identity";
 import { photoUrlOf } from "./lib/photo";
@@ -27,6 +28,11 @@ export const crew = query({
         color: v.string(),
         photoUrl: v.union(v.string(), v.null()),
         isMe: v.boolean(),
+        together: v.object({
+          count: v.number(),
+          lastPlace: v.union(v.string(), v.null()),
+          lastDateLine: v.union(v.string(), v.null()),
+        }),
         free: v.union(
           v.null(),
           v.object({
@@ -52,6 +58,7 @@ export const crew = query({
       .query("availability")
       .withIndex("by_groupId_and_day", (q) => q.eq("groupId", args.groupId).eq("day", args.day))
       .take(200);
+    const together = await togetherWith(ctx, group, user._id);
     const members = [];
     for (const m of memberships) {
       const u = await ctx.db.get("users", m.userId);
@@ -63,6 +70,7 @@ export const crew = query({
         color: m.color,
         photoUrl: await photoUrlOf(ctx, u),
         isMe: u._id === user._id,
+        together: together.get(u._id) ?? { count: 0, lastPlace: null, lastDateLine: null },
         free: a
           ? { state: a.state, window: a.window ?? null, minutesAway: a.minutesAway ?? null, updatedAt: a.updatedAt }
           : null,
