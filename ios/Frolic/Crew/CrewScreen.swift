@@ -7,6 +7,7 @@ struct CrewScreen: View {
     @Environment(FrolicBackend.self) private var backend
     @State private var store = CrewStore()
     @State private var inviteLink: String?
+    @State private var inviteHeight: CGFloat = 260
     @State private var copied = false
 
     private var shown: ScreenPhase { router.resolve(store.phase, isOnline: connectivity.isOnline) }
@@ -73,6 +74,7 @@ struct CrewScreen: View {
                 onDone: { store.showsFreeSheet = false }
             )
             .presentationDetents([.medium, .large])
+            .presentationBackground(FrolicColor.cream)
             .presentationCornerRadius(38)
             .presentationDragIndicator(.hidden)
         }
@@ -83,6 +85,7 @@ struct CrewScreen: View {
                 place: store.view?.todayTitle
             )
             .presentationDetents([.medium, .large])
+            .presentationBackground(FrolicColor.cream)
             .presentationCornerRadius(38)
             .presentationDragIndicator(.hidden)
         }
@@ -97,7 +100,10 @@ struct CrewScreen: View {
                 },
                 copied: copied
             )
-            .presentationDetents([.medium, .large])
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { inviteHeight = $0 }
+            .presentationDetents([.height(max(inviteHeight, 200))])
+            .presentationBackground(FrolicColor.cream)
             .presentationCornerRadius(38)
             .presentationDragIndicator(.hidden)
             .task {
@@ -164,10 +170,12 @@ private struct CrewContent: View {
         .padding(.top, 18)
         .accessibilityIdentifier("crew.invite")
 
-        CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled, amount: CrewCopy.money(view.holdCents)) { enabled in
-            Task { await store.setHold(enabled) }
+        if view.showsHold {
+            CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled, amount: CrewCopy.money(view.holdCents)) { enabled in
+                Task { await store.setHold(enabled) }
+            }
+            .padding(.top, 14)
         }
-        .padding(.top, 14)
         if view.showsFund {
             SectionHeader(title: "Frolic Fund")
             CrewFundSection(fund: view.fund)

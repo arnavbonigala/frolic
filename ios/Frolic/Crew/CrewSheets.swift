@@ -94,7 +94,11 @@ struct CrewFriendSheet: View {
     var wentTogether: Bool
     var place: String?
 
-    private var togetherTitle: String { wentTogether ? "1 frolic together" : "No frolics together yet" }
+    private var togetherTitle: String {
+        let count = row.togetherCount ?? (wentTogether ? 1 : 0)
+        if count == 0 { return "No frolics together yet" }
+        return count == 1 ? "1 frolic together" : "\(count) frolics together"
+    }
 
     private var distanceText: String {
         if let away = CrewCopy.distance(row.minutesAway) { return "\(away), roughly" }
@@ -105,6 +109,7 @@ struct CrewFriendSheet: View {
     }
 
     private var togetherDetail: String {
+        if let place = row.togetherPlace, let line = row.togetherDateLine { return "\(place), \(line)" }
         if wentTogether { return "\(place ?? "Today"), today" }
         return "\(row.name) is in your crew"
     }
