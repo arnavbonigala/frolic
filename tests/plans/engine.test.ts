@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { BERKELEY_PLACES, HERO_KEYS, PLACE_BY_SLUG, heroKeyFor } from "../../convex/places/data";
 import { EMPTY_MEMORY, type MemoryContext } from "../../convex/plans/memoryContext";
-import { localTimeToMs, solarTimes } from "../../convex/plans/time";
+import { clockLabel, localTimeToMs, solarTimes } from "../../convex/plans/time";
 import type { DayWeather } from "../../convex/plans/weather";
-import { tripTo } from "../../convex/plans/travel";
+import { tripLabel, tripTo } from "../../convex/plans/travel";
 import {
   FALLBACK_SLUGS,
   copyOk,
@@ -199,14 +199,29 @@ describe("generatePlan", () => {
     expect(PLACE_BY_SLUG.get(wet.placeSlug)!.indoor).toBe(true);
     expect(wet.weatherSwap).toBe(true);
     expect(wet.line).toMatch(/^Rain around/);
-    expect(wet.chips).toContain("Dry inside");
+    expect(wet.chips[2]).toBe("Starts " + clockLabel(wet.startsAt));
   });
 
   test("golden hour boosts sunset spots for sunset people", () => {
     const plan = generatePlan(drop({ attendees: [person("maya", { taste: ["Sunsets"] }), person("dev", { taste: ["Sunsets"] })], weather: weather(false) }))!;
     expect(PLACE_BY_SLUG.get(plan.placeSlug)!.tags).toContain("sunsets");
-    expect(plan.chips.some((c) => c.startsWith("Golden hour"))).toBe(true);
     expect(plan.line).toMatch(/Golden hour starts at \d+:\d\d\./);
+  });
+
+  test("chips are cost, walk, and the time the plan starts", () => {
+    const cases = [
+      drop({ attendees: [person("maya", { taste: ["Sunsets"] }), person("dev", { taste: ["Sunsets"] })], weather: weather(false) }),
+      drop({ attendees: [person("maya", { taste: ["Sunsets"] }), person("dev", { taste: ["Sunsets"] })], weather: weather(true) }),
+      drop({ weather: null }),
+      drop({ attendees: [person("maya", { taste: ["Games"] }), person("dev", { taste: ["Games"] })] }),
+    ];
+    for (const input of cases) {
+      const plan = generatePlan(input)!;
+      expect(plan.chips).toHaveLength(3);
+      expect(plan.chips[0]).toBe(PLACE_BY_SLUG.get(plan.placeSlug)!.costLabel);
+      expect(plan.chips[1]).toBe(tripLabel(rankCandidates(input).find((c) => c.place.slug === plan.placeSlug)!.maxTrip));
+      expect(plan.chips[2]).toBe("Starts " + clockLabel(plan.startsAt));
+    }
   });
 
   test("fairness rotates who the plan favors over several days", () => {
