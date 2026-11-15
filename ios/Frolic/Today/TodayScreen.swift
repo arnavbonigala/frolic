@@ -140,9 +140,7 @@ struct TodayScreen: View {
             TodayNoPlanStart(store: store)
         case .ready:
             TodayPhaseView(store: store, router: router)
-            if store.scene != .none {
-                DailyPickSlot(scene: store.scene, me: store.meMember.map(TodayStore.person), todayFixture: store.isFixture)
-            }
+
         }
     }
 }

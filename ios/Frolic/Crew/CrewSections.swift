@@ -58,7 +58,7 @@ struct CrewPersonRowView: View {
             CrewBloom(row: row)
                 .frame(width: 52, height: 52)
             VStack(alignment: .leading, spacing: 1) {
-                Text(row.name)
+                Text(row.isMe ? "You" : row.name)
                     .frolicFont(.bodyEmphasis)
                     .foregroundStyle(FrolicColor.ink)
                 if !row.detail.isEmpty {

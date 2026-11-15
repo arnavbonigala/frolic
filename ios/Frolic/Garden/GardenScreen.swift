@@ -4,7 +4,7 @@ struct GardenScreen: View {
     @Environment(AppRouter.self) private var router
     @Environment(ConnectivityMonitor.self) private var connectivity
     @Environment(FrolicBackend.self) private var backend
-    @State private var store = GardenStore()
+    @State private var store = AppPrefetch.shared.garden
     @State private var path: [GardenMemoryRow] = []
     @State private var showsStory = false
     @State private var toast: String?

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(FrolicBackend.self) private var backend
 
     var body: some View {
         OnboardingGate {
@@ -47,6 +48,7 @@ struct RootView: View {
         }
         .tint(Color(hex: 0x2E8A4E))
         .accessibilityIdentifier("app.root")
+        .task(id: FrolicIdentity.shared.groupId) { await AppPrefetch.shared.start(router: router, backend: backend) }
         .checkInFlowPresenter()
         #if DEBUG || E2E
         .sheet(isPresented: $router.showsGallery) {

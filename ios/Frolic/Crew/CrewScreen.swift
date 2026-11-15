@@ -5,7 +5,7 @@ struct CrewScreen: View {
     @Environment(AppRouter.self) private var router
     @Environment(ConnectivityMonitor.self) private var connectivity
     @Environment(FrolicBackend.self) private var backend
-    @State private var store = CrewStore()
+    @State private var store = AppPrefetch.shared.crew
     @State private var inviteLink: String?
     @State private var inviteHeight: CGFloat = 260
     @State private var copied = false
@@ -162,6 +162,9 @@ private struct CrewContent: View {
                 CrewPersonRowView(row: row, showsDivider: true, onTap: { store.friend = row })
             }
         }
+
+        DailyPickCard(me: TodayPerson(userId: view.me.id, name: view.me.name, color: view.me.color.rawValue, photoUrl: view.me.photoURL, role: nil))
+            .padding(.top, 28)
 
         if let comingUp = view.comingUp {
             SectionHeader(title: "Coming up")

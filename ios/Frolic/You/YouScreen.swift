@@ -5,7 +5,7 @@ struct YouScreen: View {
     @Environment(AppRouter.self) private var router
     @Environment(ConnectivityMonitor.self) private var connectivity
     @Environment(FrolicBackend.self) private var backend
-    @State private var model = YouModel()
+    @State private var model = AppPrefetch.shared.you
     @State private var showsPrivacy = false
     @State private var showsTaste = false
     @State private var onboarding: OnboardingModel?
