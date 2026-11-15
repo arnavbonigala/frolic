@@ -74,6 +74,10 @@ const QUERY_REGISTRY: Record<string, ArgsFor> = {
     groupId: f.groupId,
     day: "2026-11-15",
   }),
+  "snaps:forFrolic": (f, observer) => ({
+    deviceToken: f.tokens[observer],
+    frolicId: f.frolicId,
+  }),
   "garden:overview": (f, observer) => ({
     deviceToken: f.tokens[observer],
     groupId: f.groupId,
