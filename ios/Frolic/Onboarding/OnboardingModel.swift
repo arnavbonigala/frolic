@@ -74,6 +74,9 @@ final class OnboardingModel {
     var showsInviteEntry = false
     var groupId: String?
     var createdInviteCode: String?
+    private(set) var isFinished = false
+
+    var isMidFlow: Bool { groupId != nil && !isFinished }
 
     var shareURL: URL? {
         guard let code = createdInviteCode else { return nil }
@@ -247,12 +250,40 @@ final class OnboardingModel {
         loadInvite()
     }
 
+    static let nameLimit = 40
+
+    func editName(_ raw: String) {
+        let trimmedLeading = String(raw.drop(while: { $0.isWhitespace }))
+        firstName = String(trimmedLeading.prefix(Self.nameLimit))
+        if failure != nil { failure = nil }
+    }
+
+    func backFromName() {
+        failure = nil
+        step = createdInviteCode == nil ? .join : .share
+    }
+
+    func backToName() {
+        failure = nil
+        step = .name
+    }
+
+    var shareCode: String? { createdInviteCode.map { "Code \($0.uppercased())" } }
+
     func submitName() async {
         let name = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, !isSubmitting else { return }
         isSubmitting = true
         failure = nil
         do {
+            if createdInviteCode != nil {
+                try await backend.rename(firstName: name)
+                if let photoData = photo { try? await backend.uploadPhoto(photoData) }
+                OnboardingIdentity.firstName = name
+                isSubmitting = false
+                step = .share
+                return
+            }
             var creating = isSolo
             if !creating, let link {
                 let outcome = try await backend.join(code: link.code, firstName: name)
@@ -442,6 +473,7 @@ final class OnboardingModel {
             OnboardingIdentity.commit(groupId: groupId)
         }
         OnboardingIdentity.isComplete = true
+        isFinished = true
         OnboardingSessionRelay.store(deviceToken: OnboardingIdentity.deviceToken, groupId: groupId)
         isSubmitting = false
         onFinish()
