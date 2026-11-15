@@ -7,7 +7,7 @@ struct YouScreen: View {
     @State private var model = YouModel()
     @State private var showsPrivacy = false
     @State private var showsTaste = false
-    @State private var showsOnboarding = false
+    @State private var onboarding: OnboardingModel?
     @State private var retries = 0
 
     private var shownPhase: ScreenPhase {
@@ -38,10 +38,10 @@ struct YouScreen: View {
         .sheet(isPresented: $showsPrivacy) {
             YouPrivacyScreen(model: model)
         }
-        .fullScreenCover(isPresented: $showsOnboarding) {
-            OnboardingView()
+        .fullScreenCover(item: $onboarding) { onboarding in
+            OnboardingView(model: onboarding)
                 .overlay(alignment: .topTrailing) {
-                    Button("Back") { showsOnboarding = false }
+                    Button("Back") { self.onboarding = nil }
                         .buttonStyle(.frolicText)
                         .padding(.top, 8)
                         .padding(.trailing, 8)
@@ -69,7 +69,11 @@ struct YouScreen: View {
                 phase: phase,
                 copy: copy,
                 color: model.myColor,
-                onEmptyAction: { showsOnboarding = true },
+                onEmptyAction: {
+                    let created = OnboardingModel(backend: OnboardingBackend(client: backend.client))
+                    created.onFinish = { onboarding = nil }
+                    onboarding = created
+                },
                 onRetry: { retries += 1 }
             )
             .padding(.top, 40)
@@ -355,3 +359,4 @@ private struct YouContent: View {
         }
     }
 }
+extension OnboardingModel: Identifiable {}

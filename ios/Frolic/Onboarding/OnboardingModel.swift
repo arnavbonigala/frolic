@@ -133,6 +133,8 @@ final class OnboardingModel {
             let wanted = Int(seed.query["selected"] ?? "") ?? (step == .reading ? 4 : 0)
             pickedIds = Array(photos.prefix(max(0, wanted))).map(\.id)
             if step == .reading { runReading() }
+        case .share:
+            preview = Self.demoPreview
         case .calendar:
             preview = Self.demoPreview
             applyCalendarSeed(seed)
