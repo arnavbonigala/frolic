@@ -137,6 +137,8 @@ private struct YouContent: View {
             SectionHeader(title: "What you're into")
                 .accessibilityIdentifier("you.taste")
             tasteSection
+            SectionHeader(title: "Account")
+            YouAccountGroup(model: model)
             SectionHeader(title: "Privacy")
             privacyGroup
             #if DEBUG || E2E
