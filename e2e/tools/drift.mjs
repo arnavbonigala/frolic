@@ -32,9 +32,11 @@ const scriptFiles = walk(join(root, 'convex')).filter((f) => f.endsWith('.ts') &
 const webFiles = walk(join(root, 'web')).filter((f) => /\.(js|ts|html)$/.test(f));
 
 const literals = [];
+const IDENTIFIER_SHAPE = /^[a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9]+)+$/;
 function addLiteral(file, text) {
   const flat = text.replace(/\s+/g, ' ').trim();
-  if (flat.length >= 2) literals.push({ file, text: flat });
+  if (flat.length < 2 || IDENTIFIER_SHAPE.test(flat)) return;
+  literals.push({ file, text: flat });
 }
 
 for (const file of swiftFiles) {
@@ -66,12 +68,14 @@ const MAX_RUN_TOKENS = 8;
 
 const phrases = new Set();
 for (const literal of literals) {
+  const cut = literal.text.includes('\u0001');
   let current = [];
   const flush = () => {
+    if (current.length === 1 && cut && current[0].length >= 3) phrases.add(current[0].toLowerCase());
     for (let start = 0; start < current.length; start++) {
-      for (let end = current.length; end > start && end - start <= MAX_RUN_TOKENS; end--) {
+      for (let end = Math.min(current.length, start + MAX_RUN_TOKENS); end > start + 1; end--) {
         const phrase = current.slice(start, end).join(' ');
-        if (phrase.length >= 6) phrases.add(phrase);
+        if (phrase.length >= 6) phrases.add(phrase.toLowerCase());
       }
     }
     current = [];
@@ -86,7 +90,7 @@ for (const literal of literals) {
 function atom(token) {
   if (/\d/.test(token)) return true;
   if (token.startsWith('$')) return true;
-  if (properNouns.has(token)) return true;
+  if (properNouns.has(token) || properNouns.has(token[0].toUpperCase() + token.slice(1))) return true;
   return CONNECTORS.has(token.toLowerCase());
 }
 
@@ -99,8 +103,7 @@ function fragmentGaps(fragment) {
     for (let end = words.length; end > start; end--) {
       const counter = end - start;
       const candidate = words.slice(start, end).join(' ');
-      if (counter === 1 && candidate.length < 6) continue;
-      if (!phrases.has(candidate)) continue;
+      if (!phrases.has(candidate.toLowerCase())) continue;
       matches.push({ start, end, weight: counter * 1000 + candidate.length });
     }
   }

@@ -1,0 +1,25 @@
+test:
+  metadata:
+    name: "frolic-garden-before-you-joined"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "garden"
+      - "feature-6"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro Max"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/garden?fixture=1&went=0"
+    - type: "validation"
+      step_description: "The garden counter reads \"12 frolics\""
+    - type: "validation"
+      step_description: "The caption under the counter reads \"all before you joined\""
+    - type: "validation"
+      step_description: "A row reads \"Golden-hour chasers who keep it under $10, with a soft spot for a sunny lawn.\""
+    - type: "validation"
+      step_description: "A section titled \"Frolics\" lists \"Cheese Board pizza\" first"

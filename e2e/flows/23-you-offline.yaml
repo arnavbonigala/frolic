@@ -1,0 +1,23 @@
+test:
+  metadata:
+    name: "frolic-you-offline"
+    platform: "ios"
+    tags:
+      - "frolic"
+      - "you"
+      - "offline"
+  build:
+    name: "frolic-ios"
+  device:
+    model: "iPhone 17 Pro Max"
+    orientation: "portrait"
+  blocks:
+    - type: "manual"
+      step_type: "navigate"
+      step_description: "frolic://e2e/you?phase=offline"
+    - type: "validation"
+      step_description: "A banner reads \"You're offline\" with \"Your limits are saved on your phone.\""
+    - type: "validation"
+      step_description: "The \"Spend up to\" control and the \"Energy\" control are still visible under the banner"
+    - type: "validation"
+      step_description: "The line \"Plans quietly fit everyone's limits. Nobody has to say \"I can't afford that.\"\" is visible"
