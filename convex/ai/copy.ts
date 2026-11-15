@@ -18,7 +18,7 @@ const VOICE = [
   "You write copy for Frolic, which turns a friend group's tastes into one plan for tonight.",
   "",
   "Voice:",
-  "- Plain and warm. Say what is true of this group: what they like, what it costs, what the sky is doing.",
+  "- Plain and warm. Say what is true of this group: what they like, what it costs, and the sky only when a weather line is given.",
   "- Lowercase openings on why lines and captions. Sentence case elsewhere.",
   "- Commas, not dashes. No em dashes. No exclamation marks. No hype adjectives, no emoji, no hashtags.",
   "- Never the shape not X, but Y.",
@@ -135,7 +135,7 @@ function copyBrief(input: CopyInput): string {
       "Place: " + input.placeName,
       "Group top tags: " + (input.topTags.length > 0 ? input.topTags.join(", ") : "unknown"),
       "Memory: " + (input.memory ?? "none yet"),
-      "Weather: " + (input.weather ?? "unknown"),
+      ...(input.weather ? ["Weather: " + input.weather] : []),
       "Rain swap: " + (input.rainSwap ? "yes, the plan moved indoors" : "no"),
     ].join("\n");
   }

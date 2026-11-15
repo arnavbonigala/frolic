@@ -15,7 +15,7 @@ const SYSTEM = [
   "Rules:",
   "- Answer with one candidate id, copied exactly. Never invent a place.",
   "- The why is one short clause in the group's own voice, at most 140 characters, lowercase start.",
-  "- Name what they are into, what it costs, and what the sky is doing. Use commas.",
+  "- Name what they are into and what it costs. Mention the sky only when a weather line is given. Use commas.",
   "- No em dashes. No exclamation marks. No hype adjectives.",
   '- Example: "you\'re into sunsets, it\'s free, and the sky\'s clear until dark."',
 ].join("\n");
@@ -43,7 +43,7 @@ export function pickPrompt(candidates: PickCandidate[], context: PickContext): {
     "",
     "Group top tags: " + (context.topTags.length > 0 ? context.topTags.join(", ") : "unknown"),
     "Memory: " + (context.memory ?? "none yet"),
-    "Weather: " + (context.weather ?? "unknown"),
+    ...(context.weather ? ["Weather: " + context.weather] : []),
   ].join("\n");
   return { system: SYSTEM, user };
 }
