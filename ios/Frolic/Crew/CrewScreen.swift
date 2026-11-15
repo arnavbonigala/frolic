@@ -1,75 +1,195 @@
 import SwiftUI
+import UIKit
 
 struct CrewScreen: View {
     @Environment(AppRouter.self) private var router
     @Environment(ConnectivityMonitor.self) private var connectivity
     @Environment(FrolicBackend.self) private var backend
-    @State private var phase: ScreenPhase = .loading
+    @State private var store = CrewStore()
+    @State private var inviteLink: String?
+    @State private var copied = false
 
-    private var shown: ScreenPhase { router.resolve(phase, isOnline: connectivity.isOnline) }
+    private var shown: ScreenPhase { router.resolve(store.phase, isOnline: connectivity.isOnline) }
 
     var body: some View {
-        ScrollView {
+        @Bindable var store = store
+        return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if shown == .ready {
-                    ScreenTitle(title: "Sunset Crew", subtitle: "5 of you · the crew started in September", identifier: "crew")
-                } else {
-                    ScreenTitle(title: "Crew")
+                ScreenTitle(
+                    title: store.view?.groupName ?? "Crew",
+                    subtitle: store.view?.subtitle,
+                    identifier: "crew"
+                )
+                if let view = store.view, shown == .ready || shown == .empty {
+                    CrewFreeControl(text: view.me.status == .notSaid ? "I'm free" : view.me.detail, isFree: view.me.isFree) {
+                        store.showsFreeSheet = true
+                    }
+                    .padding(.top, 14)
                 }
                 PhasedContent(
                     phase: shown,
                     copy: PlaceholderCopy(
                         loading: "Finding your crew",
                         emptyTitle: "Your crew starts with one friend",
-                        emptyMessage: "Send a link to the group chat. Anyone who taps I'm down joins your crew.",
+                        emptyMessage: "Anyone who taps joins your crew.",
                         emptyAction: "Invite a friend",
                         errorTitle: "Couldn't load your crew"
                     ),
                     color: .cobalt,
-                    onRetry: { phase = backend.initialPhase }
+                    onEmptyAction: { store.showsInvite = true },
+                    onRetry: { store.retry(backend: backend, router: router) }
                 ) {
-                    CrewReadyPreview()
+                    if let view = store.view {
+                        CrewContent(view: view, store: store, onComingUp: { router.tab = .today })
+                    }
                 }
             }
             .padding(.horizontal, 18)
             .padding(.top, 24)
-            .padding(.bottom, 24)
+            .padding(.bottom, 120)
         }
         .background(SkyBackground())
         .accessibilityIdentifier("crew.screen")
-        .task { phase = backend.initialPhase }
+        .accessibilityElement(children: .contain)
+        .task {
+            store.start(router: router, backend: backend)
+            applyRoute()
+        }
+        .onChange(of: FrolicIdentity.shared.groupId) { _, _ in store.retry(backend: backend, router: router) }
+        .onChange(of: FrolicIdentity.shared.deviceToken) { _, _ in store.retry(backend: backend, router: router) }
+        .onChange(of: router.e2eRoute) { _, _ in
+            store.routeChanged(router: router, backend: backend)
+            applyRoute()
+        }
+        .sheet(isPresented: $store.showsFreeSheet) {
+            CrewFreeSheet(
+                current: store.view?.me.detail ?? "",
+                isBusy: store.view?.me.status == .busy,
+                options: CrewFreeOption.options(),
+                error: store.actionError,
+                onPick: { option in
+                    Task { await store.setFree(option) }
+                },
+                onDone: { store.showsFreeSheet = false }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationCornerRadius(38)
+            .presentationDragIndicator(.hidden)
+        }
+        .sheet(item: $store.friend) { row in
+            CrewFriendSheet(
+                row: row,
+                wentTogether: row.status == .wentWithYou,
+                place: store.view?.todayTitle
+            )
+            .presentationDetents([.medium, .large])
+            .presentationCornerRadius(38)
+            .presentationDragIndicator(.hidden)
+        }
+        .sheet(isPresented: $store.showsInvite) {
+            CrewInviteSheet(
+                link: inviteLink,
+                error: store.inviteError,
+                onRetry: { Task { await loadInvite() } },
+                onCopy: {
+                    UIPasteboard.general.string = "https://\(inviteLink ?? "frolic.app")"
+                    copied = true
+                },
+                copied: copied
+            )
+            .presentationDetents([.medium, .large])
+            .presentationCornerRadius(38)
+            .presentationDragIndicator(.hidden)
+            .task {
+                copied = false
+                await loadInvite()
+            }
+        }
+    }
+
+    private func loadInvite() async {
+        if store.isStandIn {
+            inviteLink = "frolic.app/j/sunset-crew"
+        } else if let code = await store.inviteCode() {
+            inviteLink = "frolic.app/j/\(code)"
+        }
+    }
+
+    private func applyRoute() {
+        guard let route = router.e2eRoute, route.screen == "crew" else { return }
+        if let friend = CrewStandIn.friend(route: route) {
+            store.friend = friend
+        }
+        if route.state == "invite" {
+            store.showsInvite = true
+        }
+        if route.state == "free" {
+            store.showsFreeSheet = true
+        }
     }
 }
 
-private struct CrewReadyPreview: View {
+private struct CrewContent: View {
+    var view: CrewScene
+    var store: CrewStore
+    var onComingUp: () -> Void
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title: "Today")
-            FrolicGroup {
-                FrolicCell(title: "You", subtitle: "Free till 8", isFree: true) {
-                    FlowerView(person: SampleData.you, radius: 22, stem: 0)
-                }
-                .accessibilityIdentifier("crew.row.you")
-                ForEach(SampleData.friends) { person in
-                    FrolicCell(title: person.name, subtitle: SampleData.freeLines[person.name], isFree: true, showsChevron: true, showsDivider: true) {
-                        FlowerView(person: person, radius: 22, stem: 0)
-                    }
-                    .accessibilityIdentifier("crew.row.\(person.name.lowercased())")
-                }
+        SectionHeader(title: "Today")
+        FrolicGroup {
+            CrewPersonRowView(row: view.me, showsDivider: false, onTap: nil)
+            ForEach(view.rows) { row in
+                CrewPersonRowView(row: row, showsDivider: true, onTap: { store.friend = row })
             }
-            Text("Distances are rough on purpose. Nobody sees exactly where you are.")
-                .frolicFont(.footnote)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .accessibilityIdentifier("crew.distance.note")
-            Button {
-            } label: {
-                Label("Invite a friend", systemImage: "square.and.arrow.up")
-            }
-            .buttonStyle(.frolicSecondaryWide)
-            .padding(.top, 14)
-            .accessibilityIdentifier("crew.invite")
+        }
+        Text("Nobody sees exactly where you are.")
+            .frolicFont(.footnote)
+            .foregroundStyle(FrolicColor.secondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .accessibilityIdentifier("crew.distance.note")
+
+        if let comingUp = view.comingUp {
+            SectionHeader(title: "Coming up")
+            CrewComingUpRow(comingUp: comingUp, onTap: onComingUp)
+        }
+
+        Button {
+            store.showsInvite = true
+        } label: {
+            Label("Invite a friend", systemImage: "square.and.arrow.up")
+        }
+        .buttonStyle(.frolicSecondaryWide)
+        .padding(.top, 18)
+        .accessibilityIdentifier("crew.invite")
+
+        CrewHoldRow(groupName: view.groupName, isOn: view.holdEnabled, amount: CrewCopy.money(view.holdCents)) { enabled in
+            Task { await store.setHold(enabled) }
+        }
+        if view.showsFund {
+            SectionHeader(title: "Frolic Fund")
+            CrewFundSection(fund: view.fund)
+                .padding(.top, 2)
+        }
+
+        if !view.lately.isEmpty {
+            SectionHeader(title: "Lately")
+            CrewLatelyGroup(rows: view.lately)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("crew.lately")
+        }
+
+        if view.wentToday, let title = view.todayTitle {
+            SectionHeader(title: "New this week")
+            CrewNewThisWeek(title: title, hero: PlanPainted.hero(for: title))
+        }
+
+        if !view.favorites.isEmpty {
+            SectionHeader(title: "Your crew's favorites")
+            CrewFavoritesGroup(rows: view.favorites)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("crew.favorites")
         }
     }
 }
