@@ -425,7 +425,7 @@ One toggle and a window picker write to availability. The Presence component sho
 A Convex cron runs generateDrop for each group. It gathers real candidates: Berkeley places open during the overlap of people's windows, inside everyone's private limits (budget, distance, energy, home by), fitted to Open-Meteo's weather and sunset time. It asks Supermemory for the group's taste and what they've skipped lately. Then it hands Claude only those candidates and gets back a structured pick: place id, title, the line ("Clear and 64°. Golden hour starts at 4:28"), and a "why this" quoting a real memory. Claude can only choose a place id from the list, so it can never invent a place. Build: one action, one prompt, a 20-place seed file.
 
     5The secret tap and the match
-"I'm down" and "Only if…" call tap, which writes to taps and runs the matcher in the same transaction. The matcher looks at every subset of tappers (a group of 12 is only 4,096 subsets, which takes milliseconds) and keeps the sets of 2 or more where everyone's "only if" people are in the set and everyone's windows overlap long enough. It picks the biggest set, then the earliest time. Convex transactions are serializable, so two taps landing in the same instant can never reveal twice. If nothing matches, nothing happens and nobody learns anything. Build: about 40 lines of TypeScript, plus a unit test for each rule.
+"I'm down" and "Only with…" call tap, which writes to taps and runs the matcher in the same transaction. The matcher looks at every subset of tappers (a group of 12 is only 4,096 subsets, which takes milliseconds) and keeps the sets of 2 or more where everyone's "only if" people are in the set and everyone's windows overlap long enough. It picks the biggest set, then the earliest time. Convex transactions are serializable, so two taps landing in the same instant can never reveal twice. If nothing matches, nothing happens and nobody learns anything. Build: about 40 lines of TypeScript, plus a unit test for each rule.
 
     6"It's on," on every phone in the same frame
 When a set matches, the mutation sets status to on and revealAt to now plus 1.5 seconds. Every phone keeps a small clock offset from the server and fires the reveal animation at exactly revealAt, so the faces tumble in together with a haptic. Phones that were waiting get it through their live query; there's no push to wait for. Build: one field, a clock-offset query, the reveal view.
@@ -475,7 +475,7 @@ Instagram grew because the filters were worth using alone, and the network built
 
     TierFeatureDone means
 
-      1Secret "I'm down," "Only if," the match and the synced revealMatcher has a test for every rule; two taps in the same 100 ms reveal exactly once; every phone flips within one frame of revealAt; a "yes" can never be read by any client, proved by a test; bloom animation at 120 fps with a haptic
+      1Secret "I'm down," "Only with," the match and the synced revealMatcher has a test for every rule; two taps in the same 100 ms reveal exactly once; every phone flips within one frame of revealAt; a "yes" can never be read by any client, proved by a test; bloom animation at 120 fps with a haptic
 
       1The daily plan with real places and "Why this"Never an invented place (output is a place id from the candidate list, validated); respects every private limit; under 3 seconds to generate, cached for the day; the "why" line quotes real taste or memory; a hand-written fallback plan if the model fails
 

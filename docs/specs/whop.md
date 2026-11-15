@@ -231,15 +231,15 @@ Read from `convex/whop/pay.ts` and `convex/whop/links.ts`. Every function has an
 // public mutation, app
 api.whop.pay.link({ deviceToken: string, frolicId: Id<"frolics"> })
 // -> { kind: "hold" | "share", url: string, amountCents: number, expiresAt: number }
-//  | { kind: "none", reason: "not_revealed" | "not_member" | "already_paid" | "covered" | "closed" }
+//  | { kind: "none", reason: "not_revealed" | "not_member" | "already_paid" | "covered" | "closed" | "no_hold" }
 
 // public query, app, live
 api.whop.pay.myPayment({ deviceToken: string, frolicId: Id<"frolics"> })
-// -> { state: MoneyState, kind: "hold" | "share" | "none", amountCents: number, error: string | null, paidNames: string[] }
+// -> { state: MoneyState, kind: "hold" | "share" | "none", amountCents: number, error: string | null, paidNames: string[], noHold: boolean }
 
 // public query, Crew tab, live
 api.whop.pay.fund({ deviceToken: string, groupId: Id<"groups"> })
-// -> { balanceCents: number, entries: Array<{ amountCents: number, line: string, at: number, frolicId: Id<"frolics"> | null }> }
+// -> { balanceCents: number, holdLine: string | null, entries: Array<{ amountCents: number, line: string, at: number, frolicId: Id<"frolics"> | null }> }
 
 // internal, FROL-9 (iMessage)
 internal.whop.links.checkoutLink({ userId: Id<"users">, frolicId: Id<"frolics"> })
@@ -248,11 +248,17 @@ internal.whop.links.checkoutLink({ userId: Id<"users">, frolicId: Id<"frolics"> 
 
 `link` returns a URL to open in an in-app Safari sheet. What the browser comes back with means nothing: `myPayment` is the only truth, and it flips when the signed webhook lands.
 
-`link` refuses with `not_revealed` until the frolic is `on` and `revealAt` has passed, `not_member` if the caller is not a going attendee, `already_paid` once a hold or share is held or paid, `covered` when the Fund covers their whole share, and `closed` when the frolic ended or the link expired. Calling it twice returns the same row and URL.
+`link` refuses with `not_revealed` until the frolic is `on` and `revealAt` has passed, `not_member` if the caller is not a going attendee, `already_paid` once a hold or share is held or paid, `covered` when the Fund covers their whole share, `closed` when the frolic ended or the link expired, and `no_hold` on a free plan when the crew had the hold turned off at the reveal. Calling it twice returns the same row and URL.
 
-`myPayment` returns `state: "none"` with zeroed fields when the device token is unknown, the frolic is unknown or still `open`, it has no `revealAt`, or the caller has no share. `error` is non-null only for `failed`, and the string is the user-facing copy below. `paidNames` lists the friends whose hold or share is in, for the "Already paid" row.
+`myPayment` returns `state: "none"` with zeroed fields when the device token is unknown, the frolic is unknown or still `open`, it has no `revealAt`, or the caller has no share. `error` is non-null only for `failed`, and the string is the user-facing copy below. `paidNames` lists the friends whose hold or share is in, for the "Already paid" row. `noHold` is true when the crew had the hold off at the reveal, so this free frolic asks for no hold: show no money row.
 
-`fund` returns `balanceCents: 0` and no entries for an unknown device, and refuses a caller who is not in the group. A credit line is generated on the server: "A no-show added $3." for a kept hold, "The Frolic Fund covered $3." for a spend, and "$3 went back." for a reversal.
+`fund` returns `balanceCents: 0`, `holdLine: null` and no entries for an unknown device or a caller who is not in the group. A credit line is generated on the server from the real amount, and it shows as soon as the money counts toward the balance: "A no-show added $2.48." for a kept hold (the credit is what Whop nets after fees; a $3.00 sandbox capture nets $2.48), "The Frolic Fund covered $3." for a spend, and "$3 went back." for a reversal. `holdLine` is the crew line when the crew plays with the hold, for example "Sunset Crew plays for $3. Show up, it's released.", and null when the hold is off.
+
+### 7.0 The hold is a crew setting
+
+`groups.holdEnabled` (FROL-3) turns the $3 hold on for a crew. It is off when absent. The setting read at the reveal decides for that frolic: turning it on or off later changes the next frolic, never one already revealed. With it off, a free plan makes no hold, `link` answers `no_hold`, `myPayment` answers `state: "none"` with `noHold: true`, nobody is moved to the hop-in pool for not holding, and nothing is captured. Paid-plan splits are the same either way.
+
+A matched friend who has not placed the hold has until the plan's leave time (8 minutes before the start, and at least 10 minutes after the hold opens) before being moved to the hop-in pool.
 
 ### 7.2 States and copy
 
@@ -277,7 +283,8 @@ Surfaces outside `myPayment`:
 | where | when | copy |
 | - | - | - |
 | Crew tab | fund balance | "Frolic Fund $X" with "toward the next one" |
-| Crew tab | a no-show credit | "A no-show added $3." |
+| Crew tab | the crew plays with the hold | "Sunset Crew plays for $3. Show up, it's released." (the crew's name) |
+| Crew tab | a no-show credit | "A no-show added $2.48." (the real credited amount) |
 | Crew tab | a spent entry | "The Frolic Fund covered $3." |
 | Garden | a plan part-paid by the Fund | "The Frolic Fund chipped in $3." |
 | paid plan, hop-in | a friend joining after the reveal | "Hop in for $8" |

@@ -214,7 +214,7 @@ describe("group snap", () => {
     ).rejects.toThrow(/Check in first/);
   });
 
-  test.skip("BUG-3 someone who checked in and then sat out cannot snap", async () => {
+  test("someone who checked in and then sat out cannot snap", async () => {
     const t = makeT();
     const crew = await revealed(t);
     const photo = await t.run(async (ctx) => await ctx.storage.store(new Blob(["x"])));
