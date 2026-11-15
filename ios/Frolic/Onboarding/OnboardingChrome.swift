@@ -16,6 +16,7 @@ struct OnboardingBottomBar<Content: View>: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+            .ignoresSafeArea(edges: .bottom)
             .allowsHitTesting(false)
         )
     }
