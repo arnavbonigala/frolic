@@ -182,7 +182,7 @@ private struct TodayTopBar: View {
                     .foregroundStyle(StoryColor.ink)
                     .padding(.horizontal, 16)
                     .frame(minHeight: 44)
-                    .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+                    .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)).interactive(), in: .capsule)
                 }
                 .accessibilityLabel(crews.othersWaiting > 0 ? "\(current.name). Another crew has a plan waiting. Switch crew" : "\(current.name). Switch crew")
                 .accessibilityIdentifier("today.crewSwitch")
@@ -190,7 +190,7 @@ private struct TodayTopBar: View {
                 Wordmark(color: StoryColor.ink, width: 74)
                     .padding(.horizontal, 16)
                     .frame(minHeight: 44)
-                    .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)), in: .capsule)
+                    .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)), in: .capsule)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Frolic")
             }
@@ -486,7 +486,7 @@ private struct TodayWaitingView: View {
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
             .buttonStyle(.plain)
-            .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+            .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)).interactive(), in: .capsule)
             .disabled(!online)
             .padding(.horizontal, 24)
             .padding(.top, 18)
@@ -679,7 +679,7 @@ private struct TodayOnView: View {
                         .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+                .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)).interactive(), in: .capsule)
                 .accessibilityIdentifier("today.on.directions")
             }
             .padding(.horizontal, 24)

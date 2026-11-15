@@ -34,7 +34,7 @@ struct ShareScreen: View {
                         }
                         .padding(.horizontal, 22)
                         .frame(minHeight: 56)
-                        .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+                        .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)).interactive(), in: .capsule)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(copied ? "Code \(code), copied" : "Code \(code). Copy")

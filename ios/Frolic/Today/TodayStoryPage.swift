@@ -86,7 +86,7 @@ struct TodayStoryPage<Actions: View>: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 7)
-                        .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)), in: .capsule)
+                        .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)), in: .capsule)
                         .padding(.horizontal, 20)
                 }
             }
@@ -193,6 +193,6 @@ struct StoryCaption: View {
             .multilineTextAlignment(.center)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)), in: .capsule)
+            .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)), in: .capsule)
     }
 }

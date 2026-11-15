@@ -102,7 +102,7 @@ struct StatusPill: View {
         .foregroundStyle(Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.965, green: 0.922, blue: 0.867, alpha: 1) : UIColor(red: 0.137, green: 0.094, blue: 0.059, alpha: 1) }))
         .padding(.horizontal, 14)
         .frame(minHeight: 44)
-        .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.55)).interactive(), in: .capsule)
+        .glassEffect(.regular.tint(FrolicColor.cream.opacity(0.82)).interactive(), in: .capsule)
     }
 }
 
