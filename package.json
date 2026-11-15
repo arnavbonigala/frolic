@@ -1,0 +1,31 @@
+{
+  "name": "frolic",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "convex dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arnavbonigala/frolic.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/arnavbonigala/frolic/issues"
+  },
+  "homepage": "https://github.com/arnavbonigala/frolic#readme",
+  "dependencies": {
+    "convex": "^1.50.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "convex-test": "^0.0.71",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Frolic</title><link rel="icon" href="icon.png"><link rel="apple-touch-icon" href="icon.png">
+<style>
+:root{--ink:#23180F;--t2:#6B5F55;--t3:#8F8379;--cream:#FFF8EC;--paper:#fff;--line:rgba(35,24,15,.09);--chip:#F4EEE4;--sun:#FF6A2A;--green:#3DAA5C;--spring:cubic-bezier(.3,1.5,.5,1);--r:ui-rounded,"SF Pro Rounded",system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:#E9E4DC;display:flex;justify-content:center;align-items:center;font-family:system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+body.shot{align-items:flex-start}
+body.shot .scr{animation:none}
+.ph{width:390px;height:844px;border-radius:55px;overflow:hidden;position:relative;background:var(--cream);color:var(--ink);box-shadow:0 30px 60px rgba(40,30,20,.25);isolation:isolate}
+@media (max-width:500px){body{display:block}.ph{width:100vw;height:100vh;height:100dvh;border-radius:0;box-shadow:none}}
+button,select{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #2C4FD6;outline-offset:2px}
+.status{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0 40px;font:600 17px system-ui;z-index:30;pointer-events:none}
+.status.onphoto{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.55)}
+.status i{display:flex}.status i b{display:block;width:25px;height:12px;border-radius:4px;border:1.5px solid currentColor;position:relative}
+.status i b::after{content:'';position:absolute;inset:1.5px;right:5px;background:currentColor;border-radius:1.5px}
+#view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+#view::-webkit-scrollbar{display:none}
+.scr{position:relative;min-height:100%;animation:in .35s ease both}
+.sky{background:linear-gradient(180deg,#CFE5FF 0,#E9F1FB 170px,var(--cream) 380px)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.top{display:flex;justify-content:space-between;align-items:center;padding:60px 18px 0;position:relative;z-index:5}
+.mark{width:92px;height:auto;display:block}
+.sun{transform-box:fill-box;transform-origin:center;animation:rise 3.2s ease-in-out infinite alternate}
+@keyframes rise{from{transform:translateY(2px)}to{transform:translateY(-4px) scale(1.08)}}
+.pill{height:36px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;font:600 15px system-ui;background:rgba(255,255,255,.75);box-shadow:inset 0 1px 0 #fff,0 0 0 .5px rgba(35,24,15,.08),0 4px 12px rgba(60,80,120,.08)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(61,170,92,.22);flex:none}
+.dot.off{background:#B5ABA1;box-shadow:none}
+.circ{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.8);box-shadow:0 0 0 .5px rgba(35,24,15,.1),0 4px 12px rgba(0,0,0,.1);color:var(--ink)}
+.circ svg{width:16px;height:16px}
+.meadow{position:relative;height:150px;margin-top:2px;display:flex;justify-content:space-around;align-items:flex-end;padding:0 14px;width:100%}
+.fl{display:flex;flex-direction:column;align-items:center;transform-origin:50% 100%;animation:sway 4s ease-in-out infinite alternate}
+.fl:nth-child(2){animation-delay:-1.2s}.fl:nth-child(3){animation-delay:-2.1s}.fl:nth-child(4){animation-delay:-.6s}.fl:nth-child(5){animation-delay:-3s}
+@keyframes sway{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+.fl span{font:600 12px system-ui;color:var(--t2);margin-top:2px}
+.fl.bud span{color:var(--ink)}
+.fl.new{animation:grow .8s var(--spring) both,sway 4s 0.8s ease-in-out infinite alternate}
+@keyframes grow{from{transform:scaleY(0);opacity:0}}
+.fl.bud svg{animation:breathe 1.8s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.07)}}
+.dots i{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--t2);margin-left:3px;animation:dot 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.fl.fold{filter:saturate(.25);opacity:.6;animation:none}
+.cap{display:block;width:100%;text-align:center;font:600 15px system-ui;margin:8px 0 0;color:var(--ink)}
+.packet{margin:14px 16px 0;background:var(--paper);border-radius:28px;overflow:hidden;box-shadow:inset 0 1px 0 #fff,0 0 0 .5px rgba(35,24,15,.06),0 14px 34px rgba(120,80,30,.12)}
+.band{display:flex;justify-content:space-between;align-items:center;height:36px;padding:0 16px;font:700 12px system-ui;letter-spacing:.3px;color:#4A2A00;background:#FFBE2E}
+.band i{font-style:normal;font-weight:600;opacity:.7}
+.win{margin:10px 10px 0;height:118px;border-radius:18px;overflow:hidden;position:relative}
+.win img{width:100%;height:100%;object-fit:cover;display:block}
+.pk{padding:12px 18px 16px}
+h1,.h1{font:800 30px/33px var(--r);letter-spacing:-.3px;margin:0}
+.huge{font:800 58px/58px var(--r);letter-spacing:-1px;margin:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:30px;padding:0 11px;border-radius:999px;background:var(--chip);display:inline-flex;align-items:center;gap:5px;font:600 13px system-ui;color:#4F443A}
+.chip.big{height:38px;padding:0 15px;font-size:15px}
+.chip.pop{animation:pop .5s var(--spring) both}
+@keyframes pop{from{transform:scale(.4);opacity:0}}
+.acts{display:flex;gap:10px;margin:14px 16px 0}
+.btn{height:54px;border-radius:999px;font:700 17px var(--r);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .25s var(--spring)}
+.btn:active{transform:scale(.95)}
+.pri{flex:1;background:var(--ink);color:var(--cream)}
+.sec{padding:0 20px;background:#fff;color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(35,24,15,.14)}
+.wide{width:100%}
+.btn:disabled{background:transparent;color:#6B5F55;box-shadow:inset 0 0 0 1.5px #CFC6BB;pointer-events:none}
+.txtbtn{display:block;margin:6px auto 0;height:44px;padding:0 16px;font:600 16px system-ui;color:#4F443A}
+.hush{display:flex;align-items:center;justify-content:center;gap:6px;font:400 13px/18px system-ui;color:var(--t2);margin:10px 16px 0;text-align:center}
+.row-link{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 14px 8px 10px;border-radius:20px;background:#fff;box-shadow:0 0 0 .5px rgba(35,24,15,.07),0 6px 18px rgba(120,80,30,.07);text-align:left;margin:14px 16px 0;width:calc(100% - 32px)}
+.row-link img{width:44px;height:44px;border-radius:12px;object-fit:cover}
+.row-link span{flex:1;font:400 15px/19px system-ui;color:var(--t2)}
+.row-link b{color:var(--ink);font-weight:700}
+.chev{width:8px;height:14px;opacity:.4;flex:none}
+.tabs[hidden]{display:none}
+.tabs{position:absolute;left:18px;right:18px;bottom:24px;height:62px;border-radius:999px;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;padding:0 4px;background:rgba(255,255,255,.78);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 .5px 0 #fff,0 0 0 .5px rgba(35,24,15,.08),0 8px 24px rgba(60,40,20,.12);z-index:20}
+.tabs button{height:54px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 10px system-ui;color:#8A7F75}
+.tabs button[aria-current=page]{color:var(--ink);background:rgba(35,24,15,.06)}
+.tabs svg{width:26px;height:22px}
+.page{padding:104px 18px 120px}
+.lt{font:800 34px/40px var(--r);margin:0}
+.sub{font:400 15px/20px system-ui;color:var(--t2);margin:4px 0 0}
+.lt+.sub{margin-top:10px}
+.sec-h{font:600 13px/18px system-ui;color:var(--t3);margin:26px 4px 8px;display:flex;align-items:center;gap:6px}
+.group{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 0 0 .5px rgba(35,24,15,.06)}
+.cell{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 16px;position:relative;width:100%;text-align:left}
+.cell+.cell::before{content:'';position:absolute;top:0;left:68px;right:0;height:.5px;background:var(--line)}
+.cell.np+.cell.np::before{left:16px}
+.nm{flex:1;min-width:0}
+.nm b{display:block;font:600 17px/22px system-ui}
+.nm small{display:flex;align-items:center;gap:6px;font:400 14px/19px system-ui;color:var(--t2)}
+.val{font:400 17px system-ui;color:var(--t2)}
+.foot{font:400 13px/18px system-ui;color:var(--t2);margin:8px 16px 0}
+.seg{display:flex;background:var(--chip);border-radius:12px;padding:3px;gap:3px;width:100%}
+.seg button{flex:1;height:34px;border-radius:9px;font:500 14px system-ui;color:var(--t2)}
+.seg button[aria-pressed=true]{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.setting{padding:14px 16px}
+.setting+.setting{border-top:.5px solid var(--line)}
+.lbl{display:flex;justify-content:space-between;font:400 17px/22px system-ui;margin-bottom:10px}
+.lbl span{color:var(--t2)}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:17px}
+.srow select{color:var(--t2);font-size:17px;text-align:right;-webkit-appearance:none;appearance:none;padding:6px 18px 6px 6px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%238F8379' stroke-width='1.6'/%3E%3C/svg%3E") right center no-repeat}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.tog{width:51px;height:31px;border-radius:999px;background:#E2DBD1;position:relative;flex:none;transition:background .2s}
+.tog::after{content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.2);transition:transform .3s var(--spring)}
+.tog[aria-checked=true]{background:var(--green)}
+.tog[aria-checked=true]::after{transform:translateX(20px)}
+.scrim{position:absolute;inset:0;background:rgba(35,24,15,.3);z-index:40;animation:fade .25s ease both}
+@keyframes fade{from{opacity:0}}
+.sheet{position:absolute;left:8px;right:8px;bottom:8px;z-index:41;background:rgba(255,252,247,.96);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);border-radius:38px;padding:10px 20px 24px;box-shadow:0 -10px 40px rgba(35,24,15,.18);animation:up .45s var(--spring) both;max-height:calc(100% - 70px);overflow-y:auto}
+@keyframes up{from{transform:translateY(105%)}}
+.grab{width:36px;height:5px;border-radius:3px;background:rgba(35,24,15,.15);margin:0 auto 10px}
+.sh-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.sh-top h2{font:800 22px/28px var(--r);margin:0}
+.x{width:32px;height:32px;border-radius:50%;background:var(--chip);display:grid;place-items:center;flex:none}
+.x svg{width:12px;height:12px}
+.pickgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 4px}
+.pick{display:flex;flex-direction:column;align-items:center;gap:2px;font:600 14px system-ui;color:var(--t2);border-radius:18px;padding:6px 0 8px;transition:background .2s}
+.pick[aria-pressed=true]{background:#fff;color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.pick svg{transition:transform .4s var(--spring)}
+.pick[aria-pressed=true] svg{transform:scale(1.08)}
+.radio{display:flex;align-items:center;gap:12px;min-height:58px;width:100%;text-align:left;padding:8px 16px;font:400 17px/22px system-ui}
+.radio+.radio{border-top:.5px solid var(--line)}
+.radio small{display:block;color:var(--t2);font-size:13px;line-height:18px}
+.radio .r{width:22px;height:22px;border-radius:50%;border:2px solid #CFC6BB;flex:none;display:grid;place-items:center}
+.radio[aria-checked=true] .r{border-color:var(--ink);background:var(--ink)}
+.radio[aria-checked=true] .r::after{content:'';width:8px;height:8px;border-radius:50%;background:#fff}
+.radio span{flex:1}
+.toast{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:60;padding:12px 18px;border-radius:999px;font:600 15px system-ui;white-space:nowrap;background:var(--ink);color:var(--cream);box-shadow:0 10px 24px rgba(35,24,15,.25);animation:tin .4s var(--spring) both}
+@keyframes tin{from{transform:translate(-50%,30px);opacity:0}}
+.picker-h{display:flex;justify-content:space-between;align-items:baseline;margin-top:20px}
+.picker-h b{font:700 17px system-ui}.picker-h span{font:400 13px system-ui;color:var(--t2)}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px;border-radius:16px;overflow:hidden}
+.ph-pick{position:relative;aspect-ratio:1;overflow:hidden;background:#000}
+.sheet .ph-pick{border-radius:12px;background:#E6DFD5}
+.sheet .ph-pick img{position:absolute;inset:0}
+.ph-pick img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .2s}
+.ph-pick[aria-pressed=true] img{opacity:.6}
+.ph-pick .ck{position:absolute;bottom:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.15);display:grid;place-items:center;color:#fff;font:700 13px system-ui}
+.ph-pick[aria-pressed=true] .ck{background:#2C6BF0;border-color:#fff}
+.field{width:100%;height:56px;border-radius:16px;border:0;background:#fff;box-shadow:0 0 0 1px rgba(35,24,15,.1);color:var(--ink);font:400 20px system-ui;padding:0 18px;margin-top:22px}
+.field::placeholder{color:#A2978C}
+.avatar-add{display:block;margin:26px auto 0;text-align:center;font:600 15px system-ui;color:var(--t2)}
+.avatar-add .ring{width:116px;height:116px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;background:#fff;box-shadow:0 0 0 1px rgba(35,24,15,.1);overflow:hidden}
+.avatar-add img{width:100%;height:100%;object-fit:cover}
+.bottom-cta{position:absolute;left:18px;right:18px;bottom:30px}
+.garden{background:linear-gradient(180deg,#CFE5FF 0,#E9F1FB 60%,#DCEFD6 60%,#CFE8C5 100%);border-radius:28px;height:200px;position:relative;overflow:hidden;box-shadow:0 0 0 .5px rgba(35,24,15,.06)}
+.garden .g{position:absolute;bottom:14px;transform-origin:50% 100%;animation:sway 5s ease-in-out infinite alternate}
+.garden-cap{position:absolute;left:16px;top:14px;font:800 20px/24px var(--r)}
+.garden-cap small{display:block;font:500 13px system-ui;color:var(--t2)}
+.mem-list{display:grid;gap:10px}
+.mem{display:flex;gap:12px;align-items:center;background:#fff;border-radius:20px;padding:8px;text-align:left;width:100%;box-shadow:0 0 0 .5px rgba(35,24,15,.06)}
+.mem img{width:72px;height:72px;border-radius:14px;object-fit:cover}
+.mem .nm b{font-size:16px}
+.mem.new{animation:pop .7s var(--spring) both;box-shadow:0 0 0 2px var(--ink)}
+.route{position:relative;height:6px;border-radius:3px;background:var(--chip);margin-top:8px}
+.route i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;transition:width 1s ease}
+.route i::after{content:'';position:absolute;right:-5px;top:-3px;width:12px;height:12px;border-radius:50%;background:inherit;box-shadow:0 0 0 3px #fff}
+.band-img{height:200px;position:relative;background:#ccc center/cover no-repeat}
+.band-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,0) 30%,rgba(255,248,236,0) 60%,var(--cream))}
+.la{border-radius:26px;background:#141414;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px}
+.la .t{flex:1}.la .t b{display:block;font:600 15px/20px system-ui}.la .t small{font:400 13px system-ui;color:rgba(255,255,255,.7)}
+.la .cd{font:800 22px var(--r);font-variant-numeric:tabular-nums;color:#FFBE2E;text-align:right;line-height:1}
+.la .cd small{display:block;font:600 11px system-ui;color:rgba(255,255,255,.6)}
+.cam{position:absolute;inset:0;background:#000;color:#fff}
+.cam img.v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.go{animation:flash .5s ease}
+@keyframes flash{0%{opacity:.95}100%{opacity:0}}
+.shutter{width:78px;height:78px;border-radius:50%;border:4px solid #fff;display:grid;place-items:center;margin:0 auto}
+.shutter::after{content:'';width:62px;height:62px;border-radius:50%;background:#fff;transition:transform .2s var(--spring)}
+.shutter:active::after{transform:scale(.85)}
+.cam-cap{position:absolute;left:16px;right:16px;bottom:170px;text-align:center;font:700 17px/22px var(--r);padding:12px 16px;border-radius:20px;background:rgba(20,14,10,.72);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.cam-bot{position:absolute;left:0;right:0;bottom:0;padding:24px 18px 40px;background:rgba(0,0,0,.55)}
+.snapcard{position:absolute;left:16px;right:16px;bottom:150px;display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:22px;background:rgba(20,14,10,.72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff}
+.snapcard b{display:block;font:700 17px var(--r)}.snapcard small{font:400 13px/18px system-ui;color:rgba(255,255,255,.8)}
+.count{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.25);color:#fff;text-align:center}
+.count b{font:800 140px/1 var(--r);animation:tick .9s ease both;text-shadow:0 6px 30px rgba(0,0,0,.4)}
+.count p{font:600 16px system-ui;margin:14px 30px 0;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+@keyframes tick{from{transform:scale(1.5);opacity:0}30%{opacity:1}to{transform:scale(1)}}
+.press{margin:18px 16px 0;background:#fff;border-radius:30px;padding:16px 16px 14px;box-shadow:0 14px 34px rgba(120,80,30,.14)}
+.press-in{position:relative;height:372px;transform-style:preserve-3d;transition:transform .15s ease-out;will-change:transform}
+.press{perspective:900px}
+.pc{transform-style:preserve-3d}
+.pc:nth-child(1){--z:70px}.pc:nth-child(2){--z:20px}.pc:nth-child(3){--z:-30px}
+.press-in.idle{animation:drift 6s ease-in-out infinite alternate}
+@keyframes drift{from{transform:rotateX(6deg) rotateY(-10deg)}to{transform:rotateX(-4deg) rotateY(10deg)}}
+.tilt-hint{text-align:center;font:600 12px system-ui;color:var(--t2);margin:4px 0 0}
+.pc{position:absolute;width:62%;background:#fff;padding:7px 7px 30px;border-radius:6px;box-shadow:0 8px 22px rgba(35,24,15,.18);transform:translateZ(var(--z,0)) rotate(var(--r));transition:transform .6s var(--spring),opacity .4s}
+.pc img{width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:2px}
+.pc span{position:absolute;left:8px;bottom:5px;display:flex;align-items:center;gap:4px;font:700 13px var(--r)}
+.pc:nth-child(1){left:2%;top:0;z-index:3}.pc:nth-child(2){right:0;top:24px;z-index:2}.pc:nth-child(3){left:20%;top:132px;z-index:1}
+.pc.wait{opacity:0;transform:translateZ(var(--z,0)) translateY(40px) rotate(0deg)}
+.press-cap{margin:6px 0 0;text-align:center;font:700 15px var(--r)}
+.polaroid{position:absolute;left:50%;top:42%;translate:0 -50%;width:320px;margin-left:-160px;background:#fff;padding:12px 12px 44px;border-radius:6px;box-shadow:0 20px 50px rgba(0,0,0,.25);transform:rotate(-3deg);animation:drop .6s var(--spring) both;color:var(--ink)}
+.polaroid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.polaroid p{position:absolute;left:0;right:0;bottom:10px;margin:0;text-align:center;font:700 16px var(--r)}
+@keyframes drop{from{transform:translateY(-60px) rotate(-12deg);opacity:0}}
+.hero-img{width:100%;height:400px;object-fit:cover;display:block}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:0 18px;scrollbar-width:none}
+.strip img{width:130px;height:160px;border-radius:16px;object-fit:cover;flex:none}
+.pay{background:#000;color:#fff;border-radius:999px;height:54px;width:100%;font:600 19px system-ui;display:flex;align-items:center;justify-content:center;gap:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.reading{display:flex;align-items:center;gap:10px;font:500 15px system-ui;color:var(--t2);margin-top:22px}
+.spin{width:18px;height:18px;border-radius:50%;border:2px solid rgba(35,24,15,.15);border-top-color:var(--ink);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.petal{position:absolute;width:14px;height:22px;border-radius:50%;pointer-events:none;z-index:50;animation:fly 1.6s cubic-bezier(.2,.7,.4,1) forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--rt));opacity:0}}
+.bunch{position:relative;height:290px;display:flex;justify-content:center;align-items:flex-end;margin-top:6px}
+.bunch .fl{margin:0 -16px;animation:bloom .9s var(--spring) both,sway 4s 1s ease-in-out infinite alternate}
+.bunch .fl:nth-child(2){animation-delay:.18s,-1s}.bunch .fl:nth-child(3){animation-delay:.36s,-2s}.bunch .fl:nth-child(4){animation-delay:.54s,-3s}
+@keyframes bloom{from{transform:scale(.2) translateY(60px);opacity:0}}
+.card{background:#fff;border-radius:24px;padding:16px;box-shadow:0 0 0 .5px rgba(35,24,15,.06),0 10px 26px rgba(120,80,30,.08)}
+.story{width:220px;aspect-ratio:9/16;margin:14px auto 0;border-radius:22px;overflow:hidden;position:relative;background:linear-gradient(180deg,#CFE5FF,#FFF8EC 60%,#CFE8C5);box-shadow:0 12px 30px rgba(35,24,15,.18)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style></head><body>
+<div class="ph" id="ph">
+ <div class="status" id="status" aria-hidden="true"><span id="clock">3:06</span><i><b></b></i></div>
+ <div id="view"></div>
+ <nav class="tabs" id="tabs" aria-label="Tabs" hidden></nav>
+ <div id="layer"></div>
+</div>
+<script>
+const I={
+ chev:'<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1.5 1.5 6.5 7l-5 5.5" fill="none" stroke="#23180F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ back:'<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ x:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 1.5l9 9m0-9-9 9" stroke="#23180F" stroke-width="2" stroke-linecap="round"/></svg>',
+ lock:'<svg width="11" height="14" viewBox="0 0 11 14" aria-hidden="true"><rect x=".5" y="6" width="10" height="7.5" rx="2" fill="currentColor"/><path d="M2.6 6V4.2a2.9 2.9 0 0 1 5.8 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+ check:'<svg width="12" height="10" viewBox="0 0 12 10" aria-hidden="true"><path d="M1.5 5.2 4.5 8l6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ share:'<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M9 14V2m0 0L5 6m4-4 4 4M4 9H3a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 3 20h12a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 15 9h-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ apple:'<svg width="17" height="20" viewBox="0 0 17 20" aria-hidden="true"><path fill="#fff" d="M14 10.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.8C3.7 5 2.2 6 1.4 7.5c-1.7 3-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.6-1-2.6-3.9ZM11.6 3.3c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.5 2.8-1.3Z"/></svg>',
+ tToday:'<svg viewBox="0 0 26 24" aria-hidden="true"><path d="M6 17a7 7 0 0 1 14 0Z" fill="currentColor"/><path d="M3 20.5h20M13 3.5v3M5.4 7.2l2 2M20.6 7.2l-2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ tCrew:'<svg viewBox="0 0 26 24" aria-hidden="true"><circle cx="9.5" cy="8" r="3.8" fill="currentColor"/><path d="M2.8 19.5c.5-4 3.2-6 6.7-6s6.2 2 6.7 6Z" fill="currentColor"/><circle cx="18" cy="8.6" r="3.1" fill="currentColor"/><path d="M17.4 13.2c3.5-.2 5.6 1.8 6 5.6h-5.6" fill="currentColor"/></svg>',
+ tGarden:'<svg viewBox="0 0 26 24" aria-hidden="true"><g fill="currentColor"><circle cx="13" cy="5.2" r="3"/><circle cx="17.3" cy="8.3" r="3"/><circle cx="15.7" cy="13.3" r="3"/><circle cx="10.3" cy="13.3" r="3"/><circle cx="8.7" cy="8.3" r="3"/></g><circle cx="13" cy="9.6" r="2.3" fill="#fff"/><path d="M13 15.5v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ tYou:'<svg viewBox="0 0 26 24" aria-hidden="true"><circle cx="13" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="13" cy="9.6" r="3.4" fill="currentColor"/><path d="M6.8 18.4c1.4-2.4 3.5-3.6 6.2-3.6s4.8 1.2 6.2 3.6" fill="currentColor"/></svg>'
+};
+const MARK=(c='#23180F')=>`<svg class="mark" viewBox="-12 -14 330 128" role="img" aria-label="Frolic"><g fill="none" stroke="${c}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"><path d="M14 100 V34 C14 14 26 4 46 6"/><path d="M0 48 H60"/><path d="M60 48 V100 M60 72 C62 56 74 48 92 49"/><circle cx="138" cy="74" r="26"/><path d="M190 6 V78 C190 94 198 102 210 102 C222 102 228 94 228 82 V50"/><path d="M300 58 C294 51 287 48 279 48 C264 48 253 60 253 75 C253 90 264 101 279 101 C287 101 294 98 300 91"/></g><circle class="sun" cx="228" cy="14" r="11.5" fill="#FF6A2A"/></svg>`;
+const C={pink:['#FF7AB0','#E9508E'],cobalt:['#4A6FF5','#2C4FD6'],moss:['#46B566','#2E9149'],marigold:['#FFBE2E','#F29A00'],tomato:['#FF6440','#E2441F'],lilac:['#AE86FF','#8B5EF2']};
+const P={maya:{n:'Maya',img:'p_maya',c:'pink',z:1.32},dev:{n:'Dev',img:'p_dev',c:'cobalt',z:1},jordan:{n:'Jordan',img:'p_jordan',c:'moss',z:1.32},priya:{n:'Priya',img:'p_priya',c:'marigold',z:1.32},you:{n:'You',img:'p_you',c:'tomato',z:1}};
+const FR=['maya','dev','jordan','priya'];
+let uid=0;
+function face(k,R){const p=P[k],id='c'+(++uid),cx=R,cy=R;
+ if(k==='you'&&!S.photo)return `<circle cx="${cx}" cy="${cy}" r="${R*.5}" fill="#FFF8EC"/><text x="${cx}" y="${cy+R*.18}" text-anchor="middle" font-family="ui-rounded,system-ui" font-weight="800" font-size="${R*.5}" fill="${C[p.c][1]}">${(S.name||'Y')[0].toUpperCase()}</text>`;
+ const s=R*1.0*p.z;return `<clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${R*.5}"/></clipPath><image href="img/${p.img}.jpg" x="${cx-s/2}" y="${cy-s/2}" width="${s}" height="${s}" clip-path="url(#${id})" preserveAspectRatio="xMidYMid slice"/>`}
+function bloomSvg(k,R=32,stem=50,col){const c=col||P[k].c,[a,b]=C[c];const W=R*2+8,cx=W/2,cy=R+4,H=stem?R*2+stem+4:W;let p='';
+ for(let i=0;i<8;i++)p+=`<ellipse cx="${cx}" cy="${cy-R*.56}" rx="${R*.34}" ry="${R*.5}" fill="${b}" transform="rotate(${i*45+22.5} ${cx} ${cy})"/>`;
+ for(let i=0;i<8;i++)p+=`<ellipse cx="${cx}" cy="${cy-R*.58}" rx="${R*.3}" ry="${R*.46}" fill="${a}" transform="rotate(${i*45} ${cx} ${cy})"/>`;
+ const st=stem?`<path d="M${cx} ${cy+R*.4} C ${cx-3} ${cy+R+stem*.4}, ${cx+4} ${cy+R+stem*.7}, ${cx} ${H}" fill="none" stroke="#3E9B52" stroke-width="4" stroke-linecap="round"/><path d="M${cx} ${cy+R+stem*.55} C ${cx+14} ${cy+R+stem*.3}, ${cx+24} ${cy+R+stem*.38}, ${cx+26} ${cy+R+stem*.5} C ${cx+18} ${cy+R+stem*.62}, ${cx+8} ${cy+R+stem*.62}, ${cx} ${cy+R+stem*.55}Z" fill="#4CAF5E"/>`:'';
+ const inner=k?`<circle cx="${cx}" cy="${cy}" r="${R*.5+3}" fill="#FFF8EC"/><g transform="translate(${cx-R} ${cy-R})">${face(k,R)}</g>`:`<circle cx="${cx}" cy="${cy}" r="${R*.34}" fill="#FFD25E"/><circle cx="${cx}" cy="${cy}" r="${R*.34}" fill="none" stroke="#F29A00" stroke-width="2"/>`;
+ return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${st}${p}${inner}</svg>`}
+function budSvg(k,R=32,stem=50){const [a,b]=C[P[k].c];const W=R*2+8,cx=W/2,H=R*2+stem+4,top=R*.5,bot=R*2+4;
+ return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="M${cx} ${bot-4} C ${cx-3} ${bot+stem*.4}, ${cx+4} ${bot+stem*.7}, ${cx} ${H}" fill="none" stroke="#3E9B52" stroke-width="4" stroke-linecap="round"/><path d="M${cx} ${bot+stem*.45} C ${cx-14} ${bot+stem*.2}, ${cx-24} ${bot+stem*.28}, ${cx-26} ${bot+stem*.4} C ${cx-18} ${bot+stem*.52}, ${cx-8} ${bot+stem*.52}, ${cx} ${bot+stem*.45}Z" fill="#4CAF5E"/>
+ <path d="M${cx} ${top} C ${cx+R*.75} ${top+R*.5}, ${cx+R*.7} ${bot-R*.3}, ${cx} ${bot} C ${cx-R*.7} ${bot-R*.3}, ${cx-R*.75} ${top+R*.5}, ${cx} ${top}Z" fill="${b}"/>
+ <path d="M${cx} ${top+R*.15} C ${cx+R*.45} ${top+R*.6}, ${cx+R*.35} ${bot-R*.4}, ${cx} ${bot-R*.1} C ${cx-R*.1} ${bot-R*.5}, ${cx-R*.05} ${top+R*.6}, ${cx} ${top+R*.15}Z" fill="${a}"/>
+ <path d="M${cx-R*.55} ${bot-R*.55} C ${cx-R*.3} ${bot-R*.05}, ${cx+R*.3} ${bot-R*.05}, ${cx+R*.55} ${bot-R*.55} C ${cx+R*.2} ${bot+R*.05}, ${cx-R*.2} ${bot+R*.05}, ${cx-R*.55} ${bot-R*.55}Z" fill="#4CAF5E"/></svg>`}
+const S={name:'',photo:false,taste:new Set(),cal:true,askFree:false,phase:'open',onlyIf:[],match:[],free:'till8',sundayIn:false,newMem:false,budget:1,energy:0,far:20,home:'11 PM',drop:'3 PM',shot:null,went:false,etaTimer:null,revealTimer:null};
+const FREE={till8:['Free till 8','Free now till 8 PM'],after5:['Free 5 to 8','Free 5 PM to 8 PM'],no:['Not today','Not today']};
+const $=s=>document.querySelector(s);
+const view=$('#view'),layer=$('#layer'),tabs=$('#tabs');
+const ifIn=a=>a.length>2?`all ${a.length} are in`:`${names(a)} ${a.length>1?'are':'is'} in`;
+const names=a=>a.length<2?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+function toast(t){document.querySelectorAll('.toast').forEach(e=>e.remove());const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=t;$('#ph').appendChild(d);setTimeout(()=>d.remove(),1800)}
+function go(r){location.hash=r}
+function closeSheet(){layer.innerHTML=''}
+function sheet(title,body,id='sh'){layer.innerHTML=`<div class="scrim" onclick="closeSheet()"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="${id}"><div class="grab"></div><div class="sh-top"><h2 id="${id}">${title}</h2><button class="x" onclick="closeSheet()" aria-label="Close">${I.x}</button></div>${body}</div>`}
+function renderTabs(cur){const t=[['today','Today',I.tToday],['crew','Crew',I.tCrew],['garden','Garden',I.tGarden],['you','You',I.tYou]];tabs.hidden=!cur;if(!cur)return;tabs.innerHTML=t.map(([r,l,i])=>`<button onclick="go('${r}')" ${r===cur?'aria-current="page"':''}>${i}${l}</button>`).join('')}
+function petals(){const cols=Object.values(C).map(c=>c[0]);for(let i=0;i<34;i++){const d=document.createElement('i');d.className='petal';d.style.cssText=`left:195px;top:200px;background:${cols[i%6]};--dx:${(Math.random()-.5)*420}px;--dy:${(Math.random()-.3)*520}px;--rt:${Math.random()*720}deg;animation-delay:${Math.random()*.15}s`;$('#ph').appendChild(d);setTimeout(()=>d.remove(),1900)}}
+const R={};
+R.join=()=>`<div class="scr sky" style="height:100%">
+ <div class="top">${MARK()}</div>
+ <div class="meadow" style="height:250px;margin-top:6px">${FR.map((k,i)=>`<div class="fl">${bloomSvg(k,38,[110,66,130,86][i])}<span>${P[k].n}</span></div>`).join('')}</div>
+ <div style="padding:14px 22px 0"><p class="sub" style="font-weight:600;color:var(--ink)">Maya invited you to</p><h1 class="huge" style="font-size:46px;line-height:48px;margin-top:2px">Sunset Crew</h1>
+ <p class="sub" style="font-size:17px;line-height:23px;margin-top:12px">Every afternoon, one plan for whoever's free. Say you're down in secret. It only happens if a friend is down too.</p></div>
+ <div class="card" style="margin:18px 18px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;padding:12px 6px">
+ <div>${bloomSvg('maya',24,0)}<div style="font:600 13px/17px system-ui;color:var(--ink)">Friends who are free bloom</div></div>
+ <div style="display:flex;flex-direction:column;align-items:center">${budSvg('you',22,0).replace(/height="\d+"/,'height="52"')}<div style="font:600 13px/17px system-ui;color:var(--ink)">Your yes is a secret bud</div></div>
+ <div><span style="display:inline-flex">${bloomSvg('you',20,0)}${bloomSvg('dev',20,0)}</span><div style="font:600 13px/17px system-ui;color:var(--ink)">Both yes: it's on</div></div></div>
+ <div class="bottom-cta" style="bottom:16px"><button class="btn pri wide" onclick="S.solo=false;go('name')">Join Sunset Crew</button><button class="txtbtn" style="margin-top:4px" onclick="S.solo=true;go('name')">No invite? Start on your own</button></div></div>`;
+R.name=()=>`<div class="scr page" style="padding-top:92px;height:100%"><h2 class="lt">What do your friends call you?</h2>
+ <button class="avatar-add" onclick="photoSheet()"><span class="ring">${S.photo?'<img src="img/p_you.jpg" alt="Your photo">':bloomSvg('you',42,0)}</span>${S.photo?'Change photo':'Add a photo'}</button>
+ <label class="sr" for="nm">Your first name</label><input id="nm" class="field" placeholder="First name" value="${S.name}" autocomplete="given-name" oninput="S.name=this.value;$('#nx').disabled=!this.value.trim();if(!S.photo)$('.avatar-add .ring').innerHTML=bloomSvg('you',42,0)" onchange="S.name=this.value;$('#nx').disabled=!this.value.trim()">
+ <p class="foot">This is your flower. Your crew sees your name and photo, and nothing else.</p>
+ <div class="bottom-cta"><button id="nx" class="btn pri wide" ${S.name.trim()?'':'disabled'} onclick="S.name=$('#nm').value||S.name;if(S.name.trim())go('taste')">Continue</button></div></div>`;
+function photoSheet(){sheet('Add a photo',`<div style="display:flex;gap:10px;margin-top:12px">${['p_you','marina_people','picnic','cheeseboard'].map((x,i)=>`<button aria-label="${i?'Photo '+(i+1):'Selfie'}" style="width:72px;height:72px;border-radius:16px;overflow:hidden;flex:none" onclick="S.photo=${i===0};closeSheet();rerender()"><img src="img/${x}.jpg" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></button>`).join('')}</div><p class="foot" style="margin:10px 4px 0">Recents from your photo library</p>`)}
+const TP=[['cheeseboard','Pizza night','Late-night food'],['hills_sunset','Sunset','Sunsets'],['bowling','Bowling','Games'],['picnic','Picnic','Outdoors'],['marina_sunset','The Marina','Sunsets'],['friends','Beach day','Outdoors'],['berkeley','Campus','Free stuff'],['rock','Climbing','Outdoors'],['marina_people','Pier','Free stuff']];
+R.taste=()=>`<div class="scr page" style="padding-top:92px;padding-bottom:120px"><h2 class="lt">Pick a few nights you loved</h2>
+ <p class="sub">From your camera roll. Frolic learns what you're into so plans fit you. Pick at least 3.</p>
+ <div class="picker-h"><b>Recents</b><span>${S.taste.size} selected</span></div>
+ <div class="photos">${TP.map(([k,a])=>{const n=[...S.taste].indexOf(k);return `<button class="ph-pick" aria-pressed="${n>-1}" aria-label="${a}" onclick="S.taste.has('${k}')?S.taste.delete('${k}'):S.taste.add('${k}');rerender()"><img src="img/${k}.jpg" alt=""><span class="ck">${n>-1?n+1:''}</span></button>`}).join('')}</div>
+ <p class="hush" style="justify-content:flex-start;margin:12px 4px 0">${I.lock} Looked at on your phone. Photos are never uploaded.</p>
+ <div class="bottom-cta"><button class="btn pri wide" ${S.taste.size<3?'disabled':''} onclick="go('reading')">${S.taste.size<3?`Pick ${3-S.taste.size} more`:'Continue'}</button></div></div>`;
+function tasteTags(){const t=[...new Set([...S.taste].map(k=>TP.find(x=>x[0]===k)[2]))];return t.length?t:['Sunsets','Outdoors','Late-night food']}
+R.reading=()=>{const tags=tasteTags();
+ setTimeout(()=>{tags.forEach((t,i)=>setTimeout(()=>{const c=$('#tags');if(!c)return;c.insertAdjacentHTML('beforeend',`<span class="chip big pop">${t}</span>`);if(i===tags.length-1){$('#rd').textContent="That's what Frolic will plan around.";$('#rc').disabled=false}},i*450))},1100);
+ return `<div class="scr page" style="padding-top:92px;height:100%"><h2 class="lt">You're into</h2>
+ <p class="reading" id="rd" role="status"><span class="spin"></span>Looking at your photos on your phone</p>
+ <div class="chips" id="tags" style="margin-top:16px;gap:8px"></div>
+ <div class="group" style="margin-top:20px">${[...S.taste].map(k=>{const t=TP.find(x=>x[0]===k);return `<div class="cell np" style="min-height:64px"><img src="img/${k}.jpg" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover"><div class="nm"><b style="font-size:16px">${t[1]}</b></div><span style="font:600 14px system-ui;color:var(--t2)">${t[2]}</span></div>`}).join('')}</div>
+ <p class="foot" style="margin:18px 4px 0">Your crew's plans blend everyone's picks. It keeps learning from what you say yes to.</p>
+ <div class="bottom-cta"><button id="rc" class="btn pri wide" disabled onclick="go('calendar')">Sounds like me</button><button class="txtbtn" onclick="go('taste')">Pick different photos</button></div></div>`};
+R.calendar=()=>`<div class="scr page" style="padding-top:92px;height:100%"><h2 class="lt">Never type when you're free</h2>
+ <p class="sub">Frolic reads your calendar on your phone and shows your crew only when you're free. Never what you're doing.</p>
+ <div class="group" style="margin-top:20px">${[['Today','Free now till 8 PM'],['Sun','Free all day'],['Mon','Free 4 to 9 PM'],['Tue','Free 6 to 11 PM'],['Wed','Free 2 to 9 PM']].map(([d,v])=>`<div class="cell np"><div class="nm"><b>${d}</b></div><span class="val">${v}</span></div>`).join('')}</div>
+ <p class="foot">This is what your crew would see this week.</p>
+ <div class="bottom-cta"><button class="btn pri wide" onclick="S.cal=true;go('today')">Use my calendar</button><button class="txtbtn" onclick="S.cal=false;S.askFree=true;go('today')">I'll tell it each day</button></div></div>`;
+function topbar(){const f=FREE[S.free];if(S.went)return `<div class="top">${MARK()}<span class="pill"><span class="dot"></span>Went today</span></div>`;return `<div class="top">${MARK()}<button class="pill" onclick="freeSheet()" aria-label="${f[0]}. Change when you're free"><span class="dot${S.free==='no'?' off':''}"></span>${f[0]}</button></div>`}
+const PLANS={
+'Sunsets':{title:'Sunset at Indian Rock',place:'Indian Rock',img:'hills_sunset',pos:'50% 62%',chips:['Free','12 min walk','Golden hour 4:28'],why:"you're into sunsets, it's free, and the sky's clear until dark.",meet:'Top of Indian Rock',time:'4:30',leave:'4:18',tip:'bring a layer, it gets windy up there',shots:['marina_people','hills_sunset'],vibe:"golden-hour chasers who keep it under $10.",walk:12,band:'hills_sunset'},
+'Outdoors':{title:'Picnic on Memorial Glade',place:'Memorial Glade',img:'picnic',pos:'50% 50%',chips:['Free','6 min walk','Sunny, 64°'],why:"you're into being outside, it's free, and it's sunny till 4:45.",meet:'The big oak on the Glade',time:'3:45',leave:'3:38',tip:"grab snacks on the way, Maya's bringing a blanket",shots:['picnic','friends'],vibe:"sunny-afternoon people who'd rather be on the grass.",walk:6,band:'picnic'},
+'Late-night food':{title:'Cheese Board pizza',place:'Cheese Board',img:'cheeseboard',pos:'50% 50%',chips:['$6 a slice','8 min walk','Live jazz at 7'],why:"you're into late-night food, and three of you are free after 6.",meet:'Cheese Board on Shattuck',time:'6:30',leave:'6:22',tip:"the line moves fast, and there's jazz at 7",shots:['cheeseboard','cheeseboard'],vibe:"pizza-and-jazz people who come alive after 6.",walk:8,band:'cheeseboard'},
+'Games':{title:'Bowling at the Union',place:'the Union lanes',img:'bowling',pos:'50% 40%',chips:['$5 a game','10 min walk','Shoes included'],why:"you're into games, and it's indoors if the fog rolls in.",meet:'The Union lanes',time:'5:00',leave:'4:50',tip:"Dev says he's undefeated, so bring your A game",shots:['bowling','bowling'],vibe:"friendly rivals, always up for a game.",walk:10,band:'bowling'},
+'Free stuff':{title:'The Berkeley Pier at dusk',place:'the Berkeley Pier',img:'marina_people',pos:'50% 50%',chips:['Free','BART + 10 min','Sunset 4:58'],why:"you're into free stuff, and the pier's best right before sunset.",meet:'The pier entrance',time:'4:15',leave:'3:55',tip:"it's breezy out there, bring a hoodie",shots:['marina_people','marina_sunset'],vibe:"free-stuff connoisseurs who'll go anywhere for a view.",walk:22,band:'marina_sunset'}};
+const SOFT={'Sunsets':'a good sunset','Outdoors':'a sunny lawn','Late-night food':'late-night pizza','Games':'a friendly game','Free stuff':'free things'};
+function crewLine(){const t=tasteTags();const v=PL().vibe.replace(/\.$/,'');const o=t.find(x=>PLANS[x]&&PLANS[x]!==PL());return o?`${v}, with a soft spot for ${SOFT[o]}.`:v+'.'}
+function PL(){return PLANS[tasteTags()[0]]||PLANS.Sunsets}
+function NEXT(){const t=tasteTags();const k=t.find(x=>PLANS[x]&&PLANS[x]!==PL())||(PL()===PLANS['Late-night food']?'Games':'Late-night food');return PLANS[k]}
+const packet=(o={})=>`<div class="packet"><div class="band" style="${o.band||''}"><span>${o.label||'TODAY · SATURDAY'}</span><i>${o.no||'Crew frolic No. 13'}</i></div><div class="win"><img src="img/${o.img||PL().img}.jpg" alt="${o.alt||PL().title}" style="object-position:${o.pos||PL().pos}"></div>
+ <div class="pk"><h1 style="${(o.title||PL().title).length>20?'font-size:25px;line-height:29px':''}">${o.title||PL().title}</h1><div class="chips" style="margin-top:10px">${(o.chips||PL().chips).map(c=>`<span class="chip">${c}</span>`).join('')}</div>${o.why===false?'':`<p style="margin:10px 2px 0;font:400 13px/18px system-ui;color:var(--t2)"><b style="color:var(--ink);font-weight:600">Why this:</b> ${o.why||PL().why}</p>`}</div></div>`;
+const sundayRow=()=>`<button class="row-link" onclick="go('sunday')"><img src="img/marina_sunset.jpg" alt=""><span><b>Tomorrow:</b> ${S.sundayIn?"You're in for kayaks with Maya and Dev. Boat ramp at 10:45.":"Maya and Dev are kayaking. There's room for you."}</span>${I.chev}</button>`;
+R.today=()=>{
+ if(S.solo&&S.phase!=='on'&&S.phase!=='done'){const w=S.phase==='waiting';return `<div class="scr sky" style="min-height:100%;padding-bottom:110px">${topbar()}
+ <div class="meadow" style="height:128px;justify-content:center;gap:18px">${w?`<div class="fl bud new">${budSvg('you',24,22)}<span>You</span></div>`:`<div class="fl">${bloomSvg('you',28,30)}<span>${S.name||'You'}</span></div>`}${[0,1,2].map(()=>`<div style="width:44px;height:44px;border-radius:50%;border:2px dashed #CFC6BB;margin-bottom:20px"></div>`).join('')}</div>
+ <span class="cap">${w?'Your bud is planted. Waiting for a friend<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>':(S.sent?'Sent to the group chat. Anyone can say yes from the link.':'Your crew grows from here. Today\'s plan is still yours.')}</span>
+ ${packet({label:'TODAY · JUST FOR YOU',no:'Your first frolic',why:w?false:undefined})}
+ ${w?`<div class="card" style="margin:14px 16px 0;display:flex;gap:12px;align-items:center" role="status"><span style="color:var(--t2)">${I.lock}</span><div class="nm"><b style="font-size:16px">You're down</b><small style="display:block">${S.sent?'When someone from the group chat says yes too, you both bloom. They don\'t need the app.':'Send it to the group chat so someone can say yes too.'}</small></div></div>
+ <div class="acts">${S.sent?`<button class="btn sec" style="flex:1" onclick="S.phase='open';clearTimeout(S.revealTimer);rerender()">Take it back</button>`:`<button class="btn pri" onclick="shareSheet()">Send to the group chat</button>`}</div>`
+ :`<div class="acts"><button class="btn pri" onclick="shareSheet()">Send to the group chat</button><button class="btn sec" onclick="soloDown()">I'm down</button></div>
+ <p class="hush">${I.lock} Your yes stays secret, even in the group chat</p>`}</div>`}
+ if(S.free==='no')return `<div class="scr sky" style="height:100%">${topbar()}
+ <div class="meadow" style="margin-top:30px">${FR.map(k=>`<div class="fl fold">${bloomSvg(k,30,46)}<span>${P[k].n}</span></div>`).join('')}</div>
+ <div style="padding:30px 22px 0;text-align:center"><h1>Taking the day off</h1><p class="sub" style="font-size:17px;line-height:23px;margin-top:10px">No plan for you today, and nobody gets told. If your crew's plan happens, you can still hop in.</p></div>
+ <div class="acts" style="margin-top:22px"><button class="btn sec" style="flex:1" onclick="S.free='till8';rerender();toast('Back in. Free till 8')">I'm free after all</button></div></div>`;
+ if(S.phase==='on'){const m=S.match;return `<div class="scr sky" style="height:100%">${topbar()}
+ <div class="bunch">${['you',...m].map((k,i)=>`<div class="fl">${bloomSvg(k,50,[70,120,90,104][i])}<span>${k==='you'?(S.name||'You'):P[k].n}</span></div>`).join('')}</div>
+ <div style="padding:16px 22px 0"><p class="sub" style="font-weight:700;color:var(--ink)">You, ${names(m.map(k=>P[k].n))}</p><h1 class="huge">It's on.</h1>
+ <p class="sub" style="font-size:17px;line-height:23px;margin-top:10px">${PL().meet} at <b style="color:var(--ink)">${PL().time}</b>. Leave by <b style="color:var(--ink)">${PL().leave}</b> and ${PL().tip}.</p></div>
+ <div class="acts" style="margin-top:20px"><button class="btn pri" onclick="go('otw')">I'm on my way</button><button class="btn sec" onclick="toast('Opening Apple Maps')">Directions</button></div>
+ <p class="hush">${names(FR.filter(k=>!m.includes(k)).map(k=>P[k].n))} can still hop in.</p></div>`}
+ if(S.phase==='done')return `<div class="scr sky" style="min-height:100%;padding-bottom:110px">${topbar()}
+ <div class="bunch" style="height:210px">${['you',...(S.match.length?S.match:['maya','dev'])].map((k,i)=>`<div class="fl">${bloomSvg(k,36,[50,80,64][i])}<span>${k==='you'?(S.name||'You'):P[k].n}</span></div>`).join('')}</div>
+ <div style="padding:14px 22px 0;text-align:center"><h1>You went.</h1><p class="sub" style="font-size:17px;line-height:23px;margin-top:8px">Your first flower is in the garden, and the crew saw it bloom.</p></div>
+ <div class="acts" style="margin-top:18px"><button class="btn sec" style="flex:1" onclick="go('garden')">See the garden</button></div>
+ <button class="row-link" onclick="peekSheet()"><img src="img/${NEXT().img}.jpg" alt=""><span><b>Tomorrow at 3:</b> ${NEXT().title} is looking likely.</span>${I.chev}</button>${sundayRow()}</div>`;
+ if(S.phase==='faded')return `<div class="scr sky" style="height:100%">${topbar()}
+ <div class="meadow" style="margin-top:20px">${FR.map(k=>`<div class="fl fold">${bloomSvg(k,30,46)}<span>${P[k].n}</span></div>`).join('')}</div>
+ <div style="padding:34px 22px 0;text-align:center"><h1>This one drifted off</h1><p class="sub" style="font-size:17px;line-height:23px;margin-top:10px">Not everyone you picked said yes to ${PL().title} this time, so it quietly faded. Nobody knows you said yes. Tomorrow's plan arrives at 3.</p></div>
+ <button class="row-link" style="margin-top:24px" onclick="peekSheet()"><img src="img/${NEXT().img}.jpg" alt=""><span><b>Tomorrow at 3:</b> a new plan for whoever's free. ${NEXT().title} is looking likely.</span>${I.chev}</button>${sundayRow()}</div>`;
+ const waiting=S.phase==='waiting';const oi=S.onlyIf.map(k=>P[k].n);
+ return `<div class="scr sky" style="min-height:100%;padding-bottom:110px">${topbar()}
+ <button class="meadow" style="height:128px" onclick="go('crew')" aria-label="Maya, Dev, Jordan and Priya are free. See your crew">${FR.map((k,i)=>`<div class="fl">${bloomSvg(k,28,[36,14,44,24][i])}<span>${P[k].n}</span></div>`).join('')}${waiting?`<div class="fl bud new">${budSvg('you',24,22)}<span>You</span></div>`:''}</button>
+ <span class="cap">${waiting?'Your bud is planted. Waiting for a friend<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>':'Maya, Dev, Jordan and Priya are free'}</span>
+ ${packet(waiting?{why:false}:{})}
+ ${waiting?`<div class="card" style="margin:14px 16px 0;display:flex;gap:12px;align-items:center" role="status"><span style="color:var(--t2)">${I.lock}</span><div class="nm"><b style="font-size:16px">You're down${oi.length?`, if ${ifIn(oi)}`:''}</b><small style="display:block">${oi.length>2?`If ${names(oi)} all say yes, you'll bloom together. The more people you need, the rarer it blooms.`:oi.length===2?`If ${names(oi)} both say yes, you'll bloom together.`:oi.length?`If ${oi[0]} says yes too, you'll both bloom at once.`:"If a friend says yes too, you'll both bloom at once."} If not, it disappears at 4 and nobody ever knows.</small></div></div>
+ <div class="acts"><button class="btn sec" style="flex:1" onclick="S.phase='open';S.onlyIf=[];clearTimeout(S.revealTimer);rerender()">Take it back</button></div>`
+ :`<div class="acts"><button class="btn pri" onclick="down([])">I'm down</button><button class="btn sec" onclick="onlyIfSheet()">Only with…</button></div>
+ <p class="hush">${I.lock} Nobody sees you're down unless they are too</p>${sundayRow()}`}</div>`};
+function down(list){S.onlyIf=list;S.match=list.length?list.slice():['maya','dev'];S.phase='waiting';closeSheet();rerender();clearTimeout(S.revealTimer);
+ S.revealTimer=setTimeout(()=>{if(S.phase!=='waiting')return;if(S.onlyIf.length>=4||(S.onlyIf.length===3&&Math.random()<.5)){S.phase='faded';rerender();return}S.phase='on';if(location.hash.slice(1).startsWith('today')||!location.hash){rerender();petals();navigator.vibrate&&navigator.vibrate(30)}else toast("It's on! Check Today")},6000)}
+function soloDown(){S.onlyIf=[];S.match=['maya'];S.phase='waiting';rerender();if(S.sent)soloReveal()}
+function soloReveal(){clearTimeout(S.revealTimer);S.revealTimer=setTimeout(()=>{if(S.phase!=='waiting')return;S.solo=false;S.phase='on';S.match=['maya'];rerender();petals();toast('Maya said yes from the link')},6000)}
+function shareSheet(){sheet('Send to the group chat',`<div style="background:#fff;border-radius:22px;padding:14px;margin-top:10px;box-shadow:0 0 0 .5px rgba(35,24,15,.08)">
+ <p style="margin:0 0 8px;font:600 13px system-ui;color:var(--t2)">Roommates</p>
+ <div style="margin-left:auto;max-width:250px;background:#2C7BF6;color:#fff;border-radius:18px 18px 4px 18px;overflow:hidden">
+ <img src="img/${PL().img}.jpg" alt="" style="width:100%;height:110px;object-fit:cover;display:block"><div style="padding:8px 12px 10px;background:#E9E9EB;color:#111"><b style="font:600 14px system-ui;display:block">${PL().title}</b><small style="font:400 12px system-ui;color:#555">frolic.app · say you're down, secretly</small></div>
+ <p style="margin:0;padding:8px 12px 10px;font:400 15px/20px system-ui">Anyone free for this? Say you're down on the link. It stays secret unless someone else is too.</p></div></div>
+ <p class="foot">Friends can say yes from the link without the app. Anyone who taps joins your crew.</p>
+ <button class="btn pri wide" style="margin-top:14px" onclick="closeSheet();S.sent=true;rerender();toast('Sent to Roommates');if(S.phase==='waiting')soloReveal()">Send</button>
+ <button class="txtbtn" onclick="closeSheet();go('web')">See what friends see</button>`)}
+function peekSheet(){const n=NEXT();sheet("Tomorrow's plan",`<p class="sub">It arrives at 3 PM, picked for whoever's free. Here's the likely one.</p><div style="margin:4px -16px 0">${packet({label:'TOMORROW · SUNDAY',no:'Likely',img:n.img,alt:n.title,pos:n.pos,title:n.title,chips:n.chips,why:n.why,band:'background:#4A6FF5;color:#fff'})}</div><button class="btn sec wide" style="margin-top:14px" onclick="closeSheet()">Sounds good</button>`)}
+function onlyIfSheet(){S.pick=new Set();const body=()=>{const sel=[...S.pick].map(k=>P[k].n);return `<p class="sub">Pick who has to be there. It only happens if they all say yes. Nobody ever finds out you picked them.</p>
+ <div class="pickgrid">${FR.map(k=>`<button class="pick" aria-pressed="${S.pick.has(k)}" onclick="S.pick.has('${k}')?S.pick.delete('${k}'):S.pick.add('${k}');window._d()">${bloomSvg(k,26,0)}${P[k].n}</button>`).join('')}</div>
+ <button class="btn pri wide" style="margin-top:14px" ${sel.length?'':'disabled'} onclick="down([...S.pick])">${sel.length?`I'm down if ${ifIn(sel)}`:'Pick at least one friend'}</button>`};
+ window._d=()=>sheet("I'm down only with…",body());window._d()}
+function freeSheet(){window._d=()=>sheet('When are you free today?',`<p class="sub">Your crew sees this. What you're doing stays private.</p>
+ <div class="group" style="margin-top:14px" role="radiogroup" aria-label="When are you free">${Object.entries(FREE).map(([k,v])=>`<button class="radio" role="radio" aria-checked="${S.free===k}" onclick="S.free='${k}';window._d()"><span>${v[1]}${k==='till8'&&S.cal?'<small>From your calendar</small>':''}${k==='after5'?'<small>Set by you, just for today</small>':''}${k==='no'?'<small>No plan for you today. Nobody gets told.</small>':''}</span><i class="r"></i></button>`).join('')}</div>
+ <button class="btn pri wide" style="margin-top:14px" onclick="closeSheet();if(S.free==='no'){S.phase='open';clearTimeout(S.revealTimer)}rerender()">Done</button>`,'fh');window._d()}
+R.otw=()=>{clearInterval(S.etaTimer);let you=PL().walk;S.etaTimer=setInterval(()=>{if(!$('#eta-you')){clearInterval(S.etaTimer);return}you=Math.max(1,you-1);$('#eta-you').textContent=you+' min away';$('#bar-you').style.width=(100-you*6)+'%';$('#cd').innerHTML=you+' min<small>away</small>'},2500);
+ const m=S.match.length?S.match:['maya','dev'];const m2=m[1]||m[0];
+ const row=(k,t,w,id)=>`<div class="cell" style="align-items:flex-start;padding:12px 16px">${bloomSvg(k,22,0)}<div class="nm"><b>${k==='you'?(S.name||'You'):P[k].n}</b><small ${id?'id="eta-you"':''}>${t}</small><div class="route"><i ${id?'id="bar-you"':''} style="width:${w}%;background:${C[P[k].c][1]}"></i></div></div></div>`;
+ return `<div class="scr" style="padding-bottom:60px"><div class="band-img" style="background-image:url(img/${PL().band}.jpg);background-position:50% 55%"></div>
+ <div class="top" style="position:absolute;left:0;right:0;top:0"><button class="circ" onclick="go('today')" aria-label="Back to Today">${I.back}</button></div>
+ <div style="padding:0 18px;margin-top:-50px;position:relative;z-index:2"><p class="sub" style="font-weight:700;color:var(--ink)">It's on · ${PL().time}</p><h1 class="huge" style="font-size:36px;line-height:40px">${PL().title}</h1>
+ <p class="sec-h">Who's where</p><div class="group">${row(m[0],'Here',100)}${m[1]?row(m[1],'4 min away',72):''}${row('you',PL().walk+' min away',28,1)}</div>
+ <p class="foot">Shared only with ${names(m.map(k=>P[k].n))}, and only until you arrive.</p>
+ <p class="sec-h">On your lock screen</p>
+ <div class="la">${bloomSvg(m[0],18,0)}<div class="t"><b>${PL().place.replace(/^the /,'The ')} at ${PL().time}</b><small>${P[m[0]].n}'s there.${m[1]?` ${P[m2].n} is 4 min out.`:''}</small></div><span class="cd" id="cd">${PL().walk} min<small>away</small></span></div>
+ <button class="btn pri wide" style="margin-top:20px" onclick="go('checkin')">I'm here</button>
+ <button class="txtbtn" onclick="bailSheet()">I can't make it</button></div></div>`};
+function bailSheet(){const m=S.match.length?S.match:['maya','dev'];sheet("Can't make it?",`<p class="sub">${names(m.map(k=>P[k].n))} will just see one fewer. The others get a chance to hop in.</p><div class="acts" style="margin:16px 0 0"><button class="btn sec" style="flex:1" onclick="closeSheet()">I'll still go</button><button class="btn pri" onclick="closeSheet();S.phase='open';go('today');toast('All good. Next time.')">Sit this one out</button></div>`)}
+function snapPics(){const sh=PL().shots;return [[sh[0],'35% 50%'],[sh[1],'70% 45%'],[PL().img,'50% 30%']]}
+function tilt(e,el){const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;const i=el.querySelector('.press-in');i.classList.remove('idle');i.style.transform=`rotateX(${-y*22}deg) rotateY(${x*28}deg)`}
+function untilt(el){const i=el.querySelector('.press-in');i.style.transform='';i.classList.add('idle')}
+addEventListener('deviceorientation',e=>{const i=document.querySelector('.press-in');if(!i||e.beta==null)return;i.classList.remove('idle');i.style.transform=`rotateX(${Math.max(-20,Math.min(20,(e.beta-45)*.5))}deg) rotateY(${Math.max(-25,Math.min(25,e.gamma*.6))}deg)`});
+function startSnap(){S.snap='count';rerender();let n=3;const el=()=>$('#cd3');const t=setInterval(()=>{n--;if(!el()){clearInterval(t);return}if(n>0){el().textContent=n;el().style.animation='none';el().offsetHeight;el().style.animation=''}else{clearInterval(t);$('#fl').classList.add('go');navigator.vibrate&&navigator.vibrate(20);setTimeout(()=>{S.snap='done';rerender();setTimeout(()=>{document.querySelectorAll('.pc.wait').forEach((e,k)=>setTimeout(()=>e.classList.remove('wait'),k*500))},500)},450)}},900)}
+R.checkin=()=>{const m=S.match.length?S.match:['maya','dev'];const who=['you',...m].slice(0,3);const pics=snapPics();
+ if(S.snap==='done')return `<div class="scr" style="min-height:100%;padding-bottom:30px"><div style="padding:66px 18px 0;text-align:center"><p class="sub" style="font-weight:700;color:var(--ink);margin:0">Group snap</p><h1 style="margin-top:4px">Every angle, one moment</h1></div>
+ <div class="press" onpointermove="tilt(event,this)" onpointerleave="untilt(this)"><div class="press-in idle">${pics.slice(0,who.length).map(([im,pos],k)=>`<div class="pc${k?' wait':''}" style="--r:${[-4,5,-2][k]}deg"><img src="img/${im}.jpg" alt="${k?(P[who[k]].n+'\'s shot'):'Your shot'}" style="object-position:${pos}"><span>${bloomSvg(who[k],11,0)}${k?P[who[k]].n:(S.name||'You')}</span></div>`).join('')}</div>
+ <p class="tilt-hint">Tilt your phone to look around</p><p class="press-cap">${PL().place.replace(/^the /,'The ')} · Nov 15 · ${PL().time}</p></div>
+ <p class="foot" style="text-align:center;margin:6px 24px 0">Taken at the same second on ${who.length} phones. Nobody saw the others until they added theirs.</p>
+ <div style="padding:16px 18px 0"><button class="btn pri wide" onclick="S.shotPhoto=pics[0][0];S.snap=null;S.newMem=true;S.went=true;S.phase='done';go('garden');setTimeout(()=>toast('Planted in your crew\'s garden'),300)">Plant it in the garden</button>
+ <button class="btn sec wide" style="margin-top:10px" onclick="S.snap=null;rerender()">Take it again together</button></div></div>`;
+ const counting=S.snap==='count';
+ return `<div class="scr cam" style="height:100%"><img class="v" style="object-position:35% 50%" src="img/${pics[0][0]}.jpg" alt="Camera view"><div class="flash" id="fl"></div>
+ <div class="top"><button class="circ" onclick="S.snap=null;go('otw')" aria-label="Back">${I.back}</button><button class="pill" style="background:rgba(20,14,10,.6);color:#fff;box-shadow:none" onclick="S.went=true;S.phase='done';go('garden')">Skip photo</button></div>
+ ${counting?`<div class="count"><b id="cd3">3</b><p>${m.length>1?names(m.map(k=>P[k].n+'\'s')):P[m[0]].n+'\'s'} ${m.length>1?'phones are':'phone is'} counting too</p></div>`
+ :`<div class="snapcard"><div style="display:flex;gap:2px">${who.map(k=>bloomSvg(k,16,0)).join('')}</div><div><b>You're all here</b><small>Group snap fires every phone at the same second. You'll see their shots once you add yours.</small></div></div>`}
+ <div class="cam-bot">${counting?'<div style="height:78px"></div>':`<button class="btn pri wide" style="background:#fff;color:#1C1310" onclick="startSnap()">Group snap with ${names(m.map(k=>P[k].n))}</button>`}</div></div>`};
+R.sunday=()=>`<div class="scr sky" style="min-height:100%;padding-bottom:40px"><div class="top"><button class="circ" onclick="go('today')" aria-label="Back to Today">${I.back}</button><span class="pill"><span class="dot"></span>You're free all day</span></div>
+ <div class="meadow" style="height:130px">${['maya','dev'].map((k,i)=>`<div class="fl">${bloomSvg(k,30,[30,48][i])}<span>${P[k].n}</span></div>`).join('')}${S.sundayIn?`<div class="fl new">${bloomSvg('you',30,38)}<span>${S.name||'You'}</span></div>`:''}</div>
+ ${packet({label:"TOMORROW · IT'S ON",no:'Sunday 11 AM',img:'marina_sunset',alt:'The Berkeley Marina at sunset',pos:'50% 50%',title:'Kayaks at the Marina',chips:['$8 each','2 hours','Calm before noon'],why:"Dev's been asking for something on the water, and it fits everyone's budget.",band:'background:#FF7AB0;color:#4A0A26'})}
+ <div style="padding:14px 18px 0">${S.sundayIn?`<div class="card" style="display:flex;gap:12px;align-items:center"><span style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#fff;flex:none">${I.check}</span><div class="nm"><b style="font-size:16px">You're in. Paid $8.</b><small style="display:block">Meet Maya and Dev at the boat ramp at 10:45.</small></div></div>
+ <button class="btn sec wide" style="margin-top:12px" onclick="go('today')">Back to today</button>`
+ :`<p class="sub" style="font-size:16px;color:var(--ink);margin:0 4px 14px">Maya and Dev are already going. It's happening either way, so there's no risk in joining.</p><button class="btn pri wide" onclick="chipSheet()">Hop in for $8</button><p class="foot" style="text-align:center">Everyone pays their own share up front</p>`}</div></div>`;
+function chipSheet(){sheet('Chip in for kayaks',`<div class="group" style="margin-top:12px"><div class="cell np"><div class="nm"><b>Your share</b><small>2 hours, life jacket included</small></div><span class="val" style="color:var(--ink);font-weight:700">$8.00</span></div><div class="cell np"><div class="nm"><b>Already paid</b></div><span class="val">Maya, Dev</span></div></div>
+ <p class="foot">If it gets called off, you get it back automatically.</p>
+ <button class="pay" style="margin-top:16px" onclick="this.innerHTML='<span class=spin style=border-top-color:#fff></span>';setTimeout(()=>{closeSheet();S.sundayIn=true;rerender();toast('You\\'re in for Sunday')},900)">Pay with ${I.apple} Pay</button>`)}
+function lately(){const L=[[['maya','dev','jordan'],'Bloomed at Cheese Board','Nov 8'],[['dev','jordan','priya','maya'],'Bloomed at bowling','Nov 2'],[['priya','maya'],'Bloomed at the Glade picnic','Oct 26']];
+ if(S.went)L.unshift([['you',...(S.match.length?S.match:['maya','dev'])],'Bloomed at '+PL().place+(L.some(x=>x[1]==='Bloomed at '+PL().place)?' again':''),'Today']);
+ return L.map(([ks,t,d])=>`<div class="cell np"><span style="display:inline-flex;margin-right:2px">${ks.slice(0,3).map(k=>bloomSvg(k,12,0)).join('')}</span><div class="nm"><b style="font-size:15px">${t}</b><small>${names(ks.map(k=>k==='you'?'You':P[k].n))} · ${d}</small></div></div>`).join('')}
+const STAT={maya:['Free till 8','6 min away',9],dev:['Free 4 to 9','9 min away',11],jordan:['Free till 6','15 min away',6],priya:['Free 5 to 10','11 min away',7]};
+R.crew=()=>`<div class="scr page sky" style="padding-top:96px"><h2 class="lt">Sunset Crew</h2><p class="sub">5 of you · the crew started in September</p>
+ <p class="sec-h">Today</p><div class="group">
+ <div class="cell">${bloomSvg('you',22,0)}<div class="nm"><b>${S.name||'You'}</b><small><span class="dot${S.free==='no'?' off':''}"></span>${S.went?'Went today':FREE[S.free][0]}</small></div></div>
+ ${FR.map(k=>`<button class="cell" onclick="friendSheet('${k}')">${bloomSvg(k,22,0)}<div class="nm"><b>${P[k].n}</b><small><span class="dot"></span>${S.went&&S.match.includes(k)?'Went with you today':(S.went?{jordan:'Busy now',priya:'Free till 10 · 11 min away',maya:'Free till 8 · 6 min away',dev:'Free till 9 · 9 min away'}[k]:`${STAT[k][0]} · ${STAT[k][1]}`)}</small></div>${I.chev}</button>`).join('')}</div>
+ <p class="foot">Distances are rough on purpose. Nobody sees exactly where you are.</p>
+ <p class="sec-h">Coming up</p><button class="row-link" style="margin:0;width:100%" onclick="go('sunday')"><img src="img/marina_sunset.jpg" alt=""><span><b>Sunday 11 AM:</b> Kayaks at the Marina. ${S.sundayIn?"You, Maya and Dev.":"Maya and Dev are going."}</span>${I.chev}</button>
+ 
+ <button class="btn sec wide" style="margin-top:14px" onclick="inviteSheet()">${I.share.replace('<svg','<svg width="16" height="20"')}Invite a friend</button>
+ <p class="sec-h">Lately</p><div class="group">${lately()}</div>
+ ${S.went?`<p class="sec-h">New this week</p><div class="group"><div class="cell np"><img src="img/${PL().img}.jpg" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover"><div class="nm"><b style="font-size:16px">${PL().title}</b><small>Your first frolic with the crew</small></div></div></div>`:''}
+ <p class="sec-h">Your crew's favorites</p><div class="group">${[['Sunset at Indian Rock',5],['Cheese Board pizza',4],['Bowling at the Union',2],['Picnic on Memorial Glade',1],['The Berkeley Pier at dusk',1]].map(([a,b])=>[a,b+(S.went&&PL().title===a?1:0)]).sort((x,y)=>(y[1]+(S.went&&y[0]===PL().title?.5:0))-(x[1]+(S.went&&x[0]===PL().title?.5:0))).slice(0,3).map(([a,b])=>[a+(S.went&&a===PL().title?' (you went)':''),b+(b===1?' time':' times')]).map(([a,b])=>`<div class="cell np"><div class="nm"><b>${a}</b></div><span class="val">${b}</span></div>`).join('')}</div></div>`;
+function friendSheet(k){sheet(P[k].n,`<div style="display:flex;justify-content:center;margin:6px 0 10px">${bloomSvg(k,46,0)}</div><div class="group"><div class="cell np"><div class="nm"><b>${STAT[k][0]}</b><small>${STAT[k][1]}, roughly</small></div></div><div class="cell np"><div class="nm"><b>${S.went&&S.match.includes(k)?'1 frolic together':'No frolics together yet'}</b><small>${S.went&&S.match.includes(k)?'Indian Rock, today':`${P[k].n} has ${STAT[k][2]} with the crew`}</small></div></div></div><p class="foot">You'll never see whether ${P[k].n} said yes or no to a plan. That's the point.</p>`)}
+function inviteSheet(){sheet('Invite to Sunset Crew',`<p class="sub">Only people you send this to can join. Your crew sees when someone new joins, and the link expires in 7 days.</p><div class="card" style="margin-top:14px;font:600 16px system-ui;text-align:center">frolic.app/j/sunset-crew</div><div class="acts" style="margin:14px 0 0"><button class="btn sec" style="flex:1" onclick="closeSheet();toast('Link copied')">Copy link</button><button class="btn pri" onclick="closeSheet();toast('Opening Messages')">Text it</button></div>`)}
+const MEM=[['hills_sunset','Sunset at Indian Rock','Today',['maya','dev'],['marina_people','hills_sunset','rock'],'pink'],['cheeseboard','Cheese Board pizza','Nov 8',['maya','dev','jordan'],['cheeseboard','friends','berkeley'],'marigold'],['bowling','Bowling','Nov 2',['dev','jordan','priya','maya'],['bowling','friends','cheeseboard'],'cobalt'],['picnic','Picnic on the Glade','Oct 26',['priya','maya'],['picnic','berkeley','friends'],'moss'],['marina_sunset','The Marina','Oct 19',['maya','dev','priya'],['marina_sunset','marina_people','rock'],'lilac'],['friends','Beach day','Oct 12',['jordan','priya','dev','maya'],['friends','marina_people','picnic'],'tomato']];
+R.garden=()=>{const list=S.went?MEM:MEM.slice(1);const count=list.length+7;const cols=['pink','marigold','cobalt','moss','lilac','tomato','pink','moss','marigold','cobalt','lilac','tomato','pink'];
+ const h=`<div class="scr page" style="padding-top:96px"><h2 class="lt">Garden</h2><p class="sub">Every frolic grows a flower. It never wilts.${S.went?'':' Sunset Crew grew these before you joined.'}</p>
+ <div class="garden" style="margin-top:16px"><div class="garden-cap">${count} frolics<small>${S.went?'12 before you, 1 with you':'all before you joined'}</small></div>${cols.slice(0,12).map((c,i)=>`<div class="g" style="left:${12+i*24}px;animation-delay:${-i*.4}s">${bloomSvg(null,13,[30,52,40,64,36,58,44,70,32,50,42,60,46][i%13],c)}</div>`).join('')}${S.went?`<div class="g${S.newMem?' fl new':''}" style="left:262px;bottom:10px;animation-delay:-1s">${bloomSvg('you',20,74)}</div>`:''}</div>
+ <button class="row-link" style="margin:12px 0 0;width:100%" onclick="storySheet()"><span style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:#FFBE2E;flex:none">${bloomSvg(null,16,0,'tomato')}</span><span><b>Your crew this week:</b> ${crewLine()}</span>${I.chev}</button>
+ <p class="sec-h">Frolics</p><div class="mem-list">${list.map(m=>`<button class="mem${S.newMem&&m===MEM[0]?' new':''}" onclick="go('memory/${MEM.indexOf(m)}')"><img src="img/${m[0]}.jpg" alt=""><div class="nm"><b>${m[1]}</b><small>${m[2]} · ${m===MEM[0]?'you and ':''}${names(m[3].map(k=>P[k].n))}</small></div>${I.chev}</button>`).join('')}</div></div>`;S.newMem=false;return h};
+function storySheet(){sheet('Share your crew',`<div class="story"><div style="position:absolute;top:18px;left:0;right:0;display:flex;justify-content:center">${MARK().replace('class="mark"','class="mark" style="width:70px"')}</div><div style="position:absolute;top:66px;left:0;right:0;display:flex;justify-content:center;align-items:flex-end;gap:0">${['you',...FR].map((k,i)=>bloomSvg(k,24,[56,84,46,76,62][i])).join('')}</div><div style="position:absolute;left:16px;right:16px;bottom:22px"><p style="margin:0;font:700 12px system-ui;color:var(--t2)">SUNSET CREW · 13 FROLICS</p><p style="margin:4px 0 0;font:800 22px/25px var(--r)">${crewLine().charAt(0).toUpperCase()+crewLine().slice(1)}</p></div></div>
+ <button class="btn pri wide" style="margin-top:16px" onclick="closeSheet();toast('Saved. Ready for Stories')">Share to Stories</button>`)}
+R.memory=i=>{const m=MEM[+i]||MEM[1];return `<div class="scr" style="padding-bottom:40px"><img class="hero-img" src="img/${m[0]}.jpg" alt="${m[1]}">
+ <div class="top" style="position:absolute;left:0;right:0;top:0"><button class="circ" onclick="go('garden')" aria-label="Back to Garden">${I.back}</button><button class="circ" onclick="toast('Saved. Ready for Stories')" aria-label="Share">${I.share}</button></div>
+ <div style="padding:18px 18px 0"><p class="sub" style="font-weight:700;color:var(--ink)">${m[2]}</p><h1 style="font-size:34px;line-height:38px">${m[1]}</h1>
+ <div class="meadow" style="height:96px;justify-content:flex-start;gap:4px;padding:0">${(m===MEM[0]?['you',...m[3]]:m[3]).map((k,j)=>`<div class="fl">${bloomSvg(k,20,[24,34,20,30,26][j])}<span>${k==='you'?(S.name||'You'):P[k].n}</span></div>`).join('')}</div>
+ <p class="sec-h">Photos</p></div><div class="strip">${m[4].map(x=>`<img src="img/${x}.jpg" alt="">`).join('')}</div></div>`};
+R.you=()=>`<div class="scr page sky" style="padding-top:96px"><div style="display:flex;align-items:center;gap:12px">${bloomSvg('you',36,0)}<div><h2 class="lt" style="font-size:28px;line-height:34px">${S.name||'You'}</h2><p class="sub" style="margin:0">Sunset Crew</p></div></div>
+ <div class="card" style="margin-top:18px;display:flex;gap:12px;align-items:center">${S.went?`<span style="display:inline-flex">${['you',...(S.match.length?S.match:['maya','dev'])].slice(0,3).map(k=>bloomSvg(k,19,0)).join('')}</span><div class="nm"><b style="font-size:16px">Your first frolic</b><small style="display:block">You, ${names((S.match.length?S.match:['maya','dev']).map(k=>P[k].n))} bloomed at ${PL().place} today.</small></div>`:`${budSvg('you',16,0).replace(/height="\d+"/,'height="40"')}<div class="nm"><b style="font-size:16px">No frolics yet</b><small style="display:block">Your first flower grows the first time you go.</small></div>`}</div>
+ <p class="sec-h">${I.lock} Only you see these</p><div class="group">
+ <div class="setting"><div class="lbl">Spend up to</div><div class="seg" role="group" aria-label="Spend up to">${['Free','$10','$25','Any'].map((v,i)=>`<button aria-pressed="${S.budget===i}" onclick="S.budget=${i};rerender()">${v}</button>`).join('')}</div></div>
+ <div class="setting"><div class="lbl">Energy</div><div class="seg" role="group" aria-label="Energy">${['Chill','Down for anything'].map((v,i)=>`<button aria-pressed="${S.energy===i}" onclick="S.energy=${i};rerender()">${v}</button>`).join('')}</div></div>
+ <div class="setting"><label class="lbl" for="far">Travel up to <span id="farv">${S.far} min by foot or BART</span></label><input id="far" type="range" min="5" max="45" step="5" value="${S.far}" oninput="S.far=+this.value;$('#farv').textContent=this.value+' min by foot or BART'"></div>
+ <div class="setting srow"><label for="home">Home by</label><select id="home" onchange="S.home=this.value">${['9 PM','10 PM','11 PM','Midnight','Whenever'].map(v=>`<option ${v===S.home?'selected':''}>${v}</option>`).join('')}</select></div></div>
+ <p class="foot">Plans quietly fit everyone's limits. Nobody has to say "I can't afford that."</p>
+ <p class="sec-h">Free time</p><div class="group"><div class="setting srow"><span>Read my calendar</span><button class="tog" role="switch" aria-checked="${S.cal}" aria-label="Read my calendar" onclick="S.cal=!S.cal;rerender()"></button></div>
+ <div class="setting srow"><label for="drop">Daily plan arrives</label><select id="drop" onchange="S.drop=this.value">${['Noon','2 PM','3 PM','4 PM'].map(v=>`<option ${v===S.drop?'selected':''}>${v}</option>`).join('')}</select></div></div>
+ <p class="foot">${S.cal?'Frolic only shares "free" or "busy," never what\'s on your calendar.':'You\'ll pick when you\'re free from the pill on Today.'}</p>
+ <p class="sec-h">What you're into</p><div class="chips">${tasteTags().map(t=>`<span class="chip big">${t}</span>`).join('')}</div>
+ <button class="txtbtn" style="margin-left:0;padding:0 4px" onclick="go('taste')">Pick photos again</button></div>`;
+function addMin(t,m){let [h,mi]=t.split(':').map(Number);let x=h*60+mi+m;h=Math.floor(x/60);mi=x%60;h=((h-1)%12)+1;return h+':'+String(mi).padStart(2,'0')}
+function syncMem(){const m=S.match.length?S.match:['maya','dev'];const ph=(S.shotPhoto||'marina_people');MEM[0][0]=ph;MEM[0][3]=m;MEM[0][4]=[ph,...PL().shots.filter(x=>x!==ph),PL().img].slice(0,3);MEM[0][1]=PL().title}
+R.web=()=>{const st=S.webState||'open';return `<div class="scr" style="min-height:100%;background:var(--cream)"><div style="padding:54px 12px 8px;background:#F2F2F4;border-bottom:.5px solid #ddd"><div style="height:36px;border-radius:12px;background:#E3E3E8;display:flex;align-items:center;justify-content:center;font:500 15px system-ui;color:#333">${I.lock.replace('fill="currentColor"','fill="#888"')}&nbsp; frolic.app/p/${PL().place.toLowerCase().replace(/^the /,'').replace(/ /g,'-')}</div></div>
+ <div style="padding:16px 18px 0;display:flex;justify-content:space-between;align-items:center">${MARK().replace('class="mark"','class="mark" style="width:76px"')}<button class="txtbtn" style="margin:0;height:auto;padding:0;font-size:15px" onclick="go('today')">Back to the app</button></div>
+ <p class="sub" style="padding:10px 18px 0;margin:0;font-weight:600;color:var(--ink)">${S.name||'Ari'} shared a plan with Roommates</p>
+ <div style="margin:0 0 0">${packet({label:'TODAY · SATURDAY',no:'Frolic',why:undefined})}</div>
+ <div style="padding:16px 18px 30px">${st==='on'?`<div class="card" style="text-align:center"><div style="display:flex;justify-content:center">${bloomSvg('maya',26,0)}${bloomSvg('you',26,0)}</div><h1 style="margin-top:6px">It's on.</h1><p class="sub">You and ${S.name||'Ari'}, ${PL().meet} at ${PL().time}.</p></div><button class="btn pri wide" style="margin-top:14px" onclick="toast('Opening the App Store')">Get Frolic for the next one</button>`
+ :st==='down'?`<div class="card" style="display:flex;gap:12px;align-items:center" role="status"><span style="color:var(--t2)">${I.lock}</span><div class="nm"><b style="font-size:16px">You're down, Maya</b><small style="display:block">Only you know. Keep this page open: it blooms the moment someone else says yes.</small></div></div>`
+ :`<label class="sr" for="wn">Your first name</label><input id="wn" class="field" style="margin-top:0" placeholder="Your first name" value="Maya"><button class="btn pri wide" style="margin-top:12px" onclick="S.webState='down';rerender();setTimeout(()=>{if(location.hash==='#web'){S.webState='on';rerender();petals()}},4000)">I'm down</button><p class="hush">${I.lock} Nobody sees you're down unless someone else is too. No app needed.</p>`}</div></div>`};
+const TABBED={today:'today',crew:'crew',garden:'garden',you:'you'};
+function rerender(){
+ let [r,arg]=(location.hash.slice(1)||'join').split('/');
+ if(r.includes(':')){const [a,b]=r.split(':');r=a;S.phase=b;if((b==='on'||b==='done')&&!S.match.length)S.match=['maya','dev'];if(b==='done')S.went=true}
+ if(r==='memories')r='garden';
+ if(!R[r])r='join';
+ closeSheet();syncMem();
+ view.innerHTML=R[r](arg);
+ renderTabs(TABBED[r]);
+ const t=PL().time,L=PL().leave;const CL={open:'3:06',waiting:'3:07',on:'3:09',faded:'4:00',done:addMin(t,2)};$('#clock').textContent=r==='otw'?addMin(L,2):r==='checkin'?addMin(t,-1):S.went?addMin(t,2):CL[S.phase]||'3:06';
+ $('#status').className='status'+((r==='checkin'&&S.snap!=='done')||r==='memory'?' onphoto':'');if(r!=='web')S.webState=S.webState==='on'?'on':S.webState;
+ if(r==='today'&&S.askFree){S.askFree=false;setTimeout(freeSheet,400)}
+}
+addEventListener('hashchange',()=>{view.scrollTop=0;rerender()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+if(location.search.includes('demo')){S.name='Ari';S.photo=true}
+if(location.search.includes('solo'))S.solo=true;
+if(location.search.includes('shot'))document.body.classList.add('shot');
+rerender();
+</script>
+</body></html>

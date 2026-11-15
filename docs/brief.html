@@ -1,0 +1,717 @@
+<title>Frolic</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gluten:wght@500;700;800&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* layout: one playful reading column; phone mockups as stickers; research tables stay calm below the fold */
+:root{
+  --bg:#fff6fb; --surface:#ffffff; --fg:#2a1840; --muted:#6e5a85; --line:#f0dcef;
+  --quest:#ff4f9a; --plans:#4f7dff; --other:#c2b3d1; --good:#1f9d63; --warn:#b86e00;
+  --sun:#ffc83d; --meadow:#2fbf71;
+  --display:"Gluten", "Comic Neue", "Trebuchet MS", system-ui, sans-serif;
+  --body:"Nunito", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1b1029;--surface:#271838;--fg:#fbeaff;--muted:#c6b0da;--line:#3d2853;--quest:#ff7cb6;--plans:#8aaeff;--other:#6d5a82;--good:#5ad49b;--warn:#f2b84b;--sun:#ffd666;--meadow:#5fdc97;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1029;--surface:#271838;--fg:#fbeaff;--muted:#c6b0da;--line:#3d2853;--quest:#ff7cb6;--plans:#8aaeff;--other:#6d5a82;--good:#5ad49b;--warn:#f2b84b;--sun:#ffd666;--meadow:#5fdc97;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--body)}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:48px 80px;display:grid;gap:56px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(2.1rem,6vw,3.3rem);font-weight:700;letter-spacing:-.02em}
+h2{font-size:1.65rem;font-weight:700}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0;max-width:68ch}
+section{display:grid;gap:18px}
+.eyebrow{font:500 .75rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:1.15rem;color:var(--muted)}
+.pitch{font-family:var(--display);font-size:1.35rem;font-weight:500;border-left:4px solid var(--quest);padding-left:16px}
+.stats{display:flex;flex-wrap:wrap;gap:12px 32px;font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+.stats b{display:block;font:700 1.6rem/1.2 var(--display);color:var(--fg);font-variant-numeric:tabular-nums}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:10px}
+.chart svg{width:100%;height:auto;display:block}
+.grid{stroke:var(--line);stroke-width:1}
+.tick{fill:var(--muted);font:11px var(--mono)}
+.axis{fill:var(--muted);font:12px var(--body)}
+.lbl{fill:var(--fg);font:500 11px var(--body)}
+.pt{stroke:var(--surface);stroke-width:1.5}
+.pt.q{fill:var(--quest)}.pt.p{fill:var(--plans)}.pt.o{fill:var(--other)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:.85rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:var(--c)}
+.quotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+blockquote{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:grid;gap:8px;min-width:0}
+blockquote q{quotes:none;font-size:.98rem}
+blockquote small{font:12px var(--mono);color:var(--muted)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:600px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 .75rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);white-space:nowrap}
+.y{color:var(--good);font-weight:600}.n{color:var(--muted)}
+tr.us td{background:color-mix(in srgb,var(--quest) 9%,transparent)}
+ol.steps{margin:0;padding-left:1.3em;display:grid;gap:12px;max-width:70ch}
+ol.steps li::marker{font-family:var(--mono);color:var(--quest)}
+ul{margin:0;padding-left:1.2em;display:grid;gap:8px;max-width:70ch}
+.pill{display:inline-block;font:500 .72rem/1 var(--mono);padding:5px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.pill.live{border-color:var(--good);color:var(--good)}.pill.wait{border-color:var(--warn);color:var(--warn)}
+.status{display:grid;gap:10px}
+.status div{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+a{color:var(--plans)}
+:focus-visible{outline:2px solid var(--plans);outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){.pt{transition:r .15s}.pt:hover{r:8}}
+details{border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+details+details{margin-top:8px}
+summary{cursor:pointer;padding:12px 16px;font-weight:600;font-family:var(--display)}
+summary:focus-visible{outline:2px solid var(--plans)}
+.dbody{padding:0 16px 14px;display:grid;gap:10px}
+.rsec{display:grid;gap:12px;min-width:0}
+.rsec h3{font-size:1.25rem;margin-top:8px}
+h4{font-family:var(--display);font-size:1rem;margin:6px 0 0}
+table.wide{min-width:980px;font-size:.85rem}
+code{font-family:var(--mono);font-size:.85em;background:color-mix(in srgb,var(--fg) 7%,transparent);padding:1px 5px;border-radius:4px}
+li{max-width:72ch}
+.phones{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:20px}
+.phone{margin:0;display:grid;gap:10px;min-width:0}
+.phone figcaption{font-size:.82rem;color:var(--muted);display:grid;gap:2px}
+.phone figcaption b{color:var(--fg);font-family:var(--display);font-size:.95rem}
+.screen{aspect-ratio:9/17;max-width:100%;border:6px solid var(--fg);border-radius:26px;background:var(--surface);padding:18px 12px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;text-align:center;overflow:hidden}
+.screen.hot{background:color-mix(in srgb,var(--quest) 16%,var(--surface))}
+.screen .sm{font-size:.7rem;color:var(--muted);line-height:1.35}
+.screen .big{font:700 1.15rem/1.15 var(--display)}
+.screen .btn{background:var(--quest);color:#fff;font-weight:600;font-size:.8rem;padding:8px 14px;border-radius:99px}
+.screen .card{display:grid;gap:3px;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.7rem;color:var(--muted);width:100%}
+.screen .card b{color:var(--fg);font-size:.8rem}
+.screen .avatars{display:flex;gap:4px}
+.screen .avatars i{font-style:normal;font-size:.62rem;font-weight:600;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--plans) 22%,var(--surface));color:var(--fg)}
+.screen .grid4{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:80%}
+.screen .grid4 i{aspect-ratio:1;border-radius:6px;background:color-mix(in srgb,var(--quest) 25%,var(--line))}
+.screen .chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.screen .chips i{font-style:normal;font-size:.62rem;padding:3px 7px;border-radius:99px;border:1px solid var(--quest);color:var(--quest)}
+.screen .ring{width:70px;height:70px;border-radius:50%;border:5px solid var(--line);border-top-color:var(--quest);display:grid;place-items:center;font:600 .9rem var(--mono)}
+.divider{border-top:2px solid var(--fg);padding-top:28px}
+h1{font-size:clamp(3.2rem,12vw,5.6rem);font-weight:800;letter-spacing:-.01em;color:var(--quest);transform:rotate(-2deg);transform-origin:left;width:fit-content}
+h2{font-weight:800}
+.pitch{border-left:0;padding-left:0;font-weight:700;font-size:1.5rem;background:linear-gradient(transparent 62%,color-mix(in srgb,var(--sun) 70%,transparent) 62%);width:fit-content;max-width:100%}
+.screen{border-color:var(--fg);border-radius:30px;box-shadow:6px 6px 0 var(--quest)}
+.phone:nth-child(even) .screen{transform:rotate(1.5deg)}
+.phone:nth-child(odd) .screen{transform:rotate(-1.5deg)}
+.screen .btn{box-shadow:0 3px 0 color-mix(in srgb,var(--quest) 60%,var(--fg));font-family:var(--display);font-size:.9rem}
+.screen .big{font-weight:800;font-size:1.3rem}
+.vibe{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.vibe>div{background:var(--surface);border:2px solid var(--fg);border-radius:18px;padding:14px 16px;display:grid;gap:8px;min-width:0}
+.vibe>div:nth-child(1){box-shadow:5px 5px 0 var(--sun)}.vibe>div:nth-child(2){box-shadow:5px 5px 0 var(--meadow)}.vibe>div:nth-child(3){box-shadow:5px 5px 0 var(--plans)}.vibe>div:nth-child(4){box-shadow:5px 5px 0 var(--quest)}
+.vibe h3{font-size:1.1rem}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches i{width:34px;height:34px;border-radius:50%;border:2px solid var(--fg);background:var(--c)}
+.say{display:grid;gap:8px}
+.say div{display:grid;grid-template-columns:minmax(90px,140px) 1fr;gap:12px;align-items:baseline}
+.say div span:first-child{font:500 .72rem var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.say div span:last-child{font-family:var(--display);font-size:1.05rem}
+.wrap>*,section>*,header>*{min-width:0}
+.ex{display:grid;gap:14px}
+.ex>div{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start}
+.ex b.n{font:800 1.6rem/1 var(--display);color:var(--quest)}
+.ex h3{font-size:1.1rem;margin-bottom:4px}
+@media (prefers-reduced-motion:no-preference){.screen{transition:transform .25s cubic-bezier(.34,1.56,.64,1)}.screen:hover{transform:rotate(0) translateY(-4px)}}
+</style>
+<main class="wrap">
+<header style="display:grid;gap:16px">
+  <span class="eyebrow">Product brief · YC Consumer Mobile Hack · Nov 15, 2026</span>
+  <h1>Frolic</h1>
+  <p class="pitch">Your friend group's plans, actually happening.</p>
+  <p class="lede">In college, everyone wants to hang out, but nobody wants to be the one who always reaches out and gets "maybe" back. Plans die in the group chat, and people go weeks surrounded by friends without really seeing them. Side quest apps don't help, since they're built for one person with a "share with friends" button added at the end. Frolic sends your group a personalized in-person activity every day, based on who's free, and it unlocks once two of you tap "I'm down." It learns what your group likes from photos of past hangouts, and every quest you finish goes into a shared scrapbook.</p>
+  <div class="stats">
+    <div><b>19,109</b>TikTok comments</div>
+    <div><b>774</b>TikToks with full stats</div>
+    <div><b>181</b>Instagram reels with comments</div>
+    <div><b>4,441</b>competitor reviews</div>
+    <div><b>32</b>competitor apps</div>
+  </div>
+</header>
+
+<section>
+  <span class="eyebrow">The pain we own</span>
+  <h2>Nobody wants to be the one who reaches out</h2>
+  <p>Every other complaint in the research traces back to this one. Dead plans, flaky friends and the burnt-out planner all start with someone deciding the ask isn't worth the risk of a "maybe." Frolic takes the ask away. The app proposes the plan, every answer stays private, and you only find out who's in once it's already happening.</p>
+  <div class="quotes">
+    <blockquote><q>Okay, but what if you are always the one reaching out and those friends don't reciprocate..?</q><small>466 likes · TikTok</small></blockquote>
+    <blockquote><q>I'm the planner friend who can't even get people to respond back if they're free for the plan like I'm drowning here</q><small>TikTok</small></blockquote>
+    <blockquote><q>It's so easy to go weeks without talking to anyone in college</q><small>4.5K likes · Instagram</small></blockquote>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">The core feature</span>
+  <h2>See who's free, commit privately, match on who you want there</h2>
+  <p>Whether you go usually depends on who else is going, so Frolic splits the low-risk part from the risky part. <b>Who's free is visible:</b> you see that Maya, Dev and Jordan are free after 5 before you decide anything. <b>Who's down stays private.</b> You tap "I'm down," either with anyone or with a condition like "only if Maya's in."</p>
+  <p>Frolic looks for a set of two or more people whose conditions all hold, then unlocks for exactly them at the same moment. Nobody ever learns you said "only if Maya," nobody sees a pass, and if no match forms by the deadline the activity quietly disappears. Once it's on, the rest of the free friends see it with names ("It's on: Maya and Dev at Indian Rock, hop in?") and can join with zero risk, because it's already happening.</p>
+  <p>This is the one thing Frolic has to be excellent at. The metric that matters is the share of activities that unlock and actually happen.</p>
+</section>
+
+<section>
+  <span class="eyebrow">What makes it exceptional</span>
+  <h2>Frolic says the awkward thing so you don't have to</h2>
+  <p>The private "I'm down" takes away the awkward ask. The same idea runs through every other awkward moment in a friend group: "I'm broke," "I'm tired," "only if she's going," "I can't stay late." Each one becomes a private setting, and the plan quietly fits everyone.</p>
+  <div class="ex">
+    <div><b class="n">1</b><div><h3>The reveal is choreographed</h3><p>Convex schedules the reveal for one server time, so every committed phone flips at the same instant with a haptic, a little burst of confetti and the faces of who's coming. Then "leave in 8 min," live on-my-way bubbles after the match, auto check-in on arrival, and a quiet refill from the hop-in pool if someone drops.</p></div></div>
+    <div><b class="n">2</b><div><h3>Private constraints</h3><p>Everyone secretly sets a budget cap, an energy level (chill or down for anything), a max distance and how late they can stay. The engine picks a plan inside everyone's limits, and nobody has to say "I can't afford that" out loud. Straight from the data: "only applicable if you have money" (7.2K likes).</p></div></div>
+    <div><b class="n">3</b><div><h3>"I'm down" from the lock screen</h3><p>The daily drop is a notification with I'm down, Only if, and Not today buttons, so answering takes three seconds without opening the app. Once it's on, a Live Activity counts down "leave in 8" on the lock screen and in the Dynamic Island.</p></div></div>
+    <div><b class="n">4</b><div><h3>Commit to a window, not a time</h3><p>Tap "down 5 to 8pm." The matcher combines windows and "only if" conditions to find the time and group that gets the most people out: "6:30 works for 4 of you." Real constraint solving under one button.</p></div></div>
+    <div><b class="n">5</b><div><h3>A plan you can act on in ten seconds</h3><p>A real place that's open now, the cost, walking or BART time for each person, a fair meeting point so nobody is more than about 12 minutes away, the actual sunset time, and a "why this" line from the group's taste.</p></div></div>
+    <div><b class="n">6</b><div><h3>Memories built to be shared</h3><p>Check-in photos become a polaroid page automatically. A Wrapped-style group taste card ("Sunset Crew: golden-hour chasers, under $10, night owls") and a weekly recap sized for Stories. One in ten comments in the data is a friend tag, so this crowd shares by default.</p></div></div>
+  </div>
+  <p><b>Skip on purpose:</b> chat, comments, likes, followers and any feed. Each one dilutes "one decision a day."</p>
+</section>
+
+<section>
+  <span class="eyebrow">The experience</span>
+  <h2>How Frolic should feel</h2>
+  <div class="phones">
+    <figure class="phone">
+      <figcaption><b>1. Join</b>One link from the group chat</figcaption>
+      <div class="screen">
+        <span class="sm">Maya invited you to</span>
+        <span class="big">Sunset Crew</span>
+        <span class="avatars"><i>M</i><i>D</i><i>J</i><i>+2</i></span>
+        <span class="btn">Join the group</span>
+        <span class="sm">No contacts needed</span>
+      </div>
+    </figure>
+    <figure class="phone">
+      <figcaption><b>2. Teach it your taste</b>Optional, 30 seconds</figcaption>
+      <div class="screen">
+        <span class="sm">Pick 5 photos of past hangouts</span>
+        <span class="grid4"><i></i><i></i><i></i><i></i></span>
+        <span class="sm">Your group likes</span>
+        <span class="chips"><i>sunsets</i><i>late-night food</i><i>board games</i><i>free stuff</i></span>
+      </div>
+    </figure>
+    <figure class="phone">
+      <figcaption><b>3. Today's frolic</b>See who's free, then decide</figcaption>
+      <div class="screen">
+        <span class="sm">Free after 5</span>
+        <span class="avatars"><i>M</i><i>D</i><i>J</i></span>
+        <span class="card"><b>Sunset at Indian Rock</b><span>6:10pm · free · 12 min walk</span><span>Cheese Board after if you're hungry.</span></span>
+        <span class="btn">I'm down</span>
+        <span class="chips"><i>with anyone</i><i>only if Maya</i></span>
+      </div>
+    </figure>
+    <figure class="phone">
+      <figcaption><b>4. Waiting</b>Your yes stays private</figcaption>
+      <div class="screen">
+        <span class="big">You're in</span>
+        <span class="sm">Only if Maya · nobody can see this</span>
+        <span class="ring">1:42</span>
+        <span class="sm">If it doesn't match, it just disappears. Nobody gets turned down.</span>
+      </div>
+    </figure>
+    <figure class="phone">
+      <figcaption><b>5. It's on</b>Every phone flips at once</figcaption>
+      <div class="screen hot">
+        <span class="big">It's on</span>
+        <span class="avatars"><i>M</i><i>D</i><i>You</i></span>
+        <span class="card"><b>Top of Indian Rock</b><span>Meet at 6:05 · leave in 8 min</span></span>
+        <span class="btn">Directions</span>
+      </div>
+    </figure>
+    <figure class="phone">
+      <figcaption><b>6. Hop in</b>The second wave sees names</figcaption>
+      <div class="screen">
+        <span class="sm">Jordan, it's happening</span>
+        <span class="big">Maya and Dev are going</span>
+        <span class="card"><b>Indian Rock · 6:10</b><span>9 min from you</span></span>
+        <span class="btn">Hop in</span>
+      </div>
+    </figure>
+    <figure class="phone">
+      <figcaption><b>7. Scrapbook</b>The reason to come back</figcaption>
+      <div class="screen">
+        <span class="sm">Snap one photo when you're there</span>
+        <span class="grid4"><i></i><i></i><i></i><i></i></span>
+        <span class="big">14 frolics</span>
+        <span class="sm">Sunset Crew since September</span>
+      </div>
+    </figure>
+  </div>
+  <h3>UX rules</h3>
+  <ul>
+    <li><b>One decision a day.</b> A single card and a single button. No feed and no browsing. From notification to "I'm down" should take under ten seconds.</li>
+    <li><b>Nothing ever reads as rejection.</b> There's no "declined" state, no read receipts and no list of who passed. Ignoring the card is the same as saying no.</li>
+    <li><b>The reveal is the moment.</b> Every committed phone flips together, with a haptic and the names of who's coming. That's what people tell their friends about.</li>
+    <li><b>Plans are concrete.</b> Always a real place, a time, a cost and walking minutes. "Go get food" never ships.</li>
+    <li><b>Free is public, down is private.</b> Show who's free so people can decide based on who's going. Keep every commitment, and every "only if," hidden until a match.</li>
+    <li><b>Once it's on, show everything.</b> After the unlock, names are visible to the rest of the free friends with a one-tap "Hop in." Joining something already happening carries no risk.</li>
+    <li><b>Join from a link, never a contact wall.</b> Howbout and Locket lose people by forcing invites before the app works. Frolic works with two people.</li>
+    <li><b>Location stays approximate until a match.</b> Friends see "12 min away," never a pin, until they're actually meeting.</li>
+    <li><b>Never punish a missed day.</b> The scrapbook counts nights out instead of a fragile streak. Lost streaks write the angriest reviews in this space.</li>
+    <li><b>One drop a day, and that's it.</b> Frolic sends the daily drop plus alerts only about things that involve you: "It's on" and "Hop in." No guilt nudges, no streak nagging. BeReal's "five a day and I can't turn it off" reviews are the warning.</li>
+    <li><b>Sign in with Apple.</b> No phone-number codes. Partiful and Bumble BFF reviews are full of codes that never arrive.</li>
+    <li><b>The core loop is free forever.</b> Paid extras are per group, never per person (printed scrapbooks, premium packs, bigger groups), with one-tap cancel and no trial that silently bills. Surprise charges drove 138 Timeleft and 92 Howbout complaints.</li>
+    <li><b>Sober, daytime and cheap by default.</b> Drinking dinners are opt-in. 222 and Timeleft reviewers kept asking for anything that isn't a bar.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="eyebrow">Look and feel</span>
+  <h2>A meadow that grows out of your friend group</h2>
+  <p>To frolic is to run through a field for no reason. The app should feel like that: sunlit, colorful, a little silly, and completely safe. Every visual choice serves one job, which is making it easy to say yes to seeing people.</p>
+
+  <h3>Who opens Frolic, and in what state</h3>
+  <p>A college student at 3pm, between classes, phone in hand, slightly bored or slightly lonely. They want to see people. What stops them is the ask: texting "anyone free?" and getting silence or a "maybe," or being the one who cares more. They arrive guarded. The screen has three seconds to lower that guard.</p>
+
+  <h3>What they should feel, moment by moment</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Moment</th><th>The feeling</th><th>What the screen does to cause it</th></tr></thead>
+    <tbody>
+      <tr><td>Opening the app</td><td>Lightness. "Something good could happen today."</td><td>A bright, airy, daytime screen. Sky and cream with saturated flower colors. Dark screens say "night out," and Frolic is daytime, sober and cheap by default.</td></tr>
+      <tr><td>Seeing who's free</td><td>Warmth. "My people are around."</td><td>Each free friend is a flower in bloom with their face in the middle, swaying a little. A busy friend is a folded flower. No numbers, no lists.</td></tr>
+      <tr><td>Reading the plan</td><td>"That sounds nice, and it's easy."</td><td>The plan is a seed packet: a real photo of the real place in a window, a bold name, and the small print a packet has (cost, walk time, sunset). Concrete enough to picture yourself there.</td></tr>
+      <tr><td>Saying "I'm down"</td><td>Safety. Zero exposure.</td><td>Your flower becomes a closed bud. It's opaque on purpose: nobody can see inside. The copy whispers: "Planted. Nobody can see it."</td></tr>
+      <tr><td>Waiting</td><td>Giddy, with no anxiety.</td><td>The bud sways in the wind. No ticking timer, no "seen by," no counts. Waiting should feel like a secret, never like being on hold.</td></tr>
+      <tr><td>"It's on"</td><td>Joy, shared.</td><td>Every matched bud bursts open at the same instant on every phone, with a haptic. Petals fly. It's the moment people film and send.</td></tr>
+      <tr><td>No match</td><td>Nothing stings.</td><td>The bud drifts off like a dandelion seed. "Nobody knows you said yes." Then tomorrow.</td></tr>
+      <tr><td>Memories</td><td>Pride and belonging. "Look what we've grown."</td><td>Every frolic grows a flower in the crew's garden. The garden never wilts, so a missed week costs nothing. Tap a flower to see that night's photos.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The metaphor carries the mechanics</h3>
+  <p>The flower system is how the product explains itself without a tutorial. Free is a bloom. Down is a bud. A match is a bloom together. Hop in is room in the bunch. A memory is a flower in the garden. Learn one and the rest follow.</p>
+
+  <div class="vibe">
+    <div><h3>Color means people</h3><p>Each friend gets one flower color (pink, cobalt, moss, marigold, tomato, lilac) and it follows them everywhere: their flower, their ring, their dot on the way there. The ground is cream and sky so the colors sing. Chrome stays quiet.</p></div>
+    <div><h3>Type</h3><p>SF Pro Rounded, heavy, for the big words: friendly, native, and crisp at every size. SF Pro for everything else. The custom wordmark is the only lettering we draw.</p></div>
+    <div><h3>Shape</h3><p>Round everything. Petals, capsules, circles. Nothing sharp, nothing boxed in hard lines.</p></div>
+    <div><h3>Motion is wind</h3><p>Things sway, bloom, drift and settle on springs. Nothing blinks, nags or counts down at you. The one burst of energy is the bloom at "It's on."</p></div>
+  </div>
+
+  <h3>How Frolic talks</h3>
+  <div class="say">
+    <div><span>Daily drop</span><span>Maya, Dev and Jordan are free and the sun sets at 4:58. Just saying.</span></div>
+    <div><span>After you tap</span><span>Planted. Nobody can see it. If a friend's down too, it blooms.</span></div>
+    <div><span>It's on</span><span>It's on. You, Maya and Dev. Leave in 8.</span></div>
+    <div><span>Hop in</span><span>Maya and Dev are at Indian Rock. Room for one more?</span></div>
+    <div><span>No match</span><span>This one drifted off. Nobody knows you said yes.</span></div>
+    <div><span>Budget setting</span><span>How broke are we feeling? Only you see this.</span></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Features</span>
+  <h2>What ships, what makes it deep, what waits</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Tier</th><th>Feature</th><th>Why the research says so</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill live">core</span></td><td>Solo plan on day one, shared to the group chat as a link where friends can say "I'm down" without installing</td><td>Apps that need friends before they're useful die empty; hangout ideas are the content people already send</td></tr>
+      <tr><td><span class="pill live">core</span></td><td>Group from an invite link</td><td>Invite walls are a top reason people delete social apps</td></tr>
+      <tr><td><span class="pill live">core</span></td><td>"Free now" or "free 3 to 6pm" toggle with approximate distance</td><td>The activity has to fit who's actually available</td></tr>
+      <tr><td><span class="pill live">core</span></td><td>Daily activity generated for who's free, where, when, weather and budget</td><td>Fixed quest lists go stale ("by the 15th it was boring")</td></tr>
+      <tr><td><span class="pill live">core</span></td><td>Visible "who's free," private "I'm down" with optional "only if," 2+ match, simultaneous reveal, "Hop in" for everyone else, quiet expiry</td><td>The deepest pain is reaching out and getting "maybe," and going usually depends on who else is</td></tr>
+      <tr><td><span class="pill wait">depth</span></td><td>"This weekend" drop every Thursday: the same private taps and match, for Saturday and Sunday windows</td><td>Planners book ahead, and buggg's reviewers called real-time-only useless for them</td></tr>
+      <tr><td><span class="pill wait">depth</span></td><td>Taste from past hangout photos, refined by every yes and ignore</td><td>Good from day one, and better every week</td></tr>
+      <tr><td><span class="pill wait">depth</span></td><td>Check-in photo and group scrapbook</td><td>Memories are what keep people on BeReal, Locket and Candle</td></tr>
+      <tr><td><span class="pill wait">depth</span></td><td>Hand-written Berkeley set: Big C, Indian Rock, Cheese Board, Strawberry Canyon, the Marina, BART to SF</td><td>Real places beat generic ideas, and Berkeley is the launch</td></tr>
+      <tr><td><span class="pill wait">stretch</span></td><td>Friends of friends: once a frolic is on, invite free friends of the people going ("Dev's roommate Sam is free nearby"). Same matching engine, one new invite card. Build only after the core passes Revyl's multi-phone tests.</td><td>The real answer to loneliness: most friendships form through someone you already know, and stranger feeds failed in every review set (Bumble BFF, Timeleft, 222, thirdspace)</td></tr>
+      <tr><td><span class="pill">later</span></td><td>Sponsored local activities, couples mode, a campus-wide feed once one campus has enough people, class-schedule import</td><td>Good next steps, not what wins on Sunday</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <span class="eyebrow">Competitor lessons</span>
+  <h2>Every complaint in 4,441 reviews, answered</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>What reviewers hate</th><th>Where</th><th>Frolic's answer</th></tr></thead>
+    <tbody>
+      <tr><td>Daily content goes stale</td><td>Candle, playus, 222</td><td>Generated for who's free, where, when and the group's taste, plus a hand-written Berkeley set</td></tr>
+      <tr><td>Useless until friends join</td><td>Howbout, Locket, 222</td><td>Join from a link, works with two people</td></tr>
+      <tr><td>Flakes and no-shows</td><td>Timeleft, Sha</td><td>2+ threshold, "leave in 8," refill from the hop-in pool</td></tr>
+      <tr><td>Stranger apps feel empty or unsafe</td><td>Bumble BFF, Timeleft, 222</td><td>Real friends first, then friends of friends</td></tr>
+      <tr><td>Locked to two people</td><td>Candle</td><td>Groups of any size; a couple is a group of two</td></tr>
+      <tr><td>Lost streaks and buggy multiplayer</td><td>Locket, BeReal, Candle</td><td>Nights out instead of streaks; every multiplayer flow tested on real devices with Revyl</td></tr>
+      <tr><td>Location feels creepy</td><td>222, thirdspace</td><td>Approximate until a match</td></tr>
+      <tr><td>AI that invents places</td><td>Rodeo (NYC spots in Europe)</td><td>Real places, open now, never invented</td></tr>
+      <tr><td>Ads in a close-friends app</td><td>BeReal</td><td>No feed, no ads</td></tr>
+      <tr><td>Only drinking dinners</td><td>222, Timeleft</td><td>Sober, daytime and cheap by default</td></tr>
+      <tr><td>Paywalled core and surprise billing</td><td>Timeleft (138), Howbout (92), Candle</td><td>Core free forever, per-group extras, one-tap cancel</td></tr>
+      <tr><td>Notification spam</td><td>BeReal</td><td>One daily drop, plus alerts that involve you</td></tr>
+      <tr><td>Sign-in codes that never arrive</td><td>Partiful, Bumble BFF</td><td>Sign in with Apple</td></tr>
+      <tr><td>"I plan ahead, real-time is useless"</td><td>buggg</td><td>Thursday "this weekend" drop</td></tr>
+    </tbody>
+  </table></div>
+  <h3>What we keep from each</h3>
+  <ul>
+    <li><b>Candle:</b> a one-minute daily ritual and a shared history become the daily drop and the scrapbook.</li>
+    <li><b>BeReal:</b> one shared daily moment and unfiltered photos become the drop and the check-in photo.</li>
+    <li><b>Locket:</b> a small circle and knowing what friends are up to become free status.</li>
+    <li><b>Partiful:</b> beautiful, fast invites become link join and the whimsical look.</li>
+    <li><b>Howbout and buggg:</b> seeing who's available becomes "who's free."</li>
+    <li><b>Kndrd:</b> joining a hangout someone else started becomes "Hop in."</li>
+    <li><b>Planlark:</b> the minimum-attendee threshold becomes the private 2+ match.</li>
+    <li><b>Spontaneous, Timeleft, 222 and Tiny Adventures:</b> curated, concrete, hand-written outings become real places and the Berkeley set.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="eyebrow">Built with</span>
+  <h2>Built to win every best-use track</h2>
+  <p>Each sponsor gets one job that only it can do, and one moment in the demo where judges can see it working.</p>
+  <div class="ex">
+    <div><b class="n">C</b><div><h3>Convex: the database keeps the secret</h3><p>Taps live in a table that no client query can read. Only the matcher touches it, so "who's down" can't leak even from a modded app. Around that: the Presence component runs live free status, the Workflow component runs every frolic as a durable job (drop, taps, match, reveal, leave in 8, check-in, expire or refill), a scheduled function fires the reveal at one server timestamp so every phone flips in the same frame, the Geospatial component finds open places and a fair meeting point, crons generate the golden-hour drop and the Thursday weekend drop, and live queries carry every change to every open phone instantly. The Rate Limiter component turns "one drop a day" from a promise into code. <b>Demo moment:</b> the Convex dashboard on screen shows taps landing while every phone still shows nothing.</p></div></div>
+    <div><b class="n">R</b><div><h3>Revyl: cloud phones play the rest of the friend group</h3><p>Three real phones on stage plus five Revyl cloud devices, each one a friend driven by a plain-English script ("tap I'm down, only if Maya"), each placed somewhere in Berkeley with set_location. The judge watches an eight-person group match live, and the same scripts are our test suite: two taps in the same 100 ms must reveal once on both phones, a friend who backs out triggers a refill, the "only if" never leaks. <b>Demo moment:</b> the cloud phones stream on screen and flip to "It's on" together with ours.</p></div></div>
+    <div><b class="n">C</b><div><h3>Capy: agents that prove their own work</h3><p>Captain plans the build, then parallel Build agents each take a lane (matcher, reveal, push, scrapbook, taste). Every agent runs Revyl through its CLI before opening a PR, so each PR arrives with a replay video of the feature working on a real device. We review and merge; the agents write and verify. <b>Demo moment:</b> one slide with the PR count and a wall of Revyl replays. Stretch: a judge asks for a tweak during Q&amp;A, Capy ships it and Revyl verifies it before we leave the stage.</p></div></div>
+    <div><b class="n">S</b><div><h3>Supermemory: a group that remembers itself</h3><p>Each person and each group get their own container. Personal memories hold private things (budget, "no car," "vegetarian") and never reach the group container. The group's profile holds shared taste, and the memory graph tracks how it changes: three weeks of passing on boba and Frolic stops suggesting it. Every pick gets a "why this" line pulled from real memory: "Because the Marina sunset in October was your best night." <b>Demo moment:</b> the taste card and the "why this" line, both quoting things the group actually did.</p></div></div>
+    <div><b class="n">W</b><div><h3>Whop: nobody fronts the money</h3><p>When a plan costs something (kayak rental, show tickets, a pizza order), "It's on" comes with a one-tap Chip in through WhopCheckout and Apple Pay, so nobody pays for everyone and chases Venmo later. Whop's iOS checkout covers real-world goods and services at 2.7% + 30¢, and paying upfront is the strongest anti-flake there is. Later, local spots sell Frolic experiences through Whop, which is how the core stays free. Digital extras still go through StoreKit, as Apple requires.</p></div></div>
+  </div>
+  <h3>Where we can win</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Track</th><th>Odds</th><th>The play</th></tr></thead>
+    <tbody>
+      <tr><td>Convex</td><td>High</td><td>It is the product: a table no client can read, a transactional matcher that reveals exactly once, a scheduled reveal, app and web in live sync, plus Presence, Workflow and Rate Limiter components. Keep the dashboard on screen while taps land and every phone stays blank, and cite the test that proves two taps in the same instant reveal once.</td></tr>
+      <tr><td>Revyl</td><td>Medium-high</td><td>Cloud phones play the rest of the crew live on stage, and the same scripts are our test suite. Prove at 10am that our build runs on their cloud devices; record a backup run.</td></tr>
+      <tr><td>Capy</td><td>Medium-high</td><td>Capy builds five of the ten lanes with Revyl replays on every pull request. Demo slide: the pull request count and the wall of replays. Stretch: a judge asks for a tweak in Q&amp;A and Capy ships it before we leave the stage.</td></tr>
+      <tr><td>Supermemory</td><td>Medium</td><td>Make memory visibly the reason plans are good: "Why this" quoting a real past night, and a live before/after where the crew skips something twice and it stops being suggested.</td></tr>
+      <tr><td>Whop</td><td>Low unless deepened</td><td>Chip-in alone reads as an add-on. Frame it as the anti-flake deposit (pay up front, refunded if it's called off) and show a local spot selling a Frolic experience through Whop.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Track criteria are announced at kickoff. Read them before 10:30 and adjust these plays.</p>
+  <h3>Demo in 90 seconds</h3>
+  <ol class="steps">
+    <li>Three of our phones sit side by side, mirrored to the screen. Each is a friend in a seeded group: Maya, Dev and Jordan.</li>
+    <li>Upload five photos of real hangouts. Frolic reads "sunsets, late-night food, free stuff."</li>
+    <li>Today's activity appears on all three, matched to that taste and to a real place nearby, with who's free shown.</li>
+    <li>A judge calls the taps. Maya taps "I'm down, only if Dev." Dev taps "I'm down." Nothing shows. Then both phones flip to "It's on" at the same moment.</li>
+    <li>Jordan's phone gets "Maya and Dev are going, hop in?" and joins in one tap. Five Revyl cloud phones, the rest of the group, flip with ours.</li>
+    <li>The plan costs $8 for kayaks, so everyone chips in from the "It's on" card with Apple Pay.</li>
+    <li>If friends of friends is built: Sam, Dev's roommate and outside the group, gets an invite on a fourth device.</li>
+    <li>Someone snaps a check-in photo and it lands in the group scrapbook on every screen.</li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">How it works</span>
+  <h2>Every feature, and the machinery behind it</h2>
+  <p>One app on SwiftUI for iOS 26, one Convex backend, and the newest on-device Apple frameworks doing the private work on the phone. Three facts shape the design: no $99 Apple account (so no remote push and no Sign in with Apple), everything has to run by 6pm, and every feature has to be something a judge can watch work.</p>
+
+  <h3>Two taps on the surface, a lot underneath</h3>
+  <p>The user sees one plan and one button. Everything below happens without them setting anything.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>What the user never has to do</th><th>What Frolic does instead</th></tr></thead>
+    <tbody>
+      <tr><td>Say when they're free</td><td>Reads busy times from the calendar on the phone (EventKit) and shares only "free till 8." Class schedules repeat, so Monday's guess is right by the second week.</td></tr>
+      <tr><td>Pick a place</td><td>Scores real candidates on weather, sunset, opening hours, price against everyone's private limits, and the group's taste. Then picks the spot that keeps the longest trip shortest, using each phone's own MapKit ETA.</td></tr>
+      <tr><td>Pick a time</td><td>The matcher tries every start time across everyone's windows and picks the one that gets the most people out.</td></tr>
+      <tr><td>Check the weather</td><td>Two hours before, a scheduled Convex check looks at the forecast again. If rain moves in, the plan swaps to the indoor backup and everyone's taps carry over.</td></tr>
+      <tr><td>Tell it what they like</td><td>Every yes, every ignore and every check-in photo (labeled on the phone) updates the group's Supermemory profile. Ignore boba three times and it stops coming back.</td></tr>
+      <tr><td>Keep it fair</td><td>Rotates whose taste leads the pick, so one loud friend's favorites don't win every day.</td></tr>
+      <tr><td>Rally a quiet group</td><td>When a group goes a week without a frolic, the next drop is their best-rated night again: "Indian Rock was your favorite. Same time?"</td></tr>
+      <tr><td>Fill a dropped spot</td><td>If someone bails, the Workflow re-runs the match with the hop-in pool before anyone notices a gap.</td></tr>
+      <tr><td>Check in, save photos, make the recap</td><td>The geofence checks you in, the photo goes straight to the scrapbook, and the taste card rewrites itself each week.</td></tr>
+      <tr><td>Time the daily plan</td><td>Learns when each group actually answers and sends the drop then, anchored to the day's sunset.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The stack</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Layer</th><th>What we use</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>App</td><td>SwiftUI, iOS 26, native TabView with Liquid Glass, ConvexMobile Swift package</td><td>Live queries stream straight into SwiftUI state, so every phone updates the moment the data changes</td></tr>
+      <tr><td>Backend</td><td>Convex: tables, queries, mutations, actions, scheduler, crons, file storage, Workflow, Presence, Rate Limiter</td><td>Transactions make the match exact, and real-time subscriptions replace push while the app is open</td></tr>
+      <tr><td>On-device AI</td><td>Vision image classification plus Apple Foundation Models with <code>@Generable</code> structured output</td><td>Hangout photos are read on the phone and never uploaded. Only taste tags leave the device</td></tr>
+      <tr><td>Plan writer</td><td>Claude Haiku 5.5 from a Convex action with structured output</td><td>Picks from real candidate places only, writes the plan line and the "why this"</td></tr>
+      <tr><td>Memory</td><td>Supermemory, one container per person and one per group</td><td>Private limits stay personal, shared taste builds up per group</td></tr>
+      <tr><td>Place and time</td><td>Seeded Berkeley set in Convex, Open-Meteo for weather and sunset (free, no key), MapKit ETAs on each phone</td><td>Real places with real hours, and travel times without sharing a location</td></tr>
+      <tr><td>Lock screen</td><td>ActivityKit Live Activity and local notifications with action buttons</td><td>Both work without a paid account</td></tr>
+      <tr><td>Arrival</td><td>Core Location <code>CLMonitor</code> geofence around the plan's spot</td><td>Check-in happens on its own when you arrive</td></tr>
+      <tr><td>Money</td><td>WhopCheckout iOS with Apple Pay</td><td>Chip in for real-world costs</td></tr>
+      <tr><td>Testing and build</td><td>Revyl cloud phones, Capy agents</td><td>Multi-phone flows tested for real; agents ship PRs with replay videos</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Data model</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Table</th><th>Fields</th><th>Who can read it</th></tr></thead>
+    <tbody>
+      <tr><td><code>users</code></td><td>name, photo, deviceId</td><td>Group members</td></tr>
+      <tr><td><code>groups</code></td><td>name, inviteCode</td><td>Members</td></tr>
+      <tr><td><code>members</code></td><td>groupId, userId</td><td>Members</td></tr>
+      <tr><td><code>availability</code></td><td>userId, groupId, day, window start and end, minutes away</td><td>Members (free is public)</td></tr>
+      <tr><td><code>limits</code></td><td>userId, budget cap, energy, max minutes, home by</td><td>Nobody. Internal functions only</td></tr>
+      <tr><td><code>places</code></td><td>name, lat, lng, cost, tags, hours, best time (golden hour, late night)</td><td>Everyone</td></tr>
+      <tr><td><code>frolics</code></td><td>groupId, day, placeId, title, line, why, startsAt, cost, status (open, on, done, faded), revealAt, members</td><td>Members, with <code>members</code> hidden until status is on</td></tr>
+      <tr><td><code>taps</code></td><td>frolicId, userId, onlyIf (user ids), window</td><td>Nobody. Only the matcher. Each person can read their own tap</td></tr>
+      <tr><td><code>checkins</code></td><td>frolicId, userId, photo (file storage id), at</td><td>Members</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The features, one by one</h3>
+  <div class="ex">
+    <div><b class="n">1</b><div><h3>Join a group from a link</h3><p>The invite link opens the app with <code>frolic://join/CODE</code>. You pick your name and photo and you're in. With no paid account there's no Sign in with Apple, so the device id is the identity for the demo. The app works with two people. <b>Build:</b> <code>joinGroup</code> mutation, one onboarding screen.</p></div></div>
+    <div><b class="n">2</b><div><h3>Teach it your taste, privately</h3><p>Pick five photos of past hangouts. On the phone, Vision labels each photo ("sunset," "pizza," "board game," "beach") and Foundation Models turns those labels into a typed <code>Taste</code> struct: activities, vibe, price feel. The photos never leave the phone. Only the tags go to the person's Supermemory container, and they merge into the group's container. <b>Demo line:</b> "Your photos never left your phone. Frolic just learned you're golden-hour people."</p></div></div>
+    <div><b class="n">3</b><div><h3>Free now, or free 3 to 6</h3><p>One toggle and a window picker write to <code>availability</code>. The Presence component shows who has the app open right now. Each phone works out its own walking or transit minutes to today's spot with MapKit and uploads only the number, so friends see "12 min away," never a pin. <b>Build:</b> <code>setFree</code> mutation, Presence heartbeat, MapKit ETA.</p></div></div>
+    <div><b class="n">4</b><div><h3>The daily drop, generated for whoever's free</h3><p>A Convex cron runs <code>generateDrop</code> for each group. It gathers real candidates: Berkeley places open during the overlap of people's windows, inside everyone's private limits (budget, distance, energy, home by), fitted to Open-Meteo's weather and sunset time. It asks Supermemory for the group's taste and what they've skipped lately. Then it hands Claude only those candidates and gets back a structured pick: place id, title, the line ("Clear and 64°. Golden hour starts at 4:28"), and a "why this" quoting a real memory. Claude can only choose a place id from the list, so it can never invent a place. <b>Build:</b> one action, one prompt, a 20-place seed file.</p></div></div>
+    <div><b class="n">5</b><div><h3>The secret tap and the match</h3><p>"I'm down" and "Only if…" call <code>tap</code>, which writes to <code>taps</code> and runs the matcher in the same transaction. The matcher looks at every subset of tappers (a group of 12 is only 4,096 subsets, which takes milliseconds) and keeps the sets of 2 or more where everyone's "only if" people are in the set and everyone's windows overlap long enough. It picks the biggest set, then the earliest time. Convex transactions are serializable, so two taps landing in the same instant can never reveal twice. If nothing matches, nothing happens and nobody learns anything. <b>Build:</b> about 40 lines of TypeScript, plus a unit test for each rule.</p></div></div>
+    <div><b class="n">6</b><div><h3>"It's on," on every phone in the same frame</h3><p>When a set matches, the mutation sets status to on and <code>revealAt</code> to now plus 1.5 seconds. Every phone keeps a small clock offset from the server and fires the reveal animation at exactly <code>revealAt</code>, so the faces tumble in together with a haptic. Phones that were waiting get it through their live query; there's no push to wait for. <b>Build:</b> one field, a clock-offset query, the reveal view.</p></div></div>
+    <div><b class="n">7</b><div><h3>Leave in 8, on the lock screen</h3><p>On reveal, the app starts a Live Activity locally. Its countdown uses <code>Text(timerInterval:)</code>, which ticks on the lock screen and in the Dynamic Island by itself, so it needs no push updates. "On my way" uploads your MapKit ETA every 30 seconds, and the others see your bubble count down. <b>Build:</b> widget extension, one ActivityAttributes type.</p></div></div>
+    <div><b class="n">8</b><div><h3>Hop in</h3><p>Once a frolic is on, the <code>frolics</code> query unlocks the names for every free member who wasn't in the match: "Maya and Dev are going. Room for one more?" One tap adds you to <code>members</code>. If someone taps "Can't make it," the Workflow re-runs the match with the hop-in pool and refills the spot. <b>Build:</b> <code>hopIn</code> and <code>bail</code> mutations, one workflow step.</p></div></div>
+    <div><b class="n">9</b><div><h3>Check in by arriving, then a group snap</h3><p>On reveal, the app registers a 75-meter <code>CLMonitor</code> circle around the spot, and walking in marks you checked in. The photo is the reason to use Frolic over the camera app: a <b>group snap</b>. Anyone taps it, and the mutation sets <code>snapAt</code> 3 seconds out, the same synced-timestamp trick as the reveal. Every matched phone counts down 3, 2, 1 together and fires its camera at the same second. Each photo uploads to Convex file storage, but the others stay hidden until you add yours, so everyone shoots. The shots land as one pressed collage (every angle of the same moment, each tagged with that person's flower, with the place, the date and the time), rendered with <code>ImageRenderer</code> into the garden and a Stories-ready card. In the app the collage is a little 3D diorama: the polaroids sit at different depths and shift as you tilt the phone (Core Motion with <code>rotation3DEffect</code> and per-layer parallax, about an hour). Stretch: on-device depth per photo with Apple's Depth Anything Core ML model, so the foreground lifts off the sky. A memory also goes to Supermemory ("Indian Rock, sunset, 3 of us, Nov 15") to feed tomorrow's "why this." <b>Demo moment:</b> three phones on stage count down together and the collage appears on all of them. <b>Build:</b> geofence, one <code>snapAt</code> field, camera capture at a timestamp, the collage view.</p></div></div>
+    <div><b class="n">10</b><div><h3>Chip in</h3><p>If the plan costs something, "It's on" shows "Chip in $8" next to directions. WhopCheckout takes Apple Pay and a Whop webhook to a Convex HTTP action marks you paid. Paying up front is the strongest anti-flake there is. <b>Build:</b> checkout sheet, one HTTP action.</p></div></div>
+    <div><b class="n">11</b><div><h3>Memories and the taste card</h3><p>The scrapbook is every frolic with its photos. The taste card ("Sunset Crew: golden-hour chasers, under $10, night owls") comes from the group's Supermemory profile, rendered to an image with SwiftUI's <code>ImageRenderer</code> at Stories size and handed to the share sheet. <b>Build:</b> one grid, one card view, one share button.</p></div></div>
+    <div><b class="n">12</b><div><h3>The daily drop without push</h3><p>Without a paid account the server can't wake a phone. Instead, each phone schedules its own local notification for the drop time, with I'm down, Only if and Not today buttons. A button press runs the <code>tap</code> mutation in the background without opening the app. During the demo every phone is open, so live queries make everything instant anyway. With a paid account later, the same buttons move to real push.</p></div></div>
+    <div><b class="n">13</b><div><h3>Useful on day one, with nobody else on it</h3><p>Instagram grew because the filters were worth using alone, and the network built up behind them. Frolic's version is the plan itself. With no crew yet, Today still shows a real plan picked for you (your taste, the weather, your budget, what's open) and two buttons: "Send to the group chat" and "I'll go solo." Sending posts the seed-packet card into iMessage as a link: "Anyone free for this? Say you're down. It stays secret unless someone else is too." The link opens a small web page served by a Convex HTTP action: the same card, a first-name field and a secret "I'm down" button. Those yeses land in the same <code>taps</code> table and go through the same matcher, so a friend can match with you without installing anything. When it's on, the page flips live through a Convex subscription. Everyone who taps joins your crew automatically, and the app is only needed for the garden, the crew and the daily drop. <b>Demo line:</b> a judge scans a QR code, taps "I'm down" in their phone browser, and our phone blooms. <b>Build:</b> one HTTP route, one web page, a share link and a solo state on Today, about an hour.</p></div></div>
+  </div>
+
+  <h3>A real app, not a prototype</h3>
+  <p>Judges have seen a hundred clickable demos. Frolic should be something a friend group could start using tonight. That means:</p>
+  <ul>
+    <li><b>Real data end to end.</b> Nothing hard-coded in the demo path. The Convex production deployment, a hand-verified Berkeley set of 60 or more places with real hours and prices, live weather and sunset times, and real accounts on real phones.</li>
+    <li><b>Every state designed.</b> First launch, empty crew, nobody free, loading, offline, a failed plan, a denied permission, an expired link. Each has its own screen and copy, and none is a blank or a spinner that never ends.</li>
+    <li><b>Accessibility built in.</b> Dynamic Type up to the largest size without breaking layouts, VoiceOver labels on every control (flowers announce "Maya, free till 8"), Reduce Motion swaps the bloom for a fade, and AA contrast everywhere.</li>
+    <li><b>Fast.</b> Cold launch to Today in under 1.5 seconds, every tap answered in under 100 ms, and smooth 120 Hz animation on ProMotion phones. Images are cached and sized for the screen.</li>
+    <li><b>Trustworthy.</b> Permissions are asked at the moment they're needed with a one-line reason, a privacy page explains exactly what friends can and can't see, and you can delete your account and data in two taps.</li>
+    <li><b>Real sharing.</b> The web "I'm down" page lives on a real domain with a proper link preview card in iMessage.</li>
+  </ul>
+  <p><b>The one hard limit:</b> without the $99 Apple Developer account there's no remote push, no TestFlight, no Sign in with Apple, no App Clip and no universal links, and installs expire after 7 days. Everything above still works, with identity from an invite link and a first name, and live updates while the app is open. If Frolic keeps going after Sunday, that account is the first thing worth paying for.</p>
+
+  <h3>Priority and the bar for done</h3>
+  <p>Ten agents can build everything, so the risk is breadth without depth. Every feature ships only when it meets its bar: it works on real phones, it's fast, it handles the empty, error and offline states, and it looks finished. A feature that misses the bar is hidden from the demo instead of shown half-working. Polish goes in priority order: tier 1 has to be flawless before anyone touches tier 3.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tier</th><th>Feature</th><th>Done means</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Secret "I'm down," "Only with," the match and the synced reveal</td><td>Matcher has a test for every rule; two taps in the same 100 ms reveal exactly once; every phone flips within one frame of <code>revealAt</code>; a "yes" can never be read by any client, proved by a test; bloom animation at 120 fps with a haptic</td></tr>
+      <tr><td>1</td><td>The daily plan with real places and "Why this"</td><td>Never an invented place (output is a place id from the candidate list, validated); respects every private limit; under 3 seconds to generate, cached for the day; the "why" line quotes real taste or memory; a hand-written fallback plan if the model fails</td></tr>
+      <tr><td>1</td><td>Solo mode and the web "I'm down" link</td><td>The link opens in under 1 second on cellular; a web yes and an app yes match each other; the web page flips live; a link joiner lands in the crew with no account</td></tr>
+      <tr><td>1</td><td>Free status, crew and Hop in</td><td>Presence updates in under a second; approximate distance only; Hop in works after the reveal with names shown; refill works when someone sits it out</td></tr>
+      <tr><td>2</td><td>Group snap and the garden</td><td>All cameras fire within 100 ms of <code>snapAt</code>; photos stay hidden until you add yours; the collage renders on every phone; tilt parallax at 60 fps or better; the garden grows a flower for each frolic</td></tr>
+      <tr><td>2</td><td>Taste from photos and private limits</td><td>Photos are labeled on the phone and never uploaded; tags visibly change the next plan; limits are stored where no other user's query can read them</td></tr>
+      <tr><td>2</td><td>Leave by, on my way, arrival check-in</td><td>Live Activity countdown on the lock screen and in the Dynamic Island; ETAs refresh every 30 seconds; the geofence checks you in without a tap</td></tr>
+      <tr><td>3</td><td>Chip in with Whop, the weekend drop, Crew's "Lately," the calendar read, weather swap, fair rotation, the comeback plan</td><td>Same bar. If any of these isn't solid by 5pm, it stays out of the demo and goes in the "what's next" slide</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Running the agents.</b> Capy carries a large share of the build so the Capy track is real. Capy's Captain plans the lanes, and Build agents own: (1) Convex schema and matcher, (4) the web "I'm down" page, (6) group snap and the collage, (7) garden, crew and You, and (10) Revyl test scripts. Every Capy pull request arrives with a Revyl replay of the feature working. Our Opus agents own (2) reveal sync and presence, (3) plan generation and places, (5) Today and the waiting and reveal UI, (8) Live Activity and on-my-way, and (9) taste and Supermemory. Only lane 1 changes the shared Convex schema. Nothing merges without a passing Revyl run on real devices and a screen recording. Each hour, one person drives the full loop on three phones and files what breaks; fixes beat new features.</p>
+
+  <h3>Build order, 10am to 6pm</h3>
+  <ol class="steps">
+    <li><b>10:00 to 11:00.</b> Convex schema, seed the group and 20 Berkeley places, ConvexMobile wired into the app, Today screen reading a hard-coded frolic.</li>
+    <li><b>11:00 to 1:00.</b> The core loop: <code>setFree</code>, <code>tap</code>, the matcher with tests, the synced reveal, Hop in. Two simulators plus a Revyl phone prove it.</li>
+    <li><b>1:00 to 2:00.</b> Solo Today, the share link and the web "I'm down" page on a Convex HTTP route, so friends and judges can match without the app.</li>
+    <li><b>2:00 to 2:45.</b> <code>generateDrop</code> with Open-Meteo, Supermemory and Claude. Photo taste with Vision and Foundation Models.</li>
+    <li><b>2:45 to 4:00.</b> Live Activity, on my way ETAs, geofence check-in, scrapbook.</li>
+    <li><b>4:00 to 5:00.</b> Chip in with Whop, taste card, local notification buttons. Anything unfinished gets cut here.</li>
+    <li><b>5:00 to 6:00.</b> Revyl cloud phones scripted as the rest of the group, run the demo three times, record a backup video.</li>
+  </ol>
+  <p><b>Cut line.</b> Features 1 to 6, 8 and 13 are the app; they ship no matter what. Then 7, 2 and 9. Then 10 and 11. The weekend drop and friends of friends reuse the same matcher and are stretch only.</p>
+</section>
+
+<section class="divider">
+  <span class="eyebrow">The research</span>
+  <h2>Everything Frolic is built on</h2>
+  <p>Collected Nov 13 to 14, 2026 from public Instagram and TikTok pages and App Store reviews.</p>
+</section>
+
+<section>
+  <span class="eyebrow">The signal</span>
+  <h2>Hangout ideas are the only content people both save and send</h2>
+  <p>A save means "I want to use this later." A share means "we should do this." Most topics win on one. Gym guides and budgeting get saved and never sent. Plans-never-happen memes get sent and never saved. Side quests and hangout ideas are high on both, which is the shape of a product: people want the idea, and they want to do it with someone.</p>
+  <figure class="chart" style="margin:0">
+<svg viewBox="0 0 640 400" role="img" aria-label="Scatter of TikTok topics by saves and shares per 1,000 views. Friend hangout and side quest topics sit alone in the top right."><line x1="52" x2="52" y1="16" y2="356" class="grid"/><text x="52" y="374" class="tick" text-anchor="middle">0</text><line x1="188" x2="188" y1="16" y2="356" class="grid"/><text x="188" y="374" class="tick" text-anchor="middle">10</text><line x1="324" x2="324" y1="16" y2="356" class="grid"/><text x="324" y="374" class="tick" text-anchor="middle">20</text><line x1="461" x2="461" y1="16" y2="356" class="grid"/><text x="461" y="374" class="tick" text-anchor="middle">30</text><line x1="597" x2="597" y1="16" y2="356" class="grid"/><text x="597" y="374" class="tick" text-anchor="middle">40</text><line x1="52" x2="624" y1="356" y2="356" class="grid"/><text x="44" y="360" class="tick" text-anchor="end">0</text><line x1="52" x2="624" y1="256" y2="256" class="grid"/><text x="44" y="260" class="tick" text-anchor="end">10</text><line x1="52" x2="624" y1="156" y2="156" class="grid"/><text x="44" y="160" class="tick" text-anchor="end">20</text><line x1="52" x2="624" y1="56" y2="56" class="grid"/><text x="44" y="60" class="tick" text-anchor="end">30</text><text x="346" y="394" class="axis" text-anchor="middle">Saves per 1K views (I want to use this)</text><text transform="translate(14 178) rotate(-90)" class="axis" text-anchor="middle">Shares per 1K views (sent to friends)</text><circle cx="596.8" cy="302.0" r="4.5" class="pt o"><title>apps everyone should have: 40.0 saves, 5.4 shares per 1K views</title></circle><circle cx="560.0" cy="329.0" r="4.5" class="pt o"><title>gym motivation beginner: 37.3 saves, 2.7 shares per 1K views</title></circle><circle cx="557.3" cy="294.0" r="4.5" class="pt o"><title>productivity hacks: 37.1 saves, 6.2 shares per 1K views</title></circle><circle cx="448.3" cy="181.0" r="6" class="pt q"><title>side quest ideas: 29.1 saves, 17.5 shares per 1K views</title></circle><circle cx="422.4" cy="188.0" r="6" class="pt q"><title>friend group activities: 27.2 saves, 16.8 shares per 1K views</title></circle><circle cx="418.4" cy="215.0" r="6" class="pt q"><title>side quests to do: 26.9 saves, 14.1 shares per 1K views</title></circle><circle cx="395.2" cy="82.0" r="6" class="pt q"><title>things to do with friends: 25.2 saves, 27.4 shares per 1K views</title></circle><circle cx="393.8" cy="335.0" r="4.5" class="pt o"><title>iphone apps you need: 25.1 saves, 2.1 shares per 1K views</title></circle><circle cx="391.1" cy="125.0" r="6" class="pt q"><title>free things to do with friends: 24.9 saves, 23.1 shares per 1K views</title></circle><circle cx="381.6" cy="310.0" r="4.5" class="pt o"><title>dopamine detox: 24.2 saves, 4.6 shares per 1K views</title></circle><circle cx="376.1" cy="285.0" r="4.5" class="pt o"><title>budgeting in your 20s: 23.8 saves, 7.1 shares per 1K views</title></circle><circle cx="342.1" cy="310.0" r="4.5" class="pt o"><title>sleep schedule fix: 21.3 saves, 4.6 shares per 1K views</title></circle><circle cx="333.9" cy="186.0" r="6" class="pt q"><title>side quests with friends: 20.7 saves, 17.0 shares per 1K views</title></circle><circle cx="313.5" cy="297.0" r="4.5" class="pt o"><title>phone addiction: 19.2 saves, 5.9 shares per 1K views</title></circle><circle cx="304.0" cy="319.0" r="4.5" class="pt o"><title>grocery haul budget: 18.5 saves, 3.7 shares per 1K views</title></circle><circle cx="302.6" cy="237.0" r="4.5" class="pt o"><title>procrastination: 18.4 saves, 11.9 shares per 1K views</title></circle><circle cx="298.5" cy="328.0" r="4.5" class="pt o"><title>cooking for one: 18.1 saves, 2.8 shares per 1K views</title></circle><circle cx="298.5" cy="104.0" r="6" class="pt q"><title>hangout ideas: 18.1 saves, 25.2 shares per 1K views</title></circle><circle cx="283.5" cy="209.0" r="6" class="pt q"><title>what to do with friends at night: 17.0 saves, 14.7 shares per 1K views</title></circle><circle cx="267.2" cy="333.0" r="4.5" class="pt o"><title>loneliness in your 20s: 15.8 saves, 2.3 shares per 1K views</title></circle><circle cx="261.7" cy="305.0" r="4.5" class="pt o"><title>making friends in college: 15.4 saves, 5.1 shares per 1K views</title></circle><circle cx="250.8" cy="246.0" r="6" class="pt q"><title>broke side quests: 14.6 saves, 11.0 shares per 1K views</title></circle><circle cx="242.7" cy="325.0" r="4.5" class="pt o"><title>spontaneous plans: 14.0 saves, 3.1 shares per 1K views</title></circle><circle cx="238.6" cy="332.0" r="4.5" class="pt o"><title>making friends in your 20s: 13.7 saves, 2.4 shares per 1K views</title></circle><circle cx="234.5" cy="276.0" r="4.5" class="pt o"><title>we never hang out anymore: 13.4 saves, 8.0 shares per 1K views</title></circle><circle cx="231.8" cy="280.0" r="4.5" class="pt o"><title>things to do when bored with friends: 13.2 saves, 7.6 shares per 1K views</title></circle><circle cx="211.3" cy="333.0" r="4.5" class="pt o"><title>that girl routine: 11.7 saves, 2.3 shares per 1K views</title></circle><circle cx="201.8" cy="213.0" r="6" class="pt p"><title>group chat: 11.0 saves, 14.3 shares per 1K views</title></circle><circle cx="188.2" cy="131.0" r="6" class="pt p"><title>plans never happen: 10.0 saves, 22.5 shares per 1K views</title></circle><circle cx="184.1" cy="287.0" r="4.5" class="pt o"><title>friend group drama: 9.7 saves, 6.9 shares per 1K views</title></circle><circle cx="177.3" cy="216.0" r="4.5" class="pt o"><title>gym buddy: 9.2 saves, 14.0 shares per 1K views</title></circle><circle cx="154.1" cy="305.0" r="4.5" class="pt o"><title>bored on a friday night: 7.5 saves, 5.1 shares per 1K views</title></circle><circle cx="152.8" cy="285.0" r="4.5" class="pt o"><title>college life: 7.4 saves, 7.1 shares per 1K views</title></circle><circle cx="150.1" cy="38.0" r="6" class="pt p"><title>group chat plans: 7.2 saves, 31.8 shares per 1K views</title></circle><circle cx="148.7" cy="222.0" r="4.5" class="pt o"><title>running club: 7.1 saves, 13.4 shares per 1K views</title></circle><circle cx="141.9" cy="120.0" r="6" class="pt p"><title>making plans with friends: 6.6 saves, 23.6 shares per 1K views</title></circle><circle cx="139.2" cy="348.0" r="4.5" class="pt o"><title>first job after college: 6.4 saves, 0.8 shares per 1K views</title></circle><circle cx="136.4" cy="326.0" r="4.5" class="pt o"><title>broke college student: 6.2 saves, 3.0 shares per 1K views</title></circle><circle cx="107.8" cy="295.0" r="4.5" class="pt o"><title>going out pov: 4.1 saves, 6.1 shares per 1K views</title></circle><circle cx="88.8" cy="348.0" r="4.5" class="pt o"><title>post grad depression: 2.7 saves, 0.8 shares per 1K views</title></circle><circle cx="80.6" cy="324.0" r="4.5" class="pt o"><title>splitting the bill with friends: 2.1 saves, 3.2 shares per 1K views</title></circle><circle cx="68.3" cy="354.0" r="4.5" class="pt o"><title>apps i cant live without: 1.2 saves, 0.2 shares per 1K views</title></circle><text x="403" y="74" class="lbl" text-anchor="start">things to do with friends</text><text x="291" y="96" class="lbl" text-anchor="end">hangout ideas</text><text x="196" y="135" class="lbl" text-anchor="start">plans never happen</text><text x="552" y="319" class="lbl" text-anchor="end">gym motivation beginner</text><text x="456" y="193" class="lbl" text-anchor="start">side quest ideas</text><text x="384" y="289" class="lbl" text-anchor="start">budgeting in your 20s</text><text x="275" y="337" class="lbl" text-anchor="start">loneliness in your 20s</text><text x="591" y="292" class="lbl" text-anchor="end">apps everyone should have</text></svg>    <div class="legend">
+      <span style="--c:var(--quest)">Side quests and hangout ideas</span>
+      <span style="--c:var(--plans)">Plans that never happen</span>
+      <span style="--c:var(--other)">Every other topic (gym, money, food, loneliness, ADHD, productivity)</span>
+    </div>
+    <figcaption class="eyebrow" style="text-transform:none;letter-spacing:0">TikTok, top 20 results per search, rates pooled across each search. Hover a dot for the topic.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th>Video</th><th>Search</th><th>Views</th><th>Saves</th><th>Shares</th></tr></thead>
+    <tbody>
+      <tr><td>Free hangout ideas to do with your friends, part two</td><td>free things to do with friends</td><td class="num">3.9M</td><td class="num">166K</td><td class="num">177K</td></tr>
+      <tr><td>Adventure and explore: take a train to a random city</td><td>side quests to do</td><td class="num">3.8M</td><td class="num">73K</td><td class="num">38K</td></tr>
+      <tr><td>6 hangout ideas that don't cost any money</td><td>hangout ideas</td><td class="num">2.6M</td><td class="num">62K</td><td class="num">48K</td></tr>
+      <tr><td>Cool gathering ideas for friends I'm trying this year</td><td>friend group activities</td><td class="num">873K</td><td class="num">56K</td><td class="num">19K</td></tr>
+      <tr><td>10 broke side quests to do this summer</td><td>things to do with friends</td><td class="num">1.5M</td><td class="num">23K</td><td class="num">21K</td></tr>
+      <tr><td>Send this to that friend (plans that never happen)</td><td>making plans with friends</td><td class="num">6.7M</td><td class="num">40K</td><td class="num">105K</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<section>
+  <span class="eyebrow">The pain</span>
+  <h2>Loneliness is the deepest problem, and dead plans are the most viral</h2>
+  <p>Instagram comments on friendship and college reels are sincere, not jokes. The same people who say they have nobody also say their group's plans never leave the chat. Doing things together is how friendships form, so a product that makes plans happen goes straight at the loneliness.</p>
+  <div class="quotes">
+    <blockquote><q>It's so easy to go weeks without talking to anyone in college</q><small>4.5K likes · Instagram</small></blockquote>
+    <blockquote><q>I have friends, but I don't think I'm anyone's first choice..</q><small>10.1K likes · Instagram</small></blockquote>
+    <blockquote><q>"I think I'm going to be tired that day" and "I'm working" are too real</q><small>22.5K likes · Instagram</small></blockquote>
+    <blockquote><q>Four weeks in, everyone is in groups and I sit alone, trying to look unbothered tho I am.</q><small>323 likes · Instagram</small></blockquote>
+    <blockquote><q>1st time it's fine. 2nd time ok not a big deal. 3rd time find yourself a new friend</q><small>61K likes · Instagram, flaky friends</small></blockquote>
+    <blockquote><q>If you're in your 20s you gotta get on Google Calendar for planning</q><small>471 likes · the duct-tape fix people use today</small></blockquote>
+  </div>
+</section>
+<section>
+  <span class="eyebrow">19,109 TikTok comments</span>
+  <h2>The person who feels it most is the planner friend</h2>
+  <p>Comments on 580 side quest, hangout and plans videos. About 1 in 10 comments is just a friend's @tag, which means people send these videos to their group as an invitation. Then the same three things go wrong: one person carries the planning, asking feels awkward, and people bail.</p>
+  <div class="quotes">
+    <blockquote><q>i enjoy to be the planner, but would be more happy when my friends show some excitement and gratitude</q><small>10.9K likes · TikTok</small></blockquote>
+    <blockquote><q>asking to hang out socially feels like asking them on a date</q><small>20.2K likes · TikTok</small></blockquote>
+    <blockquote><q>and when they say yes they can they cancel right before our hangout</q><small>359 likes · TikTok</small></blockquote>
+    <blockquote><q>I'm the planner friend who can't even get people to respond back if they're free for the plan like I'm drowning here</q><small>32 likes · TikTok</small></blockquote>
+    <blockquote><q>stopped being the planner when everyone all of a sudden had something came up at the LAST minute every single time</q><small>31 likes · TikTok</small></blockquote>
+    <blockquote><q>date ideas with no money?</q><small>8K likes · TikTok, couples want this too</small></blockquote>
+  </div>
+  <ul>
+    <li><b>The planner is the first user.</b> Every group has one person who already wants plans to happen and will invite everyone. The app does the planner's job, so they install it first.</li>
+    <li><b>The quest asks for you.</b> When the app proposes the plan, nobody has to risk the awkward ask, and nobody has to be the one who always reaches out.</li>
+    <li><b>Couples are a built-in second market.</b> 275 comments mention a partner or dates, and "date ideas with no money" is a top comment. A group of two works the same way.</li>
+    <li><b>The risk shows up here too.</b> 134 comments say some version of "I don't have friends." People with no group are the hardest to serve and the ones who need it most.</li>
+  </ul>
+</section>
+<section>
+  <span class="eyebrow">Alternatives we checked</span>
+  <h2>ADHD had sharper pain, and a worse fit for this</h2>
+  <p>We ran the same tests on 30 other categories. Share of comments expressing real personal pain ("this is me," "I struggle," "I can't"), mentions of paying, and mentions of tools or apps.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Topic</th><th>Comments</th><th>Pain</th><th>Paying</th><th>Tools</th><th>Saves / 1K</th></tr></thead>
+    <tbody>
+      <tr><td>Executive dysfunction</td><td class="num">900</td><td class="num">9.1%</td><td class="num">1.0%</td><td class="num">1.2%</td><td class="num">27.6</td></tr>
+      <tr><td>Caring for aging parents</td><td class="num">617</td><td class="num">5.2%</td><td class="num">1.8%</td><td class="num">0.2%</td><td class="num">4.4</td></tr>
+      <tr><td>PCOS</td><td class="num">672</td><td class="num">5.1%</td><td class="num">0%</td><td class="num">0.4%</td><td class="num">16.1</td></tr>
+      <tr><td>ADHD productivity</td><td class="num">560</td><td class="num">3.6%</td><td class="num">1.4%</td><td class="num">10.9%</td><td class="num">38.4</td></tr>
+      <tr><td>Credit score tips</td><td class="num">625</td><td class="num">2.2%</td><td class="num">12.2%</td><td class="num">0.2%</td><td class="num">n/a</td></tr>
+      <tr><td>Glow up, skincare, looksmaxxing</td><td class="num">~2,000</td><td class="num">~2%</td><td class="num">~0%</td><td class="num">~0%</td><td class="num">14 to 32</td></tr>
+      <tr class="us"><td>Side quests and hangouts (Frolic)</td><td class="num">13,495</td><td class="num">1.3%</td><td class="num">0.4%</td><td class="num">1.1%</td><td class="num">18 to 29</td></tr>
+      <tr><td>Dating apps, Hinge, rizz</td><td class="num">~1,350</td><td class="num">~1%</td><td class="num">&lt;1%</td><td class="num">&lt;2%</td><td class="num">9 to 15</td></tr>
+    </tbody>
+  </table></div>
+  <p>Executive dysfunction comments read like a confessional ("I hate diagnosing myself but this is me," 9.9K likes), and ADHD users already look for apps. That market is crowded with Tiimo, Finch, Inflow and Priori, and the products are used alone, so a live multiplayer demo doesn't come naturally. Side quest comments are mostly friends tagging friends. The pain there sits in a narrower group, the planner and the person who always reaches out, which is exactly who Frolic is for. ADHD stays the first idea to test if Frolic doesn't get traction.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Competitors</span>
+  <h2>Crowded, but nobody covers all three</h2>
+  <p>Daily habit, built for groups, and in person. Every existing app misses at least one.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>App</th><th>What it does</th><th>Daily</th><th>Group</th><th>In person</th><th>Traction</th></tr></thead>
+    <tbody>
+      <tr><td><b>Candle</b> (YC F24)</td><td>One shared moment a day for couples: prompts, quizzes, photo challenges. Locked to two people.</td><td class="y">yes</td><td class="n">couples only</td><td class="n">no, stays on the phone</td><td class="num">4.76 from 11.8K ratings, $4.99/wk to $49.99/yr</td></tr>
+      <tr><td><b>BeReal</b>, <b>Locket</b></td><td>Daily photo with friends</td><td class="y">yes</td><td class="y">yes</td><td class="n">no</td><td class="num">1.16M and 591K ratings</td></tr>
+      <tr><td><b>playus</b></td><td>Daily 1-minute group mini game with a leaderboard. The closest mechanic.</td><td class="y">yes</td><td class="y">yes</td><td class="n">no</td><td class="num">4.86 from 1.8K ratings</td></tr>
+      <tr><td><b>Partiful</b></td><td>Event invites and RSVPs</td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td><td class="num">4.95 from 286K ratings</td></tr>
+      <tr><td><b>Timeleft</b>, <b>222</b>, <b>Bumble BFF</b></td><td>Meet strangers at dinners and events</td><td class="n">no</td><td class="n">strangers</td><td class="y">yes</td><td class="num">9K, 7.7K, 9K ratings</td></tr>
+      <tr><td><b>Rodeo</b> (ex-Hinge COO and CPO)</td><td>Turns posts and screenshots into plans with friends</td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td><td class="num">~$8.5M seed, 163 ratings, no revenue</td></tr>
+      <tr><td><b>Howbout</b></td><td>Shared calendars between friends</td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td><td class="num">4.82 from 51.7K ratings, 268 of last 500 reviews low-star</td></tr>
+      <tr><td>Planlark, buggg, Sha, TimeTo, Campfire, Bout2, Spontaneous, Slap, Tryb</td><td>Plan-makers. Planlark already has "needs N people to happen". buggg has a live "I'm free" toggle.</td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td><td class="num">3 to 34 ratings each</td></tr>
+      <tr><td>QuestDay, Questr, Twistday, Tiny Adventures, Leap, Quest Buddy and 10+ more</td><td>Daily quest from a fixed list, almost all solo</td><td class="y">yes</td><td class="n">weak</td><td class="y">yes, generic</td><td class="num">33 ratings combined</td></tr>
+      <tr><td><b>thirdspace</b>, <b>Hang</b></td><td>IRL side quests with nearby friends; group hangouts</td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td><td class="num">both delisted</td></tr>
+      <tr class="us"><td><b>Frolic</b></td><td>A live daily quest that unlocks when 2+ friends commit, built for who's free right now</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td><td class="num">Nov 15</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<section>
+  <span class="eyebrow">4,441 competitor reviews</span>
+  <h2>Why these apps lose people, and what users ask for</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>What kills retention</th><th>Evidence</th><th>Our answer</th></tr></thead>
+    <tbody>
+      <tr><td><b>Charging for the core loop</b></td><td>Top low-star driver: Timeleft 138 reviews, Howbout 92, 222 78, Candle 40. Charging both partners, paying to restore a streak, billing after cancel.</td><td>Core loop and streaks free forever. Charge per group for extras. Businesses pay for quests.</td></tr>
+      <tr><td><b>Daily content goes stale</b></td><td>"Locked to the same few every single day" (Candle). "By the 15th it was boring" (222). "Repetition of the games gets boring" (playus).</td><td>Quests generated from who's free, where and budget, so no two days match.</td></tr>
+      <tr><td><b>Empty network on day one</b></td><td>Bumble BFF: "0-3 profiles per day". Howbout: 32 reviews about "can't unlock the app until one friend joins".</td><td>Friends you already have. Guests join from a link with no install.</td></tr>
+      <tr><td><b>Flakes and no-shows</b></td><td>Timeleft: "10 minutes before meeting, most people drop."</td><td>Quest only unlocks when 2+ commit, with a short live timer.</td></tr>
+      <tr><td><b>Only drinking dinners</b></td><td>"Nothing but meet ups for a meal with alcohol" (222). "Hiking and cycling during the day" (Timeleft).</td><td>Cheap, daytime, outdoor by default.</td></tr>
+      <tr><td><b>Ads inside a close-friends app</b></td><td>BeReal: 32 ad complaints, "one of the last in my friend group to keep using it."</td><td>No feed ads. The sponsor is the quest itself.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="quotes">
+    <blockquote><q>Wanted to do this with multiple friends.</q><small>Candle review, asking for group mode</small></blockquote>
+    <blockquote><q>Seeing what your friends are doing makes it easier to ask them if they want to hang out.</q><small>Locket review</small></blockquote>
+    <blockquote><q>Now I don't have to be the designated planner in my friend group!</q><small>Spontaneous review</small></blockquote>
+  </div>
+  <p>People already pay in this space: Candle from $4.99 a week, Timeleft X up to $62.99, Kndrd at about $9 a month ("worth it"), and side-quest packs at $9.99 to $14.99. Users also ask to print their BeReal memories, which makes scrapbook prints a natural paid extra.</p>
+</section>
+<section id="full-report">
+  <span class="eyebrow">Full competitor report</span>
+  <h2>Every app, every theme, with review quotes</h2>
+  <p>4,441 public App Store reviews across 32 apps, pulled Nov 13, 2026. Tap an app to open its findings.</p>
+<p>Prepared 2026-11-13 for the YC Consumer Mobile Hack (Nov 15).</p>
+<p>The idea under test: a daily side quest for friend groups. Friends tap "I'm down" in real time, a quest unlocks once 2+ commit, quests are generated for who is free, distance and budget, proof photos build a shared group scrapbook, and local businesses sponsor quests. College students are the wedge, and couples and any friend group follow.</p>
+<div class="rsec"><h3>Method</h3>
+<ul><li>Source: Apple's public customer review RSS (US storefront, most recent, pages 1 to 10, up to 500 reviews per app). Ratings, genre and descriptions from the iTunes lookup API. In-app purchase price lists scraped from the public apps.apple.com page. Public endpoints only, no logins.</li><li>Volume: 32 App Store apps, 4,441 reviews. BeReal, Locket, Partiful, Howbout, Timeleft, Bumble BFF and 222 have 250 to 500 reviews each, plus Candle (342) and Kndrd (251). The new side-quest and plan apps have 0 to 52 each.</li><li>Theme counts come from keyword regexes in <code>analyze.py</code> (broad themes) and <code>deep_themes.py</code> (specific failure modes). They show direction and relative size, not exact totals. Every review was read for the small apps, and every 1 to 3 star review plus a sample of 4 to 5 star reviews for the large apps.</li><li>Recency caveat: "most recent" feeds reflect what is happening now. Howbout's last 500 reviews are dominated by backlash to one update that put color coding behind a paywall. BeReal's skew young.</li><li>Tiny-app caveat: many brand-new apps (Tryb, Spontaneous, TimeTo, Leap) have only 5-star reviews that read like launch-week reviews from friends. Treat them as positioning evidence, not proof of retention.</li></ul>
+<p>Files: <code>&lt;app&gt;.json</code> raw reviews and metadata per app; <code>analysis.json</code> broad theme counts and quotes; <code>deep_themes.json</code> failure-mode counts and quotes; scripts <code>fetch_reviews.py</code>, <code>fetch_iap.py</code>, <code>analyze.py</code>, <code>deep_themes.py</code>, <code>dump.py</code>.</p>
+</div>
+<div class="rsec"><h3>Competitor table</h3>
+<div class="tbl"><table class="wide"><thead><tr><th>App</th><th>App Store ID</th><th>Rating</th><th>Ratings</th><th>What it does</th><th>Monetization (store page)</th><th>Reviews pulled</th></tr></thead><tbody><tr><td><b>Candle</b> (sponsor)</td><td>6743355635</td><td>4.76</td><td>11,791</td><td>Couples daily ritual: questions, BeReal-style photo prompts, thumb kiss, mini games, local date ideas, streaks</td><td>Premium $4.99/wk, $12.99/mo, $39.99 to $49.99/yr; Streak Reignite $2.99; Sparks packs $0.99 to $4.99</td><td>342</td></tr><tr><td>BeReal</td><td>1459645446</td><td>4.77</td><td>1,163,119</td><td>Daily random 2-minute dual-camera photo for friends</td><td>Ads (no IAP listed)</td><td>500</td></tr><tr><td>Locket Widget</td><td>1600525061</td><td>4.76</td><td>591,244</td><td>Friend photos on the home-screen widget</td><td>Locket Gold $1.99 to $4.99/mo, $16 to $36/yr; 20-friend cap on free</td><td>500</td></tr><tr><td>Partiful</td><td>1662982304</td><td>4.95</td><td>285,931</td><td>Event invite pages, RSVPs, text blasts, discovery, ticketing</td><td>Partiful Plus $4.99, premium themes $4.95, "Peek" $1.99</td><td>500</td></tr><tr><td>Howbout</td><td>1477248221</td><td>4.82</td><td>51,752</td><td>Shared calendar for friends, couples, family</td><td>Howbout+ $4.99 to $5.99/mo, $39.99/yr</td><td>500</td></tr><tr><td>Timeleft</td><td>6466442949</td><td>4.62</td><td>9,057</td><td>Matches strangers into dinners, coffees and walks</td><td>Timeleft X $19.99 to $62.99 plus per-event fees</td><td>500</td></tr><tr><td>Bumble BFF</td><td>1478573199</td><td>4.21</td><td>8,985</td><td>Swipe-style friend matching plus groups</td><td>Subscription</td><td>500</td></tr><tr><td>222</td><td>6450612690</td><td>4.68</td><td>7,724</td><td>Curated group experiences with strangers, venue revealed late</td><td>~$22 membership, event cost, $22 bail fee (per reviews)</td><td>500</td></tr><tr><td>Kndrd</td><td>6498315234</td><td>4.75</td><td>3,356</td><td>Women-only IRL hangouts posted by members, vetted waitlist</td><td>~$9/mo (per reviews)</td><td>251</td></tr><tr><td>playus</td><td>6754755269</td><td>4.86</td><td>1,753</td><td>Daily 1-minute mini game, group leaderboard, seasons</td><td>Pro $14.99/yr, ad-free $1.99, coin packs</td><td>40</td></tr><tr><td>Rodeo (ex-Hinge founders)</td><td>6753013160</td><td>4.48</td><td>163</td><td>Save posts, screenshots and links; AI extracts plans, map, shared lists</td><td>Free, waitlist</td><td>52</td></tr><tr><td>TimeTo</td><td>6480720009</td><td>4.82</td><td>34</td><td>Plans from posters and links, time voting, web RSVP</td><td>Free</td><td>9</td></tr><tr><td>Slap</td><td>1518405571</td><td>4.35</td><td>23</td><td>Video invites and RSVPs on a map</td><td>Free</td><td>3</td></tr><tr><td>buggg</td><td>6758928415</td><td>4.67</td><td>21</td><td>Real-time "I'm free" toggle for close friends, tap to ping</td><td>Free</td><td>12</td></tr><tr><td>Sidequest: Nearby Activities</td><td>6759964477</td><td>4.68</td><td>19</td><td>Discover things nearby; group "rooms"</td><td>Pro $8.99 or $49.99/yr; rooms $4.99 to $99.99 by size</td><td>5</td></tr><tr><td>Spontaneous: are you in?</td><td>6477750501</td><td>4.78</td><td>18</td><td>Daily invites from 400+ curated LA experiences at small businesses</td><td>Free</td><td>12</td></tr><tr><td>Leap</td><td>6764062329</td><td>5.0</td><td>17</td><td>Daily comfort-zone challenge, post video, leaderboard</td><td>Free</td><td>6</td></tr><tr><td>Tryb</td><td>1215090744</td><td>5.0</td><td>16</td><td>Group events with per-event chat (last update Feb 2024)</td><td>Free</td><td>10</td></tr><tr><td>Campfire RSVP</td><td>6755449220</td><td>4.92</td><td>12</td><td>Link RSVP and time voting</td><td>Premium $1.99, $14.99/yr</td><td>4</td></tr><tr><td>SideQuest: Tiny Adventures</td><td>6781441096</td><td>5.0</td><td>9</td><td>Hand-written quest packs (city, campus editions)</td><td>Packs $9.99 to $14.99, annual $24.99 to $34.99</td><td>2</td></tr><tr><td>Bout2</td><td>6764500500</td><td>5.0</td><td>5</td><td>Friends-only plan invites with clear RSVPs</td><td>Free</td><td>1</td></tr><tr><td>Planlark</td><td>6760189622</td><td>5.0</td><td>3</td><td>Plans with deadlines and <b>minimum attendee thresholds</b>; auto-expire</td><td>Premium $2.99/mo, $19.99/yr</td><td>0</td></tr><tr><td>Sha</td><td>6772775845</td><td>5.0</td><td>3</td><td>Pitch idea, vote, overlay availability, AI chat summaries</td><td>Pro $1.99/wk, $4.99/mo, $39.99/yr</td><td>1</td></tr><tr><td>Questr</td><td>6761934542</td><td>5.0</td><td>2</td><td>Solo daily quests to feed a virtual cow</td><td>Plus $3.99 to $6.99/mo; coins</td><td>2</td></tr><tr><td>QuestDay</td><td>6761288236 / Play com.mgvlabs.questday</td><td>5.0</td><td>1</td><td>Daily solo quest, anonymous "Tavern", private guilds with shared streak</td><td>Free</td><td>1</td></tr><tr><td>Twistday</td><td>6831937044</td><td>5.0</td><td>1</td><td>Gumball-machine daily quest, 571 quests (launched Nov 8, 2026)</td><td>Free</td><td>0</td></tr><tr><td>Find SideQuest</td><td>6760979934</td><td>1.0</td><td>1</td><td>Map of nearby quests, points, photo and location proof</td><td>Free</td><td>0</td></tr><tr><td>Sidequest - Social Adventures</td><td>6761319024</td><td>none</td><td>0</td><td>Find people nearby for small activities</td><td>Free</td><td>0</td></tr><tr><td>Side-Quest Daily</td><td>6794406741 / Play com.dailysidequest.daily_side_quest</td><td>none</td><td>0</td><td>Same quest for everyone, 24 hours, photo proof</td><td>Free</td><td>0</td></tr><tr><td>Quest Buddy</td><td>6761348596</td><td>none</td><td>0</td><td>AI quests by mood and location, XP</td><td>$9.99/mo, $19.99/yr</td><td>0</td></tr><tr><td>thirdspace</td><td>6736379147</td><td>delisted</td><td>n/a</td><td>Was: start a side quest, see which friends are free, location hidden until accept</td><td>n/a</td><td>0</td></tr><tr><td>Hang</td><td>1483479748</td><td>delisted</td><td>n/a</td><td>Was: "hangs" as a better group chat</td><td>n/a</td><td>0</td></tr><tr><td>Bobber</td><td>not on App Store</td><td>n/a</td><td>n/a</td><td>Expiring group plan invites in a 48-hour window</td><td>n/a</td><td>0</td></tr></tbody></table></div>
+<p>Close apps found but not mined (under 25 ratings each): Hype, Errant, Kuji, Venture, SideQwest, Sidequests HQ, Tivy, wimzi, Swazz, Rally, NoPlan, Hive, I'm There, Planz, Cobble, Pull Up, STTS, Melt.</p>
+<p>Market read: daily-ritual apps (BeReal, Locket, Candle) have scale and retention; plan apps (Partiful, Howbout) win on utility; side quests have at least 15 entrants in 2026 and none above 20 ratings. Two of the closest, thirdspace and Hang, are already gone from the store.</p>
+</div>
+<div class="rsec"><h3>Per-app findings</h3>
+<details><summary>Candle (sponsor)</summary><div class="dbody">
+<p>4.76 from 11,791. 85 of 342 recent reviews (25%) are 1 to 2 stars.</p>
+<ul><li>Loved: closeness and long distance (105 mentions), streaks and daily habit (70). "my bf and i have been doing long distance for 13 months and we use this app every single day." The photo journal pays off later. Fast human support.</li><li>Quit: paywall and billing (97 pay mentions, 40 low-star; 9 charged after cancel or trial; 4 both partners charged). "$12.99 PER MONTH is ridiculous." "Pay to restore streak?????"</li><li>Quit: content repeats. "after running out of free questions you are locked to the same few every single day."</li><li>Quit: bugs that kill streaks (24). "My boyfriend is deployed and we had a good streak going and now we lost everything."</li><li>Quit: AI content backlash. "I do have an inkling that the devs possibly used AI to create these questions."</li><li>Locked to two people: "Wanted to do this with multiple friends."</li><li>Requests: custom categories, video, Apple Watch, widget, languages, group mode.</li><li>Implication: Candle proves people pay for a daily shared ritual and leaves groups and IRL on the table. Its local date ideas are in beta, and one review says "the app won't generate dates in a new city."</li></ul>
+</div></details>
+<details><summary>BeReal</summary><div class="dbody">
+<p>4.77 from 1.16M. 80 of 500 recent reviews are low-star.</p>
+<ul><li>Loved: authenticity, memories, streaks (one user at 843 days).</li><li>Quit: ads (32 reviews, 18 low-star). "I can see why I'm one of the last in my friend group to keep using it." Safety and scams (24). Streak notification spam. "all my friends quit."</li><li>Requests: a longer posting window; printed memories ("partner with ChatBooks").</li></ul>
+</div></details>
+<details><summary>Locket Widget</summary><div class="dbody">
+<p>4.76 from 591K. Only 26 of 500 recent reviews are low-star, the healthiest large app.</p>
+<ul><li>Loved: small contacts-only circle, photos on the home screen. Snapchat comes up 64 times as the app it replaces.</li><li>Quit: Gold paywall, 20-friend cap, forced 5-contact invite at signup, lag, lost streaks ("Ioast my 2,794 day streak").</li><li>Key quote: "seeing what your friends are doing makes it easier to ask them if they want to hang out."</li></ul>
+</div></details>
+<details><summary>Partiful</summary><div class="dbody">
+<p>4.95 from 286K.</p>
+<ul><li>Loved: fast, beautiful invites; replaced Facebook events.</li><li>Quit (50 low-star): forced app download and phone number, SMS codes that never arrive, crashes during SF Tech Week, missed reminders. Luma is named as faster.</li><li>Implication: guests must join from a link without installing.</li></ul>
+</div></details>
+<details><summary>Howbout</summary><div class="dbody">
+<p>4.82 from 51.7K. 268 of 500 recent reviews are low-star.</p>
+<ul><li>Loved: seeing friends' free time; college students share class schedules.</li><li>Quit: features moved behind a paywall (122 mentions, 92 low-star). Invite wall (32): "I can't unlock the app until one friend joins. Not good immediately deleting."</li></ul>
+</div></details>
+<details><summary>Timeleft</summary><div class="dbody">
+<p>4.62 from 9K. 262 of 500 recent reviews are low-star.</p>
+<ul><li>Loved: 6 to 8 person tables, new cities.</li><li>Quit: subscription and fees (163 mentions, 138 low-star; 35 charged after cancel). No-shows (12): "About 10 minutes before meeting, most people drop." Not in my city (12). Mostly weekday dinners: "I'm more interested in hiking and cycling during the day."</li></ul>
+</div></details>
+<details><summary>Bumble BFF</summary><div class="dbody">
+<p>4.21 from 9K. 417 of 500 recent reviews are 1 to 2 stars.</p>
+<ul><li>Quit: signup bugs, dead feed ("only shows 0-3 profiles per day"), scammers. Stranger matching dies when density is thin.</li></ul>
+</div></details>
+<h4>222</h4>
+<p>4.68 from 7.7K. 136 of 500 low-star.</p>
+<ul><li>Loved: curated, spontaneous nights.</li><li>Quit: rejected or waitlisted (35), stacked fees, forced contact invites, mostly drinking dinners, novelty fades ("by the 15th it was boring").</li></ul>
+<details><summary>Kndrd</summary><div class="dbody">
+<p>4.75 from 3.4K. Members post hangouts and others join; "$9/month is worth it." Indefinite waitlist.</p>
+</div></details>
+<details><summary>playus (closest mechanic: daily group challenge)</summary><div class="dbody">
+<p>4.86 from 1,753. Loved: group leaderboard, chat, works for a couple. Quit: repetition. Requests: unlimited groups; one user asked for in-app purchases.</p>
+</div></details>
+<details><summary>Rodeo</summary><div class="dbody">
+<p>4.48 from 163. Loved: turns the Instagram save graveyard into plans. Quit: AI extraction errors ("nyc restaurants being placed in Europe"), waitlist, no reminders.</p>
+</div></details>
+<details><summary>Small plan-makers</summary><div class="dbody">
+<ul><li>buggg is closest to live "I'm down": "That's not useful as I'm mostly booked in advance."</li><li>Spontaneous: "now I don't have to be the designated planner." No update since May 2025.</li><li>Planlark ships minimum-attendee thresholds, with no quests, photos or reviews.</li><li>Bout2: "Easy to share events with people even if they don't have the app."</li></ul>
+</div></details>
+<details><summary>Side-quest apps</summary><div class="dbody">
+<p>33 ratings and 12 reviews combined. Almost all are solo-first. QuestDay alone has private guilds with a shared streak. Tiny Adventures sells $9.99 packs and campus editions. None combines real-time friend commitment, generated logistics and a group scrapbook.</p>
+</div></details>
+</div>
+<div class="rsec"><h3>Cross-app synthesis</h3>
+<h4>1. Why these apps fail to retain</h4>
+<ol><li>Monetizing the core loop or taking back free features: top low-star driver at Candle (40), Howbout (92), Timeleft (138), 222 (78). Charging both partners, paywalled streak restores, billing after cancel.</li><li>Content goes stale: Candle, playus, 222.</li><li>Cold start and density: invite walls (Howbout, Locket, 222) and thin stranger supply (Bumble BFF, Timeleft, waitlists).</li><li>Flakes and no-shows with no accountability.</li><li>Bugs that break streaks or signup.</li><li>Ads and guilt notifications inside an intimate product.</li><li>AI that feels fake.</li></ol>
+<h4>2. Unmet needs users ask for</h4>
+<ul><li>Group mode for the daily ritual (Candle, playus).</li><li>A low-effort way to see who is free now, layered on scheduled plans.</li><li>Someone else does the planning.</li><li>Variety beyond drinking dinners: daytime, outdoor, cheap.</li><li>Join without downloading or a phone number.</li><li>Fresh, human-feeling content.</li><li>Keep and print memories.</li><li>Local discovery that is actually local.</li></ul>
+<h4>3. How our app should differ and win</h4>
+<ol><li>Friends you already have, never strangers. Four roommates are a complete network on day one.</li><li>The 2+ "I'm down" threshold with a short live timer is the anti-flake mechanic.</li><li>Quests generated from real context, human-reviewed, rotating formats, seeded by hand-written packs and sponsored spots.</li><li>Cheap and daytime by default.</li><li>The scrapbook is the retention hook and the pay point.</li><li>Adding friends is the first quest; guests RSVP from the web with no install; no contact-invite wall.</li><li>Never paywall the core loop or streaks; bill per group; one-tap cancel.</li><li>No feed ads; sponsorship lives inside the quest ("free churro if 3 of you show up at X by 4pm").</li><li>Couples on-ramp: a group of 2 is the IRL extension of a Candle ritual.</li></ol>
+<h4>4. Evidence people would pay</h4>
+<ul><li>Daily shared rituals: Candle ($4.99/wk to $49.99/yr, "10/10 worth paying for"), Locket Gold, Howbout+, playus Pro.</li><li>Getting out of the house: Timeleft X ($19.99 to $62.99), 222 stacked fees, Kndrd "$9/month is worth it".</li><li>Quest packs already sell at $9.99 to $34.99.</li><li>Memories: users ask to print BeReal memories.</li><li>Pushback is on price relative to use and charging both people. Per-group pricing plus business-sponsored quests avoids both.</li></ul>
+<details><summary>Watch-outs</summary><div class="dbody">
+<ul><li>Share approximate distance only until someone commits.</li><li>18+ and friends-only for the college wedge.</li><li>Ship stable over clever; lost streaks and SMS failures earn the angriest reviews.</li><li>The category is full of tiny clones and two are already delisted. Distribution and density in one campus matter more than features.</li></ul>
+</div></details>
+</div>
+
+</section>
+<section>
+  <span class="eyebrow">Risks</span>
+  <h2>What could kill it</h2>
+  <ul>
+    <li><b>Cold start.</b> A social app is empty alone. Frolic works with just two friends, and invites go out as a link in the group chat.</li>
+    <li><b>Spontaneity alone doesn't retain.</b> thirdspace stalled near 1K users and was delisted. The daily drop and the scrapbook give a reason to open Frolic even on days nobody's free.</li>
+    <li><b>People without a group.</b> 134 TikTok comments say some version of "I don't have friends." They need it most and are the hardest to serve. Matching them into groups comes later.</li>
+    <li><b>Willingness to pay is unproven for students.</b> Paid packs and sponsored local activities are the plan, and both still need testing.</li>
+  </ul>
+  <p class="lede" style="font-size:.95rem">Instagram detail pages paused after rate limiting, so Instagram covers 181 reels. Competitor traction figures are mostly self-reported.</p>
+</section>
+</main>
