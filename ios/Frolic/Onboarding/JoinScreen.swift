@@ -15,9 +15,6 @@ struct JoinScreen: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             OnboardingBottomBar { bar }
         }
-        .sheet(isPresented: $model.showsInviteEntry) {
-            InviteEntrySheet(model: model)
-        }
     }
 
     private var backdrop: some View {
@@ -39,11 +36,7 @@ struct JoinScreen: View {
             header
             switch model.invitePhase {
             case .ready:
-                if model.isSolo {
-                    soloCopy
-                } else {
-                    inviteCopy
-                }
+                welcomeCopy
             case .loading:
                 HStack(spacing: 10) {
                     OnboardingSpinner()
@@ -97,120 +90,39 @@ struct JoinScreen: View {
         .padding(.bottom, 28)
     }
 
-    private var inviteCopy: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(invitedByLine)
-                .frolicFont(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(FrolicColor.ink)
-                .accessibilityIdentifier("join.invitedBy")
-            Text(model.preview?.groupName ?? "Your crew")
+    private var welcomeCopy: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Be the friend who says yes.")
                 .font(.system(size: 46, weight: .heavy, design: .rounded))
                 .tracking(-1)
                 .foregroundStyle(FrolicColor.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("join.title")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Every afternoon, one plan for whoever's free.")
+            Text("Your crew, outside, more often.")
                 .frolicFont(.body)
                 .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 12)
                 .accessibilityIdentifier("join.blurb")
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 22)
-        .padding(.top, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        
-    }
-
-    private var soloCopy: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("No invite? Start here")
-                .frolicFont(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(FrolicColor.ink)
-                .accessibilityIdentifier("join.invitedBy")
-            Text("Just you for now")
-                .font(.system(size: 46, weight: .heavy, design: .rounded))
-                .tracking(-1)
-                .foregroundStyle(FrolicColor.ink)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("join.title")
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Every afternoon, one plan for whoever's free.")
-                .frolicFont(.body)
-                .foregroundStyle(FrolicColor.secondaryText)
-                .padding(.top, 12)
-                .accessibilityIdentifier("join.blurb")
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 22)
-        .padding(.top, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        
-    }
-
-    private var invitedByLine: String {
-        "\(model.preview?.invitedBy ?? "A friend") invited you to"
     }
 
     @ViewBuilder
     private var bar: some View {
-        VStack(spacing: 4) {
-            if model.isSolo || model.invitePhase == .offline || model.invitePhase == .expired || model.invitePhase == .invalid {
-                Button("Start on your own") { model.startSolo() }
-                    .buttonStyle(.frolicPrimary)
-                    .accessibilityIdentifier("join.join")
-                Button("I have an invite link") { model.showsInviteEntry = true }
-                    .buttonStyle(.frolicText)
-                    .accessibilityIdentifier("join.solo")
-            } else if case .ready = model.invitePhase {
-                Button("Join \(model.preview?.groupName ?? "the crew")") { model.acceptInvite() }
-                    .buttonStyle(.frolicPrimary)
-                    .accessibilityIdentifier("join.join")
-                Button("No invite? Start on your own") { model.startSolo() }
-                    .buttonStyle(.frolicText)
-                    .accessibilityIdentifier("join.solo")
-            }
-        }
-    }
-
-}
-
-struct InviteEntrySheet: View {
-    @Bindable var model: OnboardingModel
-    @Environment(\.dismiss) private var dismiss
-    @State private var text = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Your invite link")
-                .frolicFont(.sheetTitle)
-                .foregroundStyle(FrolicColor.ink)
-                .accessibilityAddTraits(.isHeader)
-            Text("Paste the link a friend sent you.")
-                .frolicFont(.subheadline)
-                .foregroundStyle(FrolicColor.secondaryText)
-            TextField("frolic.app/j/", text: $text)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .frolicFont(.body)
-                .padding(.horizontal, 16)
-                .frame(height: 54)
-                .background(FrolicColor.paper, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(FrolicColor.line, lineWidth: 1))
-                .accessibilityIdentifier("invite.field")
-            Button("Use this link") {
-                model.submitInviteLink(text)
-                dismiss()
+        switch model.invitePhase {
+        case .ready:
+            Button(model.preview.map { "Join \($0.groupName)" } ?? "Get started") {
+                if model.preview == nil { model.startSolo() } else { model.acceptInvite() }
             }
             .buttonStyle(.frolicPrimary)
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Spacer(minLength: 0)
+            .accessibilityIdentifier("join.join")
+        case .offline, .expired, .invalid:
+            Button("Start on your own") { model.startSolo() }
+                .buttonStyle(.frolicPrimary)
+                .accessibilityIdentifier("join.join")
+        default:
+            EmptyView()
         }
-        .padding(20)
-        .presentationDetents([.height(300)])
-        .presentationBackground(FrolicColor.cream)
     }
 }
