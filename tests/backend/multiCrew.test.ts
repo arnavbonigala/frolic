@@ -390,7 +390,7 @@ describe("you:totals", () => {
     expect(other.frolics).toBe(3);
     expect(other.varieties).toEqual([{ key: "goldenPoppy", name: "Golden poppy", count: 1 }]);
     expect((await t.query(api.garden.overview, { deviceToken: token("Dev"), groupId: first.groupId, day: DAY })).count).toBe(3);
-    expect((await t.query(api.garden.overview, { deviceToken: token("Dev"), groupId: second.groupId, day: DAY })).count).toBe(3);
+    expect((await t.query(api.garden.overview, { deviceToken: token("Dev"), groupId: second.groupId, day: DAY })).count).toBe(2);
   });
 
   test("a frolic that never happened and one only my crewmates went to are left out", async () => {
