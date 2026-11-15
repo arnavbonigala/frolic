@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { HOUR, NOON, token } from "./setup.helpers";
 import { freeCrew, imFree, later, settle } from "./imFree.helpers";
+import { PLACE_BY_SLUG } from "../../convex/places/data";
+import { freeEarliestStart } from "../../convex/plans/engine";
+import { tripTo } from "../../convex/plans/travel";
 
 const MIN = 60 * 1000;
 
@@ -42,12 +45,12 @@ describe("I'm free", () => {
     expect(row?.origin).toBe("free");
     expect(row?.startedBy).toBe(c.ids.Maya);
     expect(row?.planId).toBeDefined();
-    expect(row!.window.end - row!.window.start).toBe(2 * HOUR);
-    expect(row!.window.start - NOON).toBeLessThan(MIN);
-    expect(row!.deadline).toBeLessThanOrEqual(row!.window.start + 30 * MIN);
+    expect(Math.abs(row!.window.end - row!._creationTime - 2 * HOUR)).toBeLessThan(MIN);
+    expect(row!.deadline).toBeLessThanOrEqual(row!._creationTime + 30 * MIN);
     const plan = await c.t.run(async (ctx) => await ctx.db.get("plans", row!.planId!));
     expect(plan?.kind).toBe("free");
-    expect(plan!.startsAt).toBeGreaterThanOrEqual(NOON);
+    expect(row!.window.start).toBe(plan!.startsAt);
+    expect(plan!.startsAt).toBeGreaterThanOrEqual(NOON + 30 * MIN);
     expect(plan!.startsAt + plan!.durationMinutes * MIN).toBeLessThanOrEqual(row!.window.end);
     expect(row!.durationMinutes).toBe(plan!.durationMinutes);
 
@@ -122,7 +125,7 @@ describe("I'm free", () => {
     const s = await imFree(c, "Maya", 240);
     await settle(c.t);
     const row = await c.t.run(async (ctx) => await ctx.db.get("frolics", s.frolicId));
-    expect(row!.deadline).toBeLessThanOrEqual(NOON + 30 * MIN);
+    expect(row!.deadline).toBeLessThanOrEqual(row!._creationTime + 30 * MIN);
     await later(c.t, row!.deadline - Date.now() - 1000);
     expect((await c.t.query(api.frolics.today, { deviceToken: token("Dev"), groupId: c.groupId })).phase).toBe("open");
     await later(c.t, 2000);
@@ -224,5 +227,67 @@ describe("I'm free", () => {
     expect(taps.map((x) => [x.userId, x.kind, x.source])).toEqual([[c.ids.Dev, "down", "imessage"]]);
     expect(await c.t.mutation(internal.frolics.imFreeAs, { userId: c.ids.Maya, groupId: c.groupId, forMinutes: 90 })).toEqual({ error: "already_open" });
     expect((await errorOf(c.t.mutation(internal.frolics.imFreeAs, { userId: c.ids.Maya, groupId: c.groupId, forMinutes: 30 })))?.code).toBe("BAD_MINUTES");
+  });
+
+  async function startedPlan(nowMs: number, forMinutes: number) {
+    vi.setSystemTime(nowMs);
+    const c = await freeCrew(["Maya", "Dev", "Priya"]);
+    const s = await imFree(c, "Maya", forMinutes);
+    await settle(c.t);
+    const row = (await c.t.run(async (ctx) => await ctx.db.get("frolics", s.frolicId)))!;
+    expect(row.status).toBe("open");
+    const plan = (await c.t.run(async (ctx) => await ctx.db.get("plans", row.planId!)))!;
+    const place = (await c.t.run(async (ctx) => await ctx.db.get("places", plan.placeId)))!;
+    const travel = tripTo(null, PLACE_BY_SLUG.get(place.slug)!).minutes;
+    return { c, row, plan, travel, startedAt: row._creationTime };
+  }
+
+  for (const offset of [0, 7, 52, 3 * 60 + 13]) {
+    test("a plan started " + offset + " minutes after noon leaves time to answer and travel", async () => {
+      const { c, row, plan, travel, startedAt } = await startedPlan(NOON + offset * MIN, 120);
+      expect(plan.startsAt % (15 * MIN)).toBe(0);
+      expect(plan.startsAt).toBeGreaterThanOrEqual(startedAt + 30 * MIN);
+      expect(plan.startsAt).toBeGreaterThanOrEqual(startedAt + (travel + 10) * MIN);
+      expect(plan.startsAt).toBeGreaterThanOrEqual(freeEarliestStart(startedAt, travel));
+      expect(plan.startsAt + plan.durationMinutes * MIN).toBeLessThanOrEqual(startedAt + 120 * MIN);
+      expect(row.deadline).toBeGreaterThan(startedAt);
+      expect(row.deadline).toBeLessThanOrEqual(startedAt + 30 * MIN);
+      expect(row.deadline).toBeLessThanOrEqual(plan.startsAt - travel * MIN);
+      await c.t.mutation(api.taps.tap, { deviceToken: token("Dev"), frolicId: row._id, kind: "down" });
+      await later(c.t, 2500);
+      const dev = await c.t.query(api.frolics.today, { deviceToken: token("Dev"), groupId: c.groupId });
+      expect(dev.phase).toBe("on");
+      expect(dev.reveal?.startsAt).toBe(plan.startsAt);
+    });
+  }
+
+  test("about an hour free picks something short and close enough to fit", async () => {
+    const { row, plan, travel, startedAt } = await startedPlan(NOON - 1000, 61);
+    expect(plan.startsAt).toBe(NOON + 30 * MIN);
+    expect(plan.durationMinutes).toBeLessThanOrEqual(30);
+    expect(travel).toBeLessThanOrEqual(20);
+    expect(plan.startsAt + plan.durationMinutes * MIN).toBeLessThanOrEqual(startedAt + 61 * MIN);
+    expect(Math.abs(row.window.end - startedAt - 61 * MIN)).toBeLessThan(MIN);
+  });
+
+  test("late in the day with nothing that fits, it still starts at the earliest valid time", async () => {
+    const { c, row, plan, travel, startedAt } = await startedPlan(NOON + 9 * HOUR + 50 * MIN, 60);
+    expect(plan.startsAt).toBe(freeEarliestStart(startedAt, travel));
+    expect(row.window.start).toBe(plan.startsAt);
+    expect(row.window.end).toBeGreaterThanOrEqual(plan.startsAt + plan.durationMinutes * MIN);
+    expect(row.deadline).toBeLessThanOrEqual(plan.startsAt - travel * MIN);
+    await c.t.mutation(api.taps.tap, { deviceToken: token("Dev"), frolicId: row._id, kind: "down" });
+    await later(c.t, 2500);
+    const dev = await c.t.query(api.frolics.today, { deviceToken: token("Dev"), groupId: c.groupId });
+    expect(dev.phase).toBe("on");
+    expect(dev.reveal?.startsAt).toBe(plan.startsAt);
+  });
+
+  test("the plan line only mentions the sunset for sunset, view or golden-hour outdoor plans", async () => {
+    const { c, plan } = await startedPlan(NOON, 120);
+    const place = (await c.t.run(async (ctx) => await ctx.db.get("places", plan.placeId)))!;
+    const sunsety = place.tags.includes("sunsets") || place.tags.includes("views") || !place.indoor;
+    if (!sunsety) expect(plan.line).not.toMatch(/Sunset|Golden hour/);
+    expect(plan.line).not.toMatch(/[\u2014!]/);
   });
 });

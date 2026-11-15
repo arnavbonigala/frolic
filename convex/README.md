@@ -151,7 +151,7 @@ Pick the frolic with `frolicId` when you have one, else with `day`, else with th
 
 Args: `{ deviceToken, groupId, forMinutes }`. Returns `{ frolicId, started: boolean }`.
 
-"I'm free for the next few hours." `forMinutes` is a whole number from 60 to 240. When the crew already has an open started frolic, that one comes back with `started: false` and nothing is written. Otherwise it opens a frolic with `origin: "free"`, window `now` to `now + forMinutes`, and a deadline of 30 minutes or the window end, whichever is first; taps the caller `down` (no own window, so the tap looks like anyone else's); and starts the drop workflow with the caller's window. When the plan lands the deadline moves up to the leave time (10 minutes before the plan starts) if that is sooner, and the rest of the crew gets the notice in `frolics.today` and over Keiki. Matching, the reveal, fades and hop ins are the same as the daily drop. The daily drop skips a crew while a started frolic is open. Who started it is stored server side only and no query returns it. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `BAD_MINUTES`, `RateLimited`.
+"I'm free for the next few hours." `forMinutes` is a whole number from 60 to 240. When the crew already has an open started frolic, that one comes back with `started: false` and nothing is written. The same goes for a frolic that is already `on` and has not ended, so starting never hides a plan that is happening. Otherwise it opens a frolic with `origin: "free"`, window `now` to `now + forMinutes`, and a deadline of 30 minutes or the window end, whichever is first; taps the caller `down` (no own window, so the tap looks like anyone else's); and starts the drop workflow with the caller's window. When the plan lands the deadline moves up to the leave time (10 minutes before the plan starts) if that is sooner, and the rest of the crew gets the notice in `frolics.today` and over Keiki. Matching, the reveal, fades and hop ins are the same as the daily drop. The daily drop skips a crew while a started frolic is open. Who started it is stored server side only and no query returns it. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`, `BAD_MINUTES`, `RateLimited`.
 
 ### `frolics.hopIn`
 
@@ -240,7 +240,7 @@ Each field is set when present and `null` clears it. A field omitted keeps its s
 
 Args: `{ deviceToken, frolicId, method: "geofence" | "manual" }`. Returns the `checkins` id.
 
-Only for someone going to an `on` frolic, else `NOT_GOING`. Idempotent: a second call returns the first check-in's id and writes nothing. Check in before `snaps.start`.
+Only for someone going to an `on` frolic, else `NOT_GOING`. Someone who was going to a frolic that already ended gets `NOT_GOING` with the message `This one already wrapped`. Idempotent: a second call returns the first check-in's id and writes nothing. Check in before `snaps.start`.
 
 ## Etas
 
@@ -396,6 +396,6 @@ The e2e demo seed sets those four portraits and flower colours, so the app, the 
 
 **`snaps.forFrolic({ deviceToken, frolicId })`** returns `[{ userId, url, takenAt, mine }]` for the caller's latest snap window, and `[]` until the caller has added their own snap. That empty array is the mock's rule: you see everyone's shot once you add yours. `url` is null for a doc whose file is gone. Errors: `UNKNOWN_DEVICE`, `NOT_FOUND`, `NOT_A_MEMBER`.
 
-**`users.deleteAccount({ deviceToken })`** deletes the signed-in person and everything they left behind: their memberships, taps, availability, limits, attendees, hop-ins, ETAs, check-ins, snaps (with the photo files), shares, reveal log rows and the user row. It schedules the Supermemory namespace deletion and returns null. Errors: `UNKNOWN_DEVICE`, so a second call on the same device is refused.
+**`users.deleteAccount({ deviceToken })`** deletes the signed-in person and everything they left behind: their memberships, taps, availability, limits, attendees, hop-ins, ETAs, check-ins, snaps (with the photo files), reveal log rows and the user row. Money rows (shares and the fund ledger) are kept. First it leaves every live frolic the way a person would: an open tap is removed and the matcher re-runs, so a pending match that needed them is cancelled, and a going spot is sat out and refilled from the hop-in pool. Sitting out runs the usual bail path, so an early held deposit is released and an unpaid share is waived. It schedules the Supermemory namespace deletion and returns null. Errors: `UNKNOWN_DEVICE`, so a second call on the same device is refused.
 
 **`crew.setHold({ deviceToken, groupId, enabled })`** turns the per-crew deposit on or off for everyone in the crew. It is off by default and any member can set it. Returns null. Errors: `UNKNOWN_DEVICE`, `NOT_A_MEMBER`.

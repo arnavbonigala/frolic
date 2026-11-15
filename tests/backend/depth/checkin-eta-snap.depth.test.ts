@@ -35,7 +35,7 @@ describe("check in", () => {
     await flipDue(t, 3 * HOUR);
     await expect(
       t.mutation(api.checkins.checkInMe, { deviceToken: token("Maya"), frolicId: crew.frolicId, method: "manual" }),
-    ).rejects.toThrow(/people going/);
+    ).rejects.toThrow(/already wrapped/);
     expect(await t.run(async (ctx) => await ctx.db.query("checkins").collect())).toHaveLength(0);
   });
 

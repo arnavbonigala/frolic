@@ -9,6 +9,7 @@ import {
   copyOk,
   fallbackPlan,
   favoredUser,
+  freeEarliestStart,
   generatePlan,
   isOpenFor,
   rankCandidates,
@@ -385,5 +386,121 @@ describe("day bounds", () => {
     }
     const plan = generatePlan(input)!;
     expect(plan.startsAt).toBeGreaterThanOrEqual(dayStart);
+  });
+});
+
+describe("I'm free start time", () => {
+  const MIN = 60_000;
+  const SLOT = 15 * MIN;
+  const freeInput = (nowMs: number, minutes: number, over: Partial<DropInput> = {}) =>
+    drop({
+      kind: "free",
+      nowMs,
+      attendees: [person("maya", { window: { start: nowMs, end: nowMs + minutes * MIN } })],
+      ...over,
+    });
+
+  test("rounds the lead up to the next 15-minute mark", () => {
+    expect(freeEarliestStart(at(12, 0), 5)).toBe(at(12, 30));
+    expect(freeEarliestStart(at(12, 1), 5)).toBe(at(12, 45));
+    expect(freeEarliestStart(at(12, 0), 40)).toBe(at(13, 0));
+    expect(freeEarliestStart(at(12, 0), 20)).toBe(at(12, 30));
+    expect(freeEarliestStart(at(12, 0), 21)).toBe(at(12, 45));
+  });
+
+  for (const [hh, mm] of [[12, 0], [12, 7], [12, 52], [14, 59], [17, 40]]) {
+    test("every candidate at " + hh + ":" + String(mm).padStart(2, "0") + " starts late enough and fits the window", () => {
+      const nowMs = at(hh, mm);
+      const input = freeInput(nowMs, 120);
+      const ranked = rankCandidates(input);
+      expect(ranked.length).toBeGreaterThan(0);
+      for (const c of ranked) {
+        expect(c.startMs % SLOT).toBe(0);
+        expect(c.startMs).toBeGreaterThanOrEqual(nowMs + 30 * MIN);
+        expect(c.startMs).toBeGreaterThanOrEqual(nowMs + (c.maxTrip.minutes + 10) * MIN);
+        expect(c.startMs).toBeGreaterThanOrEqual(freeEarliestStart(nowMs, c.maxTrip.minutes));
+        expect(c.endMs).toBeLessThanOrEqual(nowMs + 120 * MIN);
+      }
+      const plan = generatePlan(input)!;
+      expect(plan.startsAt).toBeGreaterThanOrEqual(nowMs + 30 * MIN);
+      expect(validatePlan(plan, input)).toBe(true);
+    });
+  }
+
+  test("near the end of the window only short, close places fit", () => {
+    const nowMs = at(12, 0);
+    const ranked = rankCandidates(freeInput(nowMs, 60));
+    expect(ranked.length).toBeGreaterThan(0);
+    for (const c of ranked) {
+      expect(c.startMs).toBe(at(12, 30));
+      expect(c.place.durationMin).toBeLessThanOrEqual(30);
+      expect(c.maxTrip.minutes).toBeLessThanOrEqual(20);
+    }
+  });
+
+  test("when nothing fits it still starts at the earliest valid time", () => {
+    const nowMs = at(12, 0);
+    const ferry = PLACE_BY_SLUG.get("ferry-building")!;
+    const trip = tripTo(null, ferry).minutes;
+    const input = freeInput(nowMs, 60, { places: [ferry] });
+    const plan = generatePlan(input)!;
+    expect(plan.placeSlug).toBe("ferry-building");
+    expect(plan.startsAt).toBe(freeEarliestStart(nowMs, trip));
+    expect(validatePlan(plan, input)).toBe(true);
+  });
+
+  test("a daily drop keeps its old earliest start", () => {
+    const nowMs = at(15, 0);
+    const ranked = rankCandidates(drop({ nowMs, attendees: [person("maya"), person("dev")] }));
+    expect(ranked.some((c) => c.startMs === at(15, 0))).toBe(true);
+  });
+});
+
+describe("plan line relevance", () => {
+  const only = (slug: string, over: Partial<DropInput> = {}) =>
+    drop({ nowMs: at(9, 0), places: [PLACE_BY_SLUG.get(slug)!], ...over });
+  const window = (h1: number, m1: number, h2: number, m2: number) => ({ window: { start: at(h1, m1), end: at(h2, m2) } });
+
+  test("a games store near sunset gets its hours and walk, never the sunset", () => {
+    for (const kind of ["daily", "free"] as const) {
+      const nowMs = kind === "free" ? at(14, 30) : at(12, 0);
+      const plan = generatePlan(only("games-of-berkeley", { kind, nowMs, attendees: [person("maya", window(15, 0, 17, 0)), person("dev", window(15, 0, 17, 0))] }))!;
+      expect(plan.placeSlug).toBe("games-of-berkeley");
+      expect(plan.line).not.toMatch(/Sunset|Golden hour/);
+      expect(plan.line).toMatch(/^Open until \d+:\d\d\. \d+ min walk\.$/);
+      expect(plan.chips.join(" ")).not.toMatch(/Sunset/);
+      expect(copyOk(plan.line)).toBe(true);
+    }
+  });
+
+  test("a games store with weather leads with the weather, then its hours", () => {
+    const plan = generatePlan(only("games-of-berkeley", { weather: weather(false) }))!;
+    expect(plan.line).toMatch(/^.+ and 62\u00b0\. Open until \d+:\d\d\. \d+ min walk\.$/);
+  });
+
+  test("a sunset spot keeps the sunset or golden hour line", () => {
+    const plan = generatePlan(only("grizzly-peak-lookout"))!;
+    expect(plan.line).toMatch(/^(Sunset at|Golden hour starts at) \d+:\d\d\.$/);
+  });
+
+  test("a view spot at midday keeps the sunset line", () => {
+    const plan = generatePlan(only("inspiration-point", { attendees: [person("maya", window(11, 0, 13, 0)), person("dev", window(11, 0, 13, 0))] }))!;
+    expect(plan.line).toMatch(/^Sunset at \d+:\d\d\.$/);
+  });
+
+  test("an outdoor spot gets the sunset only when it overlaps golden hour", () => {
+    const late = generatePlan(only("lake-anza", { attendees: [person("maya", window(15, 30, 17, 0)), person("dev", window(15, 30, 17, 0))] }))!;
+    expect(late.line).toMatch(/^Sunset at \d+:\d\d\.$/);
+    const early = generatePlan(only("lake-anza", { attendees: [person("maya", window(11, 0, 12, 30)), person("dev", window(11, 0, 12, 30))] }))!;
+    expect(early.line).not.toMatch(/Sunset/);
+  });
+
+  test("a rain swap names the indoor place's hours", () => {
+    const rainy = weather(true);
+    const input = drop({ weather: rainy, attendees: [person("maya", { taste: ["sunsets", "views"] }), person("dev", { taste: ["sunsets"] })], places: [PLACE_BY_SLUG.get("grizzly-peak-lookout")!, PLACE_BY_SLUG.get("games-of-berkeley")!] });
+    const plan = generatePlan(input)!;
+    expect(plan.weatherSwap).toBe(true);
+    expect(plan.line).toMatch(/^Rain around \d+:\d\d, so it's indoors\. Open until /);
+    expect(plan.line).not.toMatch(/Sunset/);
   });
 });

@@ -22,6 +22,7 @@ import {
 } from "./lib";
 import { SNAP_WINDOW_MS } from "../snaps";
 import { keikiEnv } from "./env";
+import { PROMISE } from "../lib/copy";
 import { imFreeAs } from "./imFreeCall";
 import {
   addSnapAs,
@@ -510,7 +511,8 @@ export const joinCrew = internalMutation({
       crew: group?.name ?? null,
       name: firstName(cleanName),
       friends: uniqueFirstNames(members.filter((m) => m._id !== userId)),
-      say: "Welcome them in one line, then call get_today.",
+      welcome: PROMISE,
+      say: 'Open with "' + PROMISE + '", then call get_today.',
     };
   },
 });
