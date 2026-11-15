@@ -84,6 +84,19 @@ Run the rehearsal on the operator's terminal with both barriers released by hand
 
 For the demo itself, the person on stage releases \`t30\` with one key press, which is the moment the audience sees three phones do the same thing at once. Because every script prints its own arrival and release offsets, the timings from a rehearsal also show when the taps landed relative to each other.
 
+## Running it with Capy's tools
+
+The workflow above is the CLI path. The crew's default path needs no Revyl key, and it changes one thing: instead of three independent test runs released by the barrier, one Capy thread attaches all three phones and drives them in step itself.
+
+1. Claim all three slots in `handoffs/phones.md` before anything wakes. The crew cap is three awake phones, so a three-phone run occupies all of them and nobody else can run a walkthrough during it. Say so in the claim line so the Captain can schedule it.
+2. Attach three phones, `model: "iPhone 17 Pro Max"` (Revyl does not offer plain "iPhone 17 Pro"), then install the same `frolic-ios` build on each from `tools.mobile.build`.
+3. Deep link each phone to its seeded state: `tools.capy.phone` with `action: "open_url"` and that person's link.
+4. Drive each phone through its flow file with `tools.capy.computer` on its machine, reading the YAML block by block as `README.md` describes. The three taps that must land together are queued in one `execute` program against all three handles and awaited as one batch, so they commit inside a few milliseconds of each other rather than the seconds a person takes. That is the same simultaneity the barrier buys, bought with a batch instead of a server, and it is enough for the demo and for the race test.
+5. Read each phone's flip time off its own tree, note the wall clock from `now()` at the moment the "It's on." validation passes on each, and the difference between those two readings is the offset burned into the demo comparison.
+6. Evidence: one screenshot per phone per validation state into `renders/<your-code>/<flow>/`, plus three `tools.desktop.recording` videos if the machines are attached, then sleep all three and release all three claims.
+
+Two things the Capy path cannot do, and the CLI path can: `set_location` has no phone-tool equivalent, so the demo's Berkeley placement needs the CLI run or a debug route in the app that takes a location, and there is no Revyl report with a per-step timeline, so the offsets come from the wall clock readings rather than from a report's step timings. Write which path produced a given recording; do not mix offsets from the two.
+
 ## What each phone does
 
 **Maya (\`tp-maya\`).** Deep links to her seeded Today screen, sets \`37.8719,-122.2585\`, validates the free line and the plan card, arrives at \`t0\`. At \`t30\` she taps "Only with…", taps Dev, taps "I'm down if Dev". Asserts the status card reads "You're down, if Dev" and that nothing on screen shows another person down, no count, and no "It's on.". Then a \`while\` loop waits for the headline "It's on.", reads the clock off the status bar, stamps the server clock, and asserts "You, Dev" with both flowers. It waits 15 seconds and asserts the reveal happened exactly once. Then "I'm on my way".
@@ -126,6 +139,8 @@ Revyl Pro bills $0.075 per iOS device minute.
 | Race test (2 phones, about 3 min each) | about 6 | about $0.45 |
 | Full rehearsal pair | about 33 | about $2.50 |
 
+On Capy's path a cloud phone costs $5.40 an hour, about $0.09 a device minute, so the same pair is about $3. The crew cap of three awake phones means a three-phone run uses every slot; schedule it and release all three claims the moment it ends.
+
 Wall clock is about 10 minutes for the demo run and 4 for the race. Build time is separate and runs on the build runner. Rehearse twice, record the demo run, and keep the phones asleep between runs: \`tools.capy.phone\` with \`sleep\`, or \`revyl device stop --all\`.
 
 ## Backup recording plan
@@ -144,3 +159,4 @@ Never present an unrecorded run as recorded. If all three fail, the demo shows t
 - \`E2E_SECRET\` and the three \`/e2e/*\` routes on the deployment: seed, reset and the reveal log.
 - Push notification category with the I'm down, Only if and Not today actions, for the lock-screen flows.
 - The reveal log query the race test's assertion reads.
+- `set_location` for the Berkeley placement: available on the CLI path, unavailable through Capy's phone tools, so the Capy path needs a debug location route in the app.
