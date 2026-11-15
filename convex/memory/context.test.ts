@@ -33,11 +33,9 @@ describe("context", () => {
     expect(ctx.pastNights).toEqual([{ id: "m1", text: "Two friends went to Indian Rock (sunset).", placeId: "p1", date: "2026-10-12" }]);
   });
 
-  test("buildContext survives a Supermemory failure with empty nights", async () => {
+  test("buildContext lets a Supermemory failure through so the caller can fall back", async () => {
     const client = fake({ search: vi.fn().mockRejectedValue(new Error("down")) });
-    const ctx = await buildContext(client, "n", [{ tag: "sunset", liked: 1, skipped: 0 }]);
-    expect(ctx.pastNights).toEqual([]);
-    expect(ctx.likedTags).toEqual(["sunset"]);
+    await expect(buildContext(client, "n", [{ tag: "sunset", liked: 1, skipped: 0 }])).rejects.toThrow("down");
   });
 
   test("findWhyThis quotes a real memory that mentions the tag", async () => {

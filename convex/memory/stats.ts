@@ -5,10 +5,16 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
 const skippedBy = async (ctx: MutationCtx, groupId: Id<"groups">, day: string): Promise<Set<string>> => {
-  const events = await ctx.db.query("memoryEvents").withIndex("by_groupId_and_kind", (q) => q.eq("groupId", groupId).eq("kind", "skip")).order("desc").take(500);
-  const out = new Set<string>();
-  for (const e of events) if (e.payload?.day === day && e.userId) out.add(e.userId);
-  return out;
+  const latest = new Map<string, { at: number; skipped: boolean }>();
+  for (const kind of ["skip", "tap", "only_if"] as const) {
+    const events = await ctx.db.query("memoryEvents").withIndex("by_groupId_and_kind", (q) => q.eq("groupId", groupId).eq("kind", kind)).order("desc").take(500);
+    for (const e of events) {
+      if (e.payload?.day !== day || !e.userId) continue;
+      const seen = latest.get(e.userId);
+      if (!seen || e._creationTime >= seen.at) latest.set(e.userId, { at: e._creationTime, skipped: kind === "skip" });
+    }
+  }
+  return new Set([...latest].filter(([, v]) => v.skipped).map(([userId]) => userId));
 };
 
 const dayTags = async (ctx: MutationCtx, groupId: Id<"groups">, day: string): Promise<{ tags: string[]; revealed: boolean }> => {

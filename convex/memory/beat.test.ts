@@ -45,7 +45,7 @@ async function crew() {
 
 type Crew = Awaited<ReturnType<typeof crew>>;
 
-async function bobaDay(c: Crew, day: string, skippers: string[]) {
+async function bobaDay(c: Crew, day: string, skippers: string[], flippers: string[] = []) {
   const { t, groupId } = c;
   const frolicId = await t.run(async (ctx) => {
     const place = (await ctx.db.query("places").withIndex("by_slug", (q) => q.eq("slug", "plentea")).take(1))[0];
@@ -60,6 +60,8 @@ async function bobaDay(c: Crew, day: string, skippers: string[]) {
     });
   });
   for (const name of skippers) await t.mutation(api.taps.tap, { deviceToken: token(name), frolicId, kind: "notToday" });
+  if (flippers.length) vi.advanceTimersByTime(1000);
+  for (const name of flippers) await t.mutation(api.taps.tap, { deviceToken: token(name), frolicId, kind: "down" });
   await t.finishInProgressScheduledFunctions();
   await t.mutation(internal.memory.stats.closeDay, { groupId, day });
 }
@@ -127,6 +129,12 @@ describe("the live skip beat, through the real mutations", () => {
     const memory = await c.t.action(internal.plans.drop.memoryStep, { groupId: c.groupId, day: DAY });
     expect(memory.suppressed).toEqual([]);
     expect(memory.skipped).toEqual([]);
+  });
+
+  test("someone who passed and then said yes does not count as a pass", async () => {
+    const c = await crew();
+    await bobaDay(c, "2026-11-13", ["Maya", "Dev"], ["Dev"]);
+    expect(await c.t.run((ctx) => ctx.db.query("memoryTagStats").collect())).toEqual([]);
   });
 
   test("a skipped boba and coffee place counts the primary tag only", async () => {

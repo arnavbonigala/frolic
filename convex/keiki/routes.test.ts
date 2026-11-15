@@ -327,6 +327,7 @@ describe("get_member", () => {
       crew: "Sunset Crew",
       friends: ["Maya", "Dev", "Ana"],
       paused: false,
+      crewTaste: { loves: [], keepsPassingOn: [] },
     });
   });
 
