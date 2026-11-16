@@ -68,9 +68,8 @@ final class FrolicIdentity {
         for crew in incoming where !list.contains(where: { $0.id == crew.id }) {
             list.append(crew)
         }
-        if let pinnedGroup, !list.contains(where: { $0.id == pinnedGroup }) {
-            let known = crews.first { $0.id == pinnedGroup }
-            list.insert(known ?? FrolicCrew(id: pinnedGroup, name: "Your crew", color: ""), at: 0)
+        if let pinned = pinnedGroup, !list.isEmpty, !list.contains(where: { $0.id == pinned }) {
+            pinnedGroup = nil
         }
         if list != crews {
             crews = list
