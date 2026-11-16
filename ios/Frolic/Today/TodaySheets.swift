@@ -78,14 +78,13 @@ private struct TodayOnlyIfSheet: View {
                         Button {
                             store.togglePick(friend.userId)
                         } label: {
-                            HStack(spacing: 10) {
-                                TodayFlower(person: friend, radius: 26, stem: 0, swayDelay: 0)
+                            HStack(spacing: 8) {
+                                TodayFlower(person: friend, radius: 20, stem: 0, swayDelay: 0)
                                     .accessibilityHidden(true)
                                 Text(friend.name)
                                     .todayFont(14, .semibold, relativeTo: .subheadline)
                                     .foregroundStyle(FrolicColor.ink)
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
                                 Spacer(minLength: 0)
                                 Image(systemName: on ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 20, weight: .semibold))
