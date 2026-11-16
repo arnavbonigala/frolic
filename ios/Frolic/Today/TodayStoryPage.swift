@@ -99,9 +99,13 @@ struct StoryPrimaryButton: View {
     var title: String
     var systemImage: String
     var action: () -> Void
+    @State private var taps = 0
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            taps += 1
+            action()
+        } label: {
             Label(title, systemImage: systemImage)
                 .todayFont(18, .bold, rounded: true, relativeTo: .headline)
                 .foregroundStyle(.white)
@@ -110,6 +114,7 @@ struct StoryPrimaryButton: View {
         .buttonStyle(.plain)
         .glassEffect(.regular.tint(StoryColor.lantern).interactive(), in: .capsule)
         .shadow(color: StoryColor.lantern.opacity(0.4), radius: 16, y: 6)
+        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.7), trigger: taps)
     }
 }
 

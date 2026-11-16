@@ -11,6 +11,7 @@ struct ReadingScreen: View {
             OnboardingChipFlow(tags: model.tags, identifierPrefix: "reading")
                 .padding(.top, 16)
                 .animation(.spring(response: 0.4, dampingFraction: 0.6), value: model.tags)
+                .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.45), trigger: model.tags.count)
             FrolicGroup {
                 ForEach(Array(model.pickedPhotos.enumerated()), id: \.element.id) { index, photo in
                     row(photo, divider: index > 0)

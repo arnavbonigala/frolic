@@ -842,7 +842,13 @@ final class TodayStore {
         bloomed = true
         guard animated else { return }
         bloomID += 1
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Task { @MainActor in
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.6)
+            try? await Task.sleep(for: .milliseconds(110))
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.8)
+            try? await Task.sleep(for: .milliseconds(140))
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
     }
 
     static func person(_ member: CrewMember) -> TodayPerson {

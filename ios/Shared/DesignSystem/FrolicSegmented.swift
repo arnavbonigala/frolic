@@ -35,5 +35,6 @@ struct FrolicSegmented<Value: Hashable>: View {
         .background(FrolicColor.chip, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }

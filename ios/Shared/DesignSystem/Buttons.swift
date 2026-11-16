@@ -25,6 +25,7 @@ private struct FrolicButtonBody: View {
     var body: some View {
         label
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1)
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: kind == .text ? 0.35 : 0.6), trigger: configuration.isPressed) { _, pressed in pressed && isEnabled }
             .animation(.spring(response: 0.25, dampingFraction: 0.5), value: configuration.isPressed)
     }
 
