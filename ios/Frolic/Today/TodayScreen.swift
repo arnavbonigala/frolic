@@ -472,7 +472,7 @@ private struct TodayWaitingView: View {
                     .todayFont(17, .bold, rounded: true, relativeTo: .headline)
                     .foregroundStyle(StoryColor.ink)
                     .accessibilityIdentifier("today.status.down")
-                Text(TodayCopy.downBody(onlyIf, deadline: store.frolic?.deadline))
+                Text(TodayCopy.downBody(onlyIf, deadline: [store.frolic?.deadline, store.plan?.startsAt].compactMap { $0 }.min()))
                     .todayFont(15, relativeTo: .subheadline)
                     .foregroundStyle(StoryColor.muted)
                     .accessibilityIdentifier("today.status.downBody")
