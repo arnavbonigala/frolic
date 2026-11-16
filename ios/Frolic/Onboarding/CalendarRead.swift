@@ -118,7 +118,7 @@ enum CalendarRead {
     private static func describe(_ window: DateInterval, from: Date, close: Date, offset: Int) -> String {
         let startsNow = window.start.timeIntervalSince(from) < 300
         let endsAtClose = close.timeIntervalSince(window.end) < 60
-        if startsNow { return "Free now till " + hour(window.end) }
+        if startsNow { return (offset == 0 ? "Free now till " : "Free till ") + hour(window.end) }
         if endsAtClose { return "Free from " + hour(window.start) }
         return "Free " + hour(window.start) + " to " + hour(window.end)
     }
