@@ -27,13 +27,13 @@ function pick(user: Seeded): Seeded {
 const person = v.object({ userId: v.id("users"), deviceToken: v.string() });
 
 export const seed = internalMutation({
-  args: { run: v.string() },
+  args: { run: v.string(), keep: v.optional(v.record(v.string(), v.string())) },
   returns: v.object({
     groupId: v.id("groups"),
     peaceId: v.id("groups"),
     users: v.object({ arnav: person, dan: person, nhi: person, hannah: person, erick: person, meena: person }),
   }),
-  handler: async (ctx, { run }): Promise<{ groupId: Id<"groups">; peaceId: Id<"groups">; users: Record<"arnav" | "dan" | "nhi" | "hannah" | "erick" | "meena", Seeded> }> => {
+  handler: async (ctx, { run, keep }): Promise<{ groupId: Id<"groups">; peaceId: Id<"groups">; users: Record<"arnav" | "dan" | "nhi" | "hannah" | "erick" | "meena", Seeded> }> => {
     const base: { groupId: Id<"groups">; users: Record<"maya" | "dev" | "jordan" | "priya", Seeded> } = await ctx.runMutation(internal.e2e.admin.seed, { run, scenario: "demo" });
     const { groupId } = base;
     const pairs: Array<[string, { userId: Id<"users">; deviceToken: string }]> = [
@@ -74,17 +74,26 @@ export const seed = internalMutation({
     await addMember(ctx, peaceId, base.users.dev.userId, "invite");
     await addMember(ctx, peaceId, base.users.jordan.userId, "invite");
 
-    return {
-      groupId,
-      peaceId,
-      users: {
-        arnav: pick(base.users.maya),
-        dan: pick(base.users.dev),
-        nhi: pick(base.users.jordan),
-        hannah: pick(base.users.priya),
-        erick: extra.Erick,
-        meena: extra.Meena,
-      },
+    const users: Record<"arnav" | "dan" | "nhi" | "hannah" | "erick" | "meena", Seeded> = {
+      arnav: pick(base.users.maya),
+      dan: pick(base.users.dev),
+      nhi: pick(base.users.jordan),
+      hannah: pick(base.users.priya),
+      erick: extra.Erick,
+      meena: extra.Meena,
     };
+    for (const [key, user] of Object.entries(users) as Array<[keyof typeof users, Seeded]>) {
+      const token = keep?.[key];
+      if (!token || token.length < 32) continue;
+      const tokenHash = await hashToken(token);
+      const holders = await ctx.db.query("users").withIndex("by_tokenHash", (q) => q.eq("tokenHash", tokenHash)).take(10);
+      for (const holder of holders) {
+        if (holder._id !== user.userId) await ctx.db.patch(holder._id, { tokenHash: undefined });
+      }
+      await ctx.db.patch(user.userId, { tokenHash });
+      users[key] = { userId: user.userId, deviceToken: token };
+    }
+
+    return { groupId, peaceId, users };
   },
 });
