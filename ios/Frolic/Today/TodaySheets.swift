@@ -236,7 +236,7 @@ private struct TodayHoldSheet: View {
                     TodayPainting(name: share ? "whop-fund-jar" : "whop-deposit-back", height: 120)
                     Spacer()
                 }
-                TodaySheetTitle(text: share ? "Chip in for " + TodayMoneyCard.shortTitle(store.plan) : "Hold \(amount) to lock it in", identifier: share ? "chip.sheet.title" : "hold.sheet.title", centered: true)
+                TodaySheetTitle(text: share ? "Chip in for " + (store.plan?.title ?? "this") : "Hold \(amount) to lock it in", identifier: share ? "chip.sheet.title" : "hold.sheet.title", centered: true)
                     .padding(.top, 8)
                 if share {
                     FrolicGroup {
@@ -452,7 +452,7 @@ struct TodayMoneyCard: View {
         switch payment.state {
         case "due":
             if share {
-                return Copy(title: "Your share", detail: "If it gets called off, you get it back automatically.", action: "Chip in for " + Self.shortTitle(store.plan), art: "whop-fund-jar")
+                return Copy(title: "Your share", detail: "If it gets called off, you get it back automatically.", action: "Chip in", art: "whop-fund-jar")
             }
             return Copy(title: "Hold \(amount) to lock it in", detail: "You get it back the moment you arrive.", action: "Hold \(amount)", art: "whop-deposit-back")
         case "paying":
