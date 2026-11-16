@@ -6,7 +6,7 @@ struct Wordmark: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var risen = false
 
-    private static let viewBox = CGRect(x: -12, y: -14, width: 330, height: 128)
+    static let viewBox = CGRect(x: -12, y: -14, width: 330, height: 128)
 
     var body: some View {
         Canvas { context, size in
@@ -42,7 +42,7 @@ struct Wordmark: View {
         }
     }
 
-    private static let letters: Path = {
+    static let letters: Path = {
         var p = Path()
         p.move(to: CGPoint(x: 14, y: 100))
         p.addLine(to: CGPoint(x: 14, y: 34))
@@ -66,4 +66,13 @@ struct Wordmark: View {
         p.addCurve(to: CGPoint(x: 300, y: 91), control1: CGPoint(x: 287, y: 101), control2: CGPoint(x: 294, y: 98))
         return p
     }()
+}
+
+struct WordmarkStrokes: Shape {
+    func path(in rect: CGRect) -> Path {
+        let box = Wordmark.viewBox
+        let scale = rect.width / box.width
+        let transform = CGAffineTransform(translationX: -box.minX, y: -box.minY).concatenating(CGAffineTransform(scaleX: scale, y: scale))
+        return Wordmark.letters.applying(transform)
+    }
 }

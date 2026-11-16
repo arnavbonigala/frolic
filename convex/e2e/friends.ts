@@ -6,7 +6,8 @@ import { hashToken } from "../lib/identity";
 import { addMember, createGroupFor } from "../users";
 
 const ZONE = "America/Los_Angeles";
-const RENAMES: Record<string, string> = { Maya: "Arnav", Dev: "Dan", Jordan: "Nhi", Priya: "Hannah" };
+const BASE_RENAMES: Record<string, string> = { Dev: "Dan", Jordan: "Nhi", Priya: "Hannah" };
+let RENAMES: Record<string, string> = { Maya: "Arnav", ...BASE_RENAMES };
 
 function deviceToken(): string {
   const bytes = new Uint8Array(32);
@@ -27,17 +28,18 @@ function pick(user: Seeded): Seeded {
 const person = v.object({ userId: v.id("users"), deviceToken: v.string() });
 
 export const seed = internalMutation({
-  args: { run: v.string(), keep: v.optional(v.record(v.string(), v.string())) },
+  args: { run: v.string(), keep: v.optional(v.record(v.string(), v.string())), lead: v.optional(v.string()) },
   returns: v.object({
     groupId: v.id("groups"),
     peaceId: v.id("groups"),
     users: v.object({ arnav: person, dan: person, nhi: person, hannah: person, erick: person, meena: person }),
   }),
-  handler: async (ctx, { run, keep }): Promise<{ groupId: Id<"groups">; peaceId: Id<"groups">; users: Record<"arnav" | "dan" | "nhi" | "hannah" | "erick" | "meena", Seeded> }> => {
+  handler: async (ctx, { run, keep, lead }): Promise<{ groupId: Id<"groups">; peaceId: Id<"groups">; users: Record<"arnav" | "dan" | "nhi" | "hannah" | "erick" | "meena", Seeded> }> => {
     const base: { groupId: Id<"groups">; users: Record<"maya" | "dev" | "jordan" | "priya", Seeded> } = await ctx.runMutation(internal.e2e.admin.seed, { run, scenario: "demo" });
     const { groupId } = base;
+    RENAMES = { Maya: lead ?? "Arnav", ...BASE_RENAMES };
     const pairs: Array<[string, { userId: Id<"users">; deviceToken: string }]> = [
-      ["Arnav", base.users.maya],
+      [lead ?? "Arnav", base.users.maya],
       ["Dan", base.users.dev],
       ["Nhi", base.users.jordan],
       ["Hannah", base.users.priya],
