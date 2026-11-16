@@ -15,13 +15,13 @@ struct FrolicSegmented<Value: Hashable>: View {
                 } label: {
                     Text(option.title)
                         .font(.system(size: 14, weight: selected ? .bold : .medium))
-                        .foregroundStyle(selected ? FrolicColor.ink : FrolicColor.secondaryText)
+                        .foregroundStyle(selected ? Color.white : FrolicColor.secondaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(selected ? FrolicColor.paper : .clear)
+                                .fill(selected ? Color(hex: 0x2E8A4E) : .clear)
                                 .shadow(color: .black.opacity(selected ? 0.08 : 0), radius: 3, y: 2)
                         )
                         .contentShape(Rectangle())
