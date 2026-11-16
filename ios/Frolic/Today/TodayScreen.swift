@@ -962,7 +962,9 @@ private struct TodayNoPlanStart: View {
         } else if store.startingPlan || (store.frolic != nil && store.plan == nil) {
             VStack(spacing: 0) {
                 TodayMeadow(people: store.freeFriends, waiting: true, buds: [store.mePerson])
-                TodayCaption(text: "Finding something good…", identifier: "today.planning", showsDots: true)
+                TodayPlanting()
+                    .padding(.top, 22)
+                TodayCaption(text: "Picking something good", identifier: "today.planning", showsDots: true)
                     .padding(.horizontal, 22)
                 TodayPainting(name: "state-waiting", height: 170)
                     .padding(.top, 18)
@@ -1002,6 +1004,58 @@ private struct TodayNoPlanStart: View {
                 }
             }
             .accessibilityIdentifier("state.empty")
+        }
+    }
+}
+
+private struct TodayPlanting: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var planted = 0
+    private let colors: [FlowerColor] = [.pink, .marigold, .cobalt, .lilac, .tomato, .moss, .pink]
+    private let stems: [CGFloat] = [18, 30, 12, 26, 16, 32, 20]
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Capsule()
+                .fill(FrolicColor.leaf.opacity(0.28))
+                .frame(height: 10)
+                .padding(.horizontal, 26)
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(colors.indices, id: \.self) { index in
+                    ZStack(alignment: .bottom) {
+                        if index < planted {
+                            FlowerView(color: colors[index], radius: 13, stem: stems[index], swayDelay: Double(index) * 0.3)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.1, anchor: .bottom).combined(with: .opacity),
+                                    removal: .opacity.combined(with: .offset(y: 6))
+                                ))
+                        } else if index == planted && !reduceMotion {
+                            Circle()
+                                .fill(FrolicColor.stem.opacity(0.7))
+                                .frame(width: 6, height: 6)
+                                .padding(.bottom, 2)
+                                .transition(.offset(y: -40).combined(with: .opacity))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 70, alignment: .bottom)
+                }
+            }
+            .padding(.horizontal, 30)
+            .padding(.bottom, 4)
+        }
+        .frame(height: 76)
+        .accessibilityHidden(true)
+        .task {
+            guard !reduceMotion else {
+                planted = colors.count
+                return
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(planted == colors.count ? 1.4 : 0.55))
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
+                    planted = planted == colors.count ? 0 : planted + 1
+                }
+            }
         }
     }
 }
