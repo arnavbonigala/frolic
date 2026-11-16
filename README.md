@@ -23,7 +23,7 @@
 
 Every friend group has the same chat. Someone says "we should hang out," everyone agrees, and then nothing happens. Nobody wants to be the one who asks, nobody wants to pick the place, and when a plan finally comes together, someone bails an hour before.
 
-We talked to 100 people about this in the week before the hackathon, and read 1,446 TikTok comments on the same topic. Those three things came up over and over.
+We talked to 107 people about this in the week before the hackathon. Those three things came up over and over.
 
 ## How it works
 
