@@ -63,6 +63,7 @@ struct CrewScreen: View {
         }
         .scrollIndicators(.hidden)
         .ignoresSafeArea(edges: .top)
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .background(SkyBackground())
         .accessibilityIdentifier("crew.screen")
         .accessibilityElement(children: .contain)

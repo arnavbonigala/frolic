@@ -193,3 +193,4 @@ struct ScreenTitle: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+

@@ -47,6 +47,7 @@ struct GardenScreen: View {
             }
             .scrollIndicators(.hidden)
             .ignoresSafeArea(edges: .top)
+            .scrollEdgeEffectStyle(.soft, for: .top)
             .background(SkyBackground())
             .navigationDestination(for: GardenMemoryRow.self) { row in
                 MemoryDetailScreen(row: row, store: store, toast: $toast)
@@ -347,10 +348,6 @@ private struct GardenStorySheet: View {
             shownToast = "Couldn't save that card. Try again."
             return
         }
-        shownToast = "Saved. Ready for Stories"
-        Task {
-            try? await Task.sleep(for: .seconds(1))
-            share = GardenSharePayload(image: image, title: detail ?? overview.weekLine)
-        }
+        share = GardenSharePayload(image: image, title: detail ?? overview.weekLine)
     }
 }

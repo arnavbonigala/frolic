@@ -45,6 +45,7 @@ struct YouScreen: View {
         }
         .scrollIndicators(.hidden)
         .ignoresSafeArea(edges: .top)
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
         .background(SkyBackground())
         .accessibilityIdentifier("you.screen")

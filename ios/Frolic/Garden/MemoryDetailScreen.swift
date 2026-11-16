@@ -38,6 +38,7 @@ struct MemoryDetailScreen: View {
             }
         }
         .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .background(FrolicColor.cream)
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("memory.screen")
@@ -171,8 +172,7 @@ struct MemoryDetailScreen: View {
     }
 
     private func displayed(_ person: GardenPerson) -> GardenPerson {
-        guard person.userId == store.myUserId else { return person }
-        return GardenPerson(userId: person.userId, name: "You", color: person.color, photoUrl: person.photoUrl)
+        person
     }
 
     private func people(_ going: [GardenPerson]) -> some View {
@@ -339,10 +339,6 @@ struct MemoryDetailScreen: View {
             toast = "Couldn't save that card. Try again."
             return
         }
-        toast = "Saved. Ready for Stories"
-        Task {
-            try? await Task.sleep(for: .seconds(1))
-            share = GardenSharePayload(image: image, title: memory?.title ?? row.title)
-        }
+        share = GardenSharePayload(image: image, title: memory?.title ?? row.title)
     }
 }
