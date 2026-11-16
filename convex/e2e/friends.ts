@@ -28,13 +28,13 @@ function pick(user: Seeded): Seeded {
 const person = v.object({ userId: v.id("users"), deviceToken: v.string() });
 
 export const seed = internalMutation({
-  args: { run: v.string(), keep: v.optional(v.record(v.string(), v.string())), lead: v.optional(v.string()) },
+  args: { run: v.string(), keep: v.optional(v.record(v.string(), v.string())), lead: v.optional(v.string()), crewTaste: v.optional(v.array(v.string())), livePlan: v.optional(v.boolean()) },
   returns: v.object({
     groupId: v.id("groups"),
     peaceId: v.id("groups"),
     users: v.object({ arnav: person, dan: person, nhi: person, hannah: person, erick: person, meena: person }),
   }),
-  handler: async (ctx, { run, keep, lead }): Promise<{ groupId: Id<"groups">; peaceId: Id<"groups">; users: Record<"arnav" | "dan" | "nhi" | "hannah" | "erick" | "meena", Seeded> }> => {
+  handler: async (ctx, { run, keep, lead, crewTaste, livePlan }): Promise<{ groupId: Id<"groups">; peaceId: Id<"groups">; users: Record<"arnav" | "dan" | "nhi" | "hannah" | "erick" | "meena", Seeded> }> => {
     const base: { groupId: Id<"groups">; users: Record<"maya" | "dev" | "jordan" | "priya", Seeded> } = await ctx.runMutation(internal.e2e.admin.seed, { run, scenario: "demo" });
     const { groupId } = base;
     RENAMES = { Maya: lead ?? "Arnav", ...BASE_RENAMES };
@@ -67,7 +67,17 @@ export const seed = internalMutation({
 
     const tastes: Array<[Id<"groups">, string[]]> = [];
     const { groupId: peaceId } = await createGroupFor(ctx, base.users.maya.userId, "Peace", ZONE, run);
-    tastes.push([groupId, ["sunsets", "late_night_food", "games", "boba", "music"]], [peaceId, ["coffee", "books", "outdoors", "dessert"]]);
+    tastes.push([groupId, crewTaste ?? ["sunsets", "late_night_food", "games", "boba", "music"]], [peaceId, ["coffee", "books", "outdoors", "dessert"]]);
+    if (livePlan) {
+      for (const frolic of await ctx.db.query("frolics").withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).eq("day", today)).take(20)) {
+        for (const tap of await ctx.db.query("taps").withIndex("by_frolicId", (q) => q.eq("frolicId", frolic._id)).take(50)) await ctx.db.delete(tap._id);
+        await ctx.db.delete(frolic._id);
+      }
+      for (const plan of await ctx.db.query("plans").withIndex("by_groupId_and_day", (q) => q.eq("groupId", groupId).eq("day", today)).take(20)) {
+        await ctx.db.delete(plan._id);
+      }
+      await ctx.scheduler.runAfter(0, internal.plans.drop.startDrop, { groupId, day: today, kind: "daily" });
+    }
     for (const [group, tags] of tastes) {
       const row = await ctx.db.query("tasteProfiles").withIndex("by_groupId", (q) => q.eq("groupId", group)).unique();
       if (row) await ctx.db.patch(row._id, { tags, updatedAt: now });
