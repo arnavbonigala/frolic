@@ -5,7 +5,7 @@ struct ReadingScreen: View {
 
     var body: some View {
         OnboardingPage {
-            OnboardingTitle(title: "You're into", identifier: "reading.title")
+            OnboardingTitle(title: model.readingPhase == .quiet ? "Nothing stood out" : "You're into", identifier: "reading.title")
             statusLine
                 .padding(.top, 22)
             OnboardingChipFlow(tags: model.tags, identifierPrefix: "reading")
@@ -18,13 +18,13 @@ struct ReadingScreen: View {
             }
             .padding(.top, 20)
         } bar: {
-            Button("Sounds like me") {
+            Button(model.readingPhase == .quiet ? "Skip for now" : "Sounds like me") {
                 Task { await model.confirmTaste() }
             }
             .buttonStyle(.frolicPrimary)
             .disabled(model.readingPhase == .reading || model.isSubmitting)
             .accessibilityIdentifier("reading.confirm")
-            Button("Pick different photos") { model.repick() }
+            Button(model.readingPhase == .quiet ? "Try other photos" : "Pick different photos") { model.repick() }
                 .buttonStyle(.frolicText)
                 .accessibilityIdentifier("reading.repick")
         }
@@ -48,15 +48,9 @@ struct ReadingScreen: View {
                 .foregroundStyle(FrolicColor.secondaryText)
                 .accessibilityIdentifier("reading.status")
         case .quiet:
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Nothing stood out in those photos.")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(FrolicColor.ink)
-                Text("Pick different ones.")
-                    .font(.system(size: 15))
-                    .foregroundStyle(FrolicColor.secondaryText)
-            }
-            .accessibilityElement(children: .combine)
+            Text("Photos from nights out with friends work best.")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(FrolicColor.secondaryText)
             .accessibilityIdentifier("reading.status")
         }
     }
