@@ -425,6 +425,11 @@ final class OnboardingModel {
         if let groupId = groupId ?? OnboardingIdentity.groupId, !tags.isEmpty {
             try? await backend.saveTaste(groupId: groupId, tags: tags.map(\.planTag))
         }
+        step = .calendar
+        readCalendar()
+    }
+
+    private func afterCalendar() async {
         if createdInviteCode != nil {
             step = .share
         } else {
@@ -470,7 +475,7 @@ final class OnboardingModel {
 
     func useCalendar() async {
         freeChoice = .window(CalendarRead.todayWindow(freeDays) ?? DateInterval(start: Date(), duration: 3600))
-        await finish()
+        await afterCalendar()
     }
 
     func tellItEachDay() {
@@ -480,7 +485,7 @@ final class OnboardingModel {
     func chooseFree(_ choice: FreeChoice) async {
         freeChoice = choice
         showsFreeSheet = false
-        await finish()
+        await afterCalendar()
     }
 
     func finish() async {
