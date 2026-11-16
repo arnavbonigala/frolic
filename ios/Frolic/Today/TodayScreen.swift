@@ -396,7 +396,7 @@ private struct TodayOpenView: View {
             TodayPlanPacket(
                 store: store,
                 friends: free,
-                friendsLine: store.crew == nil ? nil : free.isEmpty ? "Nobody's free yet. Your yes still counts." : TodayCopy.names(free.map(\.name)) + (free.count == 1 ? " is free" : " are free"),
+                friendsLine: store.crew == nil ? nil : free.isEmpty ? (store.frolic?.origin == "free" ? "Someone in your crew is free right now" : "Nobody's free yet. Your yes still counts.") : TodayCopy.names(free.map(\.name)) + (free.count == 1 ? " is free" : " are free"),
                 onFriends: { router.tab = .crew },
                 me: store.mePerson,
                 onFlickUp: online ? { store.seeHint(); store.tapDown(onlyIf: []) } : nil,
