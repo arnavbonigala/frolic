@@ -25,7 +25,7 @@ final class CrewStore {
     private var fundWire: FundWire?
     private var online: Set<String> = []
     private var tasks: [Task<Void, Never>] = []
-    private var started = false
+    private(set) var started = false
     private var groupStarted = false
     private var lastError: String?
     private var hasFailed = false

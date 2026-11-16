@@ -64,6 +64,13 @@ final class FrolicIdentity {
     }
 
     func adopt(crews incoming: [FrolicCrew]) {
+        if incoming.isEmpty {
+            guard pinnedGroup == nil, groupId != nil else { return }
+            crews = []
+            Self.storeCrews([], AppGroup.defaults)
+            setGroup(nil)
+            return
+        }
         var list: [FrolicCrew] = []
         for crew in incoming where !list.contains(where: { $0.id == crew.id }) {
             list.append(crew)
