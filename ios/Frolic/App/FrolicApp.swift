@@ -8,6 +8,7 @@ struct FrolicApp: App {
     @State private var backend = FrolicBackend.shared
     @State private var identity = FrolicIdentity.shared
     @Environment(\.scenePhase) private var scenePhase
+    @State private var opening = true
 
     var body: some Scene {
         WindowGroup {
@@ -25,6 +26,11 @@ struct FrolicApp: App {
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { identity.refresh() }
+                }
+                .overlay {
+                    if opening {
+                        LaunchBloom { opening = false }
+                    }
                 }
         }
     }

@@ -14,10 +14,10 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" image="launch-meadow" translatesAutoresizingMaskIntoConstraints="NO" id="LSc-im-001">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" image="launch-meadow" hidden="YES" translatesAutoresizingMaskIntoConstraints="NO" id="LSc-im-001">
                                 <rect key="frame" x="0.0" y="-221" width="393" height="1073"/>
                             </imageView>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchWordmark" translatesAutoresizingMaskIntoConstraints="NO" id="LSc-im-002">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchWordmark" hidden="YES" translatesAutoresizingMaskIntoConstraints="NO" id="LSc-im-002">
                                 <rect key="frame" x="86.5" y="139" width="220" height="85"/>
                             </imageView>
                         </subviews>
