@@ -46,7 +46,7 @@ struct JoinScreen: View {
                     .padding(.top, 22)
             case .loading:
                 HStack(spacing: 10) {
-                    OnboardingSpinner()
+                    SproutLoader()
                     Text("Looking for your crew")
                         .frolicFont(.subheadline)
                         .foregroundStyle(FrolicColor.secondaryText)

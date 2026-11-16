@@ -132,22 +132,6 @@ struct OnboardingNotice: View {
     }
 }
 
-struct OnboardingSpinner: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var spinning = false
-
-    var body: some View {
-        Circle()
-            .trim(from: 0, to: 0.72)
-            .stroke(FrolicColor.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-            .frame(width: 18, height: 18)
-            .rotationEffect(.degrees(spinning ? 360 : 0))
-            .animation(reduceMotion ? nil : .linear(duration: 1).repeatForever(autoreverses: false), value: spinning)
-            .accessibilityHidden(true)
-            .onAppear { spinning = !reduceMotion }
-    }
-}
-
 struct OnboardingChipFlow: View {
     var tags: [TasteTag]
     var identifierPrefix: String

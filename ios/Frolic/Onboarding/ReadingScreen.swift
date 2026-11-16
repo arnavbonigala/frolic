@@ -35,7 +35,7 @@ struct ReadingScreen: View {
         switch model.readingPhase {
         case .reading:
             HStack(spacing: 10) {
-                OnboardingSpinner()
+                PetalLoader()
                 Text("Looking at your photos on your phone")
             }
             .font(.system(size: 15, weight: .medium))

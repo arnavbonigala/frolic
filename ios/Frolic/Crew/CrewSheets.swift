@@ -195,7 +195,7 @@ struct CrewInviteSheet: View {
                     .padding(.horizontal, 16)
                 } else {
                     HStack(spacing: 8) {
-                        ProgressView().tint(FrolicColor.ink)
+                        SproutLoader()
                         Text("Making your link")
                             .frolicFont(.subheadline)
                             .foregroundStyle(FrolicColor.secondaryText)

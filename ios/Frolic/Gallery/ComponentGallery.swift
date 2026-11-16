@@ -124,6 +124,12 @@ struct ComponentGallery: View {
                 Button("Only with…") {}.buttonStyle(.frolicSecondary)
             }
             Button("Pick 3 more") {}.buttonStyle(.frolicPrimary).disabled(true)
+            HStack(spacing: 10) {
+                Button {} label: { HStack(spacing: 8) { PetalLoader(); Text("One sec.") } }
+                    .buttonStyle(.frolicPrimary)
+                Button {} label: { HStack(spacing: 8) { PetalLoader(); Text("One sec.") } }
+                    .buttonStyle(.frolicSecondary)
+            }
             Button("See the garden") {}.buttonStyle(.frolicSecondaryWide)
             Button("No invite? Start on your own") {}.buttonStyle(.frolicText).frame(maxWidth: .infinity)
             HStack {

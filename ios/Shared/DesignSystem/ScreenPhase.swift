@@ -141,6 +141,50 @@ struct SproutLoader: View {
     }
 }
 
+struct PetalLoader: View {
+    var tint: Color?
+    var size: CGFloat = 18
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Group {
+            if reduceMotion {
+                flower(open: 5, spin: 0)
+            } else {
+                TimelineView(.animation) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.8)
+                    flower(open: t / 0.22, spin: t * 40)
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+
+    private var shading: GraphicsContext.Shading {
+        tint.map { .color($0) } ?? .foreground
+    }
+
+    private func flower(open: Double, spin: Double) -> some View {
+        Canvas { context, canvas in
+            let center = CGPoint(x: canvas.width / 2, y: canvas.height / 2)
+            let r = canvas.width / 2
+            for i in 0..<5 {
+                let grow = open >= 7 ? max(0, 1 - (open - 7) * 0.9) : min(1, max(0, open - Double(i)))
+                guard grow > 0 else { continue }
+                var petal = context
+                petal.opacity = 0.35 + 0.65 * grow
+                petal.translateBy(x: center.x, y: center.y)
+                petal.rotate(by: .degrees(Double(i) * 72 + spin))
+                petal.scaleBy(x: grow, y: grow)
+                petal.fill(Path(ellipseIn: CGRect(x: -r * 0.26, y: -r * 1.0, width: r * 0.52, height: r * 0.68)), with: shading)
+            }
+            let dot = r * 0.32
+            context.fill(Path(ellipseIn: CGRect(x: center.x - dot, y: center.y - dot, width: dot * 2, height: dot * 2)), with: shading)
+        }
+    }
+}
+
 struct StaggeredArrival: ViewModifier {
     var index: Int
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

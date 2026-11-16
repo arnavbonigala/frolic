@@ -244,7 +244,7 @@ struct MemoryDetailScreen: View {
                     PhotosPicker(selection: $pickedPhoto, matching: .images) {
                         VStack(spacing: 8) {
                             if uploading {
-                                ProgressView().tint(FrolicColor.ink)
+                                PetalLoader(size: 22)
                             } else {
                                 Image(systemName: "plus")
                                     .font(.system(size: 22, weight: .bold))

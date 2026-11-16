@@ -193,9 +193,7 @@ private struct DailyPickResultsView: View {
                 if let people {
                     faces(people)
                 } else {
-                    ProgressView()
-                        .controlSize(.small)
-                        .accessibilityHidden(true)
+                    PetalLoader(tint: FrolicColor.secondaryText, size: 16)
                 }
             }
             .padding(.horizontal, 14)

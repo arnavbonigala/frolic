@@ -32,8 +32,7 @@ struct YouDeleteSheet: View {
                     Button(action: delete) {
                         if model.accountPhase == .working {
                             HStack(spacing: 10) {
-                                ProgressView()
-                                    .tint(FrolicColor.cream)
+                                PetalLoader()
                                 Text("Deleting your account")
                             }
                         } else {

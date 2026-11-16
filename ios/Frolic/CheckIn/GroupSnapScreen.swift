@@ -201,7 +201,7 @@ struct GroupSnapScreen: View {
 
     private var uploadingCard: some View {
         HStack(spacing: 12) {
-            ProgressView().tint(.white)
+            PetalLoader(tint: .white)
             Text("Adding your shot")
                 .font(.system(.body, design: .rounded, weight: .bold))
                 .foregroundStyle(.white)
@@ -351,7 +351,7 @@ struct OnDarkPhase: View {
         VStack(spacing: 12) {
             switch phase {
             case .loading:
-                ProgressView().tint(.white)
+                SproutLoader()
                 Text("Getting the group snap ready")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.8))

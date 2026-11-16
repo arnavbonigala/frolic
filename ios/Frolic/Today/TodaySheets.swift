@@ -182,7 +182,7 @@ private struct TodayShareSheet: View {
                         store.prepareShare()
                     } label: {
                         HStack(spacing: 8) {
-                            if store.shareBusy { ProgressView().tint(FrolicColor.cream) }
+                            if store.shareBusy { PetalLoader() }
                             Text(store.shareBusy ? "One sec." : "Try again")
                         }
                     }
@@ -279,7 +279,7 @@ private struct TodayHoldSheet: View {
                     store.openPayPage()
                 } label: {
                     HStack(spacing: 8) {
-                        if store.payBusy { ProgressView().tint(FrolicColor.cream) }
+                        if store.payBusy { PetalLoader() }
                         Text(store.payBusy ? "One sec." : (share ? "Pay " + String(format: "$%.2f", (payment?.amountCents ?? 0) / 100) : "Hold \(amount)"))
                     }
                 }
@@ -416,7 +416,7 @@ struct TodayMoneyCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 if payment.state == "paying" {
-                    ProgressView().tint(FrolicColor.ink)
+                    PetalLoader(tint: FrolicColor.ink)
                 }
                 if let action = info.action {
                     Button(action) {
