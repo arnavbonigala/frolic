@@ -493,8 +493,10 @@ struct TodaySafari: UIViewControllerRepresentable {
 
 struct TodayBloomOverlay: View {
     var trigger: Int
+    var drift = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var start: Date?
+    @State private var across = false
 
     var body: some View {
         ZStack {
@@ -507,11 +509,13 @@ struct TodayBloomOverlay: View {
                     TimelineView(.animation) { timeline in
                         let t = timeline.date.timeIntervalSince(start)
                         ZStack {
-                            TodayPetals(time: t)
-                            TodayPainting(name: "state-its-on", height: 280)
+                            TodayPetals(time: t, across: across)
+                            if !across {
+                                TodayPainting(name: "state-its-on", height: 280)
                                 .scaleEffect(bouquetScale(t))
                                 .opacity(bouquetOpacity(t))
                                 .padding(.top, 70)
+                            }
                         }
                     }
                 }
@@ -520,13 +524,23 @@ struct TodayBloomOverlay: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onChange(of: trigger) { _, value in
             guard value > 0 else { return }
-            start = Date()
-            Task {
-                try? await Task.sleep(nanoseconds: 2_600_000_000)
-                start = nil
-            }
+            play(across: false, seconds: 2.6)
+        }
+        .onChange(of: drift) { _, value in
+            guard value > 0, !reduceMotion else { return }
+            play(across: true, seconds: 1.8)
         }
         .accessibilityHidden(true)
+    }
+
+    private func play(across: Bool, seconds: Double) {
+        let begun = Date()
+        self.across = across
+        start = begun
+        Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            if start == begun { start = nil }
+        }
     }
 
     private func bouquetScale(_ t: Double) -> Double {
@@ -557,10 +571,15 @@ private struct TodayFadePulse: ViewModifier {
 
 private struct TodayPetals: View {
     var time: Double
+    var across = false
     private static let colors = FlowerColor.allCases.map(\.petal)
 
     var body: some View {
         Canvas { context, size in
+            if across {
+                drift(&context, size)
+                return
+            }
             for index in 0..<28 {
                 let seed = Double(index)
                 let x0 = size.width * (0.5 + 0.42 * sin(seed * 12.9898))
@@ -576,6 +595,24 @@ private struct TodayPetals: View {
                 petal.rotate(by: .radians(t * 2.4 + seed))
                 petal.fill(Path(ellipseIn: CGRect(x: -5, y: -9, width: 10, height: 18)), with: .color(Self.colors[index % Self.colors.count]))
             }
+        }
+    }
+
+    private func drift(_ context: inout GraphicsContext, _ size: CGSize) {
+        for index in 0..<16 {
+            let seed = Double(index)
+            let t = max(0, time - seed.truncatingRemainder(dividingBy: 5) * 0.07)
+            let speed = size.width * (0.75 + 0.2 * sin(seed * 3.7))
+            let x = -30 + t * speed
+            let y = size.height * (0.18 + 0.5 * abs(sin(seed * 12.9898))) + 26 * sin(t * 3.2 + seed) + t * 30
+            let alpha = min(1, t * 4) * max(0, 1 - t / 1.6)
+            guard alpha > 0, x < size.width + 30 else { continue }
+            var petal = context
+            petal.opacity = alpha * 0.9
+            petal.translateBy(x: x, y: y)
+            petal.rotate(by: .radians(t * 3 + seed))
+            petal.scaleBy(x: 0.6 + 0.4 * abs(sin(seed)), y: 0.6 + 0.4 * abs(sin(seed)))
+            petal.fill(Path(ellipseIn: CGRect(x: -5, y: -9, width: 10, height: 18)), with: .color(Self.colors[index % Self.colors.count]))
         }
     }
 }

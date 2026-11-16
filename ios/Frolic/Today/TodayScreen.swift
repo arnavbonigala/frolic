@@ -9,6 +9,7 @@ struct TodayScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var store = TodayStore()
+    @State private var driftID = 0
 
     private var route: E2ERoute? {
         guard let route = router.e2eRoute, route.screen == "today" else { return nil }
@@ -60,7 +61,7 @@ struct TodayScreen: View {
                     .padding(.top, 4)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
-            TodayBloomOverlay(trigger: store.bloomID)
+            TodayBloomOverlay(trigger: store.bloomID, drift: driftID)
                 .allowsHitTesting(false)
         }
         }
@@ -99,6 +100,9 @@ struct TodayScreen: View {
             if phase == .active { store.becameActive() }
         }
         .onAppear { store.takePendingAction() }
+        .onChange(of: store.scene) { old, new in
+            if old == .open, case .waiting = new { driftID += 1 }
+        }
         .task(id: store.meMember?.photoUrl) { await MyAvatar.shared.load(store.meMember?.photoUrl) }
         .onChange(of: store.meMember?.name, initial: true) { _, name in MyAvatar.shared.name = name }
         .onReceive(NotificationCenter.default.publisher(for: TodayInbox.openOnlyIfNotification)) { _ in
@@ -243,31 +247,61 @@ private struct TodayPhaseView: View {
 
     var body: some View {
         ZStack {
-            switch store.scene {
-            case .none:
-                TodayNoPlanStart(store: store)
-            case .solo(let waiting):
-                TodaySoloView(store: store, waiting: waiting)
-            case .off:
-                TodayOffView(store: store)
-            case .open:
-                TodayOpenView(store: store, router: router)
-            case .waiting(let onlyIf):
-                TodayWaitingView(store: store, onlyIf: onlyIf, router: router)
-            case .on:
-                TodayOnView(store: store)
-            case .arrived:
-                TodayArrivedView(store: store)
-            case .hopIn:
-                TodayHopInView(store: store)
-            case .faded:
-                TodayFadedView(store: store)
-            case .done:
-                TodayDoneView(store: store, router: router)
+            Group {
+                switch store.scene {
+                case .none:
+                    TodayNoPlanStart(store: store)
+                case .solo(let waiting):
+                    TodaySoloView(store: store, waiting: waiting)
+                case .off:
+                    TodayOffView(store: store)
+                case .open:
+                    TodayOpenView(store: store, router: router)
+                case .waiting(let onlyIf):
+                    TodayWaitingView(store: store, onlyIf: onlyIf, router: router)
+                case .on:
+                    TodayOnView(store: store)
+                case .arrived:
+                    TodayArrivedView(store: store)
+                case .hopIn:
+                    TodayHopInView(store: store)
+                case .faded:
+                    TodayFadedView(store: store)
+                        .modifier(TodayWilt())
+                case .done:
+                    TodayDoneView(store: store, router: router)
+                }
             }
+            .transition(reduceMotion ? .opacity : AnyTransition(TodaySceneTransition()))
         }
-        .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 8)))
-        .animation(.easeOut(duration: reduceMotion ? 0.2 : 0.35), value: store.scene)
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.86), value: store.scene)
+    }
+}
+
+private struct TodaySceneTransition: Transition {
+    func body(content: Content, phase: TransitionPhase) -> some View {
+        content
+            .rotation3DEffect(.degrees(phase == .willAppear ? 9 : phase == .didDisappear ? -7 : 0), axis: (x: 1, y: 0, z: 0), anchor: .top, perspective: 0.55)
+            .scaleEffect(phase.isIdentity ? 1 : (phase == .willAppear ? 0.97 : 0.985), anchor: .top)
+            .offset(y: phase == .willAppear ? 16 : 0)
+            .blur(radius: phase.isIdentity ? 0 : 3)
+            .opacity(phase.isIdentity ? 1 : 0)
+    }
+}
+
+private struct TodayWilt: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var settled = false
+
+    func body(content: Content) -> some View {
+        content
+            .saturation(settled || reduceMotion ? 1 : 1.8)
+            .rotationEffect(.degrees(settled || reduceMotion ? 0 : -2.5), anchor: .bottomLeading)
+            .offset(y: settled || reduceMotion ? 0 : -14)
+            .opacity(settled ? 1 : 0)
+            .onAppear {
+                withAnimation(reduceMotion ? .easeOut(duration: 0.25) : .timingCurve(0.3, 0, 0.5, 1, duration: 0.6)) { settled = true }
+            }
     }
 }
 
