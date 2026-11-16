@@ -26,7 +26,7 @@ struct TodayPacket<Content: View>: View {
     @State private var planted = 0
 
     private let stems: [CGFloat] = [30, 12, 38, 20, 26]
-    private let heroHeight: CGFloat = 352
+    private let heroHeight: CGFloat = 312
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
