@@ -22,7 +22,7 @@ enum TasteLibrary {
     }
 
     static let photoUsageKey = "NSPhotoLibraryUsageDescription"
-    static let recentLimit = 9
+    static let recentLimit = 60
 
     static var isPackaged: Bool { Bundle.main.object(forInfoDictionaryKey: photoUsageKey) != nil }
 
