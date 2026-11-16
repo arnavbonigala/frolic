@@ -26,9 +26,9 @@ test:
       script: "barrier-t0"
       timeout_seconds: 240
     - type: "instructions"
-      step_description: "Tap \"Only with…\", tap Dev, then tap \"I'm down if Dev\""
+      step_description: "Tap \"Only with…\", tap Dev, then tap \"I'm down if Dev is\""
     - type: "validation"
-      step_description: "The status card reads \"You're down, if Dev\""
+      step_description: "The status card reads \"You're down if Dev is\""
     - type: "validation"
       step_description: "Nothing on screen shows that anyone else is down, no count, no avatar of Dev as down, and no \"It's on.\""
     - type: "code_execution"

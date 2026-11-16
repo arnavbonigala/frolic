@@ -106,7 +106,7 @@ private struct TodayOnlyIfSheet: View {
                     }
                 }
                 .padding(.top, 14)
-                Button(picked.isEmpty ? "Pick at least one friend" : "I'm down if " + TodayCopy.ifIn(picked.map(\.name))) {
+                Button(picked.isEmpty ? "Pick at least one friend" : "I'm down if " + TodayCopy.ifInAre(picked.map(\.name))) {
                     store.tapDown(onlyIf: picked)
                 }
                 .buttonStyle(.frolicPrimary)

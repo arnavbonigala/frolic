@@ -221,6 +221,10 @@ enum TodayCopy {
         list.count > 2 ? "all \(list.count)" : names(list)
     }
 
+    static func ifInAre(_ list: [String]) -> String {
+        ifIn(list) + (list.count == 1 ? " is" : " are")
+    }
+
     static func clock(_ milliseconds: Double) -> String {
         clockFormatter.string(from: Date(timeIntervalSince1970: milliseconds / 1000))
     }
@@ -238,7 +242,7 @@ enum TodayCopy {
     static func dropCountdown(_ now: Date) -> String {
         let drop = Calendar.current.date(bySettingHour: 15, minute: 0, second: 0, of: now) ?? now
         let minutes = Int(drop.timeIntervalSince(now) / 60)
-        guard minutes > 0 else { return "Tomorrow's plan lands at 3." }
+        guard minutes > 0 else { return "Tomorrow's plan lands at 3 PM." }
         if minutes < 60 { return "Today's plan lands in \(minutes) min." }
         return "Today's plan lands in \(minutes / 60)h \(minutes % 60)m."
     }
@@ -319,7 +323,7 @@ enum TodayCopy {
     }
 
     static func downLine(_ onlyIf: [String]) -> String {
-        onlyIf.isEmpty ? "You're down" : "You're down, if \(ifIn(onlyIf))"
+        onlyIf.isEmpty ? "You're down" : "You're down if \(ifInAre(onlyIf))"
     }
 
     static func downBody(_ onlyIf: [String], deadline: Double?) -> String {
