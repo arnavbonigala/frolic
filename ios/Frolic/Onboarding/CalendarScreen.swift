@@ -124,7 +124,7 @@ struct FreeSheet: View {
                 .foregroundStyle(FrolicColor.secondaryText)
             FrolicGroup {
                 option("Free now till 8 PM", sub: "From your calendar", key: "till8", id: "free.sheet.till8", divider: false)
-                option("Free 5 PM to 8 PM", sub: "Set by you, just for today", key: "after5", id: "free.sheet.after5", divider: true)
+                option("Free 5 PM to 8 PM", sub: "Just for today", key: "after5", id: "free.sheet.after5", divider: true)
                 option("Not today", sub: "No plan for you today. Nobody gets told.", key: "no", id: "free.sheet.notToday", divider: true)
             }
             Button("Done") {

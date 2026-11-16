@@ -312,7 +312,7 @@ private struct TodayFreeSheet: View {
                     row("Free now till 8 PM", nil, selected: state == "now", id: "free.sheet.till8") {
                         store.setFree("now", window: TodayWindow(start: min(store.now(), eight - 60_000), end: eight))
                     }
-                    row("Free 5 PM to 8 PM", "Set by you, just for today", selected: state == "window", id: "free.sheet.after5", divider: true) {
+                    row("Free 5 PM to 8 PM", "Just for today", selected: state == "window", id: "free.sheet.after5", divider: true) {
                         store.setFree("window", window: TodayWindow(start: five, end: eight))
                     }
                     row("Not today", "No plan for you today. Nobody gets told.", selected: state == "busy", id: "free.sheet.notToday", divider: true) {
